@@ -1,0 +1,5 @@
+#!/bin/sh
+
+export HOSTALIASES=/etc/hosts.docker
+
+/usr/bin/docker $@
