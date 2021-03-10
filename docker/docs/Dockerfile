@@ -1,4 +1,4 @@
-FROM controller.trafficserver.org/ats/old_ci/fedora:30
+FROM fedora:30
 RUN yum -y update; \
     # Compilers
     yum -y install ccache make pkgconfig bison flex gcc-c++ clang git sudo; \
@@ -26,13 +26,13 @@ RUN  if [ ! -z "$(grep -i centos /etc/redhat-release)" ]; then \
 #RUN mkdir /home/mirror
 #RUN mkdir /home/mirror/trafficserver
 #RUN mkdir /home/docs
-#CMD cd /home/mirror && rm -rf trafficserver && \
-#    source ./gh-mirror.sh && cd /home/mirror/trafficserver.git && \
-#    git fetch && cd /home/mirror && git clone trafficserver.git && \
-#    cd /home/mirror/trafficserver && source /home/mirror/trafficserver/ci/jenkins/bin/environment.sh && \
-#    source /home/mirror/trafficserver/ci/jenkins/bin/docs.sh
+##CMD cd /home/mirror && rm -rf trafficserver && \
+##    source ./gh-mirror.sh && cd /home/mirror/trafficserver.git && \
+##    git fetch && cd /home/mirror && git clone trafficserver.git && \
+##    cd /home/mirror/trafficserver && source /home/mirror/trafficserver/ci/jenkins/bin/environment.sh && \
+##    source /home/mirror/trafficserver/ci/jenkins/bin/docs.sh
 
-#CMD  cd src && source ci/jenkins/bin/environment.sh && source ci/jenkins/bin/docs.sh
+##CMD  cd src && source ci/jenkins/bin/environment.sh && source ci/jenkins/bin/docs.sh
 
-CMD  cd /home/mirror/trafficserver && ls -alh && git status && source /home/mirror/trafficserver/ci/jenkins/bin/environment.sh && \
-     source /home/mirror/trafficserver/ci/jenkins/bin/docs.sh
+#CMD  cd /home/mirror/trafficserver && ls -alh && git status && source /home/mirror/trafficserver/ci/jenkins/bin/environment.sh && \
+#     source /home/mirror/trafficserver/ci/jenkins/bin/docs.sh
