@@ -1,0 +1,14 @@
+version: '3.4'
+
+services:
+  docs_build:
+    network_mode: host
+    container_name: docs_build
+    image: docs_build
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    volumes:
+      - /home/docs:/home/docs
+      - /opt/jenkins/home/workspace/docs-github/src:/home/mirror/trafficserver
