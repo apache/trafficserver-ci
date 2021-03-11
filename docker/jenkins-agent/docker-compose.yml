@@ -1,0 +1,21 @@
+version: '3.4'
+
+services:
+  jenkins-agent:
+    container_name: jenkins-agent
+#    image: jenkins/inbound-agent
+    build:
+      dockerfile: Dockerfile
+      context: .
+      network: host
+    environment:
+      JENKINS_URL: "http://jenkins.trafficserver.org:6969/"
+      JENKINS_AGENT_NAME: "docker1"
+      JENKINS_AGENT_WORKDIR: "/home/jenkins/agent"
+      JENKINS_WEB_SOCKET: "true"
+      JENKINS_SECRET: "INSERT_SUPER_SECRET_JENKINS_THING_HERE"
+    network_mode: host
+    restart: always
+    volumes:
+      - /tmp:/home/jenkins
+      - /var/run/docker.sock:/var/run/docker.sock:rw
