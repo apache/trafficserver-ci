@@ -1,0 +1,40 @@
+pipeline {
+    agent {
+        docker {
+            image 'controller.trafficserver.org/ats/old_ci/ubuntu:19.04'
+            registryUrl 'https://controller.trafficserver.org/'
+            label 'docker'
+        }
+    }
+    
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    git 'http://jenkins.trafficserver.org/mirror/trafficserver.git'
+                }
+                dir('ci') {
+                    git branch: 'main', url: 'https://github.com/ezelkow1/trafficserver-ci.git'
+                } 
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    sh('ls')
+                    sh('autoreconf -fiv')
+                    sh('./configure --enable-experimental-plugins')
+                    sh('make -j')
+                }
+            }
+        }
+    }
+    
+    post { 
+        cleanup { 
+            cleanWs()
+        }
+    }
+}
