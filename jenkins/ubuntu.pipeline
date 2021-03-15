@@ -26,7 +26,7 @@ pipeline {
                     sh('ls')
                     sh('autoreconf -fiv')
                     sh('./configure --enable-experimental-plugins')
-                    sh('make -j')
+                    sh('make -j2')
                 }
             }
         }
