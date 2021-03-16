@@ -11,6 +11,7 @@ pipeline {
         stage('Clone') {
             steps {
                 dir('src') {
+                    echo sha1
                     git branch: '${sha1}', url: 'http://github.com/ezelkow1/trafficserver.git'
                 }
                 dir('ci') {
