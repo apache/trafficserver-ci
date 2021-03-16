@@ -11,7 +11,7 @@ pipeline {
         stage('Clone') {
             steps {
                 dir('src') {
-                    git branch: '${sha1}', url: 'http://jenkins.trafficserver.org/mirror/trafficserver.git'
+                    git branch: '${sha1}', url: 'http://github.com/ezelkow1/trafficserver.git'
                 }
                 dir('ci') {
                     git branch: 'main', url: 'https://github.com/ezelkow1/trafficserver-ci.git'
