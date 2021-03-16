@@ -25,7 +25,8 @@ pipeline {
                 dir('src') {
                     sh('ls')
                     sh('autoreconf -fiv')
-                    sh('./configure --enable-experimental-plugins')
+                    //sh('./configure --enable-experimental-plugins')
+                    sh('./configure')
                     sh('make -j3')
                 }
             }
