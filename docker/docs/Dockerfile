@@ -1,7 +1,7 @@
 FROM fedora:30
 RUN yum -y update; \
     # Compilers
-    yum -y install ccache make pkgconfig bison flex gcc-c++ clang git sudo gmake; \
+    yum -y install ccache make pkgconfig bison flex gcc-c++ clang git sudo; \
     # Various other tools
     git rpm-build distcc-server file wget openssl hwloc; \
     # Devel packages that ATS needs
@@ -10,7 +10,7 @@ RUN yum -y update; \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel \
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI automake autoconf libtool; \
     # This is for autest stuff
-    yum -y install python3 python3-pip httpd-tools procps-ng nmap-ncat pipenv; \
+    yum -y install python3 httpd-tools procps-ng nmap-ncat pipenv; \
     # This is stuff for docs building
     yum -y install java lbzip2 rsync;
 RUN pip3 install sphinx
