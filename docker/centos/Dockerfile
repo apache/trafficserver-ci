@@ -16,7 +16,7 @@ RUN yum -y update; \
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI;
 
 RUN if [ ! -z "$(grep -i centos /etc/redhat-release)" ]; then \
-    yum -y install centos-release-scl; \
+    #yum -y install centos-release-scl; \
     yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel; \
     fi
 
