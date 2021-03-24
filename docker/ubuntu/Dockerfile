@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 RUN apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get -y install build-essential llvm ccache \
     make pkgconf bison flex g++ clang gettext libc++-dev autoconf automake \
-    libtool autotools-dev git distcc file wget openssl hwloc intltool-debian clang-10; \
+    libtool autotools-dev git distcc file wget openssl hwloc intltool-debian clang-tools-10 clang-10; \
 
     DEBIAN_FRONTEND=noninteractive apt-get -y install libssl-dev libexpat1-dev \
     libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
