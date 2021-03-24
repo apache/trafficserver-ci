@@ -17,7 +17,7 @@ RUN yum -y update; \
 
 RUN if [ ! -z "$(grep -i centos /etc/redhat-release)" ]; then \
     yum -y install centos-release-scl; \
-    yum -y install devtoolset-7 devtoolset-7-libasan-devel; \
+    yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel; \
     fi
 
 RUN yum clean all
