@@ -1,0 +1,49 @@
+pipeline {
+    agent {
+        docker {
+            image 'controller.trafficserver.org/ats/docs_build:30'
+            registryUrl 'https://controller.trafficserver.org/'
+            label 'docker'
+            // We need host networking for clang-format to download
+            args '--network host'
+        }
+    }
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    echo "${sha1}"
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'head -1 README'
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    // STILL NEED TO MAKE CLANG_FORMAT IMG, Include Pip for pep8
+                    sh('head -1 README')
+                    sh('autoreconf -if && ./configure')
+                    sh('rm -f lib/ts/stamp-h1')
+
+                    // Run RAT
+                    sh('make rat | tee RAT.txt')
+
+                    // Mark as failed if there are any unknown licesnes
+                    sh('grep \'0 Unknown Licenses\' RAT.txt > /dev/null || exit -1')
+                }
+            }
+        }
+    }
+    
+    post { 
+        cleanup { 
+            cleanWs()
+        }
+    }
+}
