@@ -1,0 +1,150 @@
+String buildJob(String ghcontext, String jobName) {
+        setGitHubPullRequestStatus(context: ghcontext, message: 'Building', state: 'PENDING')
+        def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: GITHUB_PR_HEAD_SHA), string(name: 'GITHUB_URL', value: GITHUB_REPO_GIT_URL), string(name: 'GITHUB_PR_NUMBER', value: GITHUB_PR_NUMBER)]
+        def jobResult = jobBuild.getResult()
+        echo "Build of '${jobName}' returned result: ${jobResult}"
+
+        if (jobResult == 'SUCCESS') {
+            setGitHubPullRequestStatus(context: ghcontext, message: 'Success', state: jobResult)
+        } else {
+            setGitHubPullRequestStatus(context: ghcontext, message: 'Failure', state: jobResult)
+        }
+    return jobResult
+}
+
+pipeline {
+    agent none
+    
+    stages {
+        stage('Quick Checks') {
+            parallel {
+                stage('Clang-Format') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*clang-format.*/ }
+                        }
+                    }
+                    steps {
+                        script {
+                            echo GITHUB_PR_COMMENT_BODY_MATCH
+                            result = buildJob('Clang-Format', 'Github_Builds/clang-format')
+                            if (result == 'FAILURE') {
+                                error('Clang-Format failed')
+                            }
+                        }
+                    }
+                }
+                stage('RAT') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*RAT.*/ }
+                        }
+                    }
+                    steps {
+                        script {
+                            result = buildJob('RAT', 'Github_Builds/rat-build')
+                            if (result == 'FAILURE') {
+                                error('RAT failed')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        
+        stage('OS Builds') {
+            parallel {
+                stage('Ubuntu Build') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*ubuntu.*/ }
+                        }
+                    }
+                    steps {
+                        script {
+                            result = buildJob('Ubuntu-test', 'Github_Builds/ubuntu-build-param')
+                            if (result == 'FAILURE') {
+                                error('Ubuntu build failed')
+                            }
+                        }
+                    }
+                }
+                stage('Fedora Build') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*fedora.*/ }
+                        }
+                    }                    
+                    steps {
+                        script {
+                            result = buildJob('Fedora-test', 'Github_Builds/fedora-build-param')
+                            if (result == 'FAILURE') {
+                                error('Fedora build failed')
+                            }
+                        }
+                    }
+                }
+                stage('Debian Build') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*debian.*/ }
+                        }
+                    }                    
+                    steps {
+                        script {
+                            result = buildJob('Debian-test', 'Github_Builds/debian-build-param')
+                            if (result == 'FAILURE') {
+                                error('Debian build failed')
+                            }
+                        }
+                    }
+                }
+                stage('CentOS Build') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*centos.*/ }
+                        }
+                    }                    
+                    steps {
+                        script {
+                            result = buildJob('CentOS-test', 'Github_Builds/centos-build-param')
+                            if (result == 'FAILURE') {
+                                error('CentOS build failed')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        
+        stage('Tests') {
+            parallel {
+                stage('Clang-Analyzer') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*clang-analyzer.*/ }
+                        }
+                    }                    
+                    steps {
+                        script {
+                            result = buildJob('Clang-Analyzer', 'Github_Builds/clang-analyzer')
+                            if (result == 'FAILURE') {
+                                error('Clang-Analyzer failed')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+    }
+}

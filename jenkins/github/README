@@ -1,0 +1,18 @@
+To set these up setup a top level pipeline first with:
+ - github project url set
+ - string paramter of SHA1
+ - github pull requests build trigger - Hooks with persisted data
+	- cancel queued
+	- abort running
+	- trigger on:
+		- comment pattern ".*\[approve\W+ci(.*)\]"
+		- pull request opened
+		- commit changed
+		- not merged - skip
+
+Each Individual build pipeline needs to have parameters of:
+	- SHA1
+	- GITHUB_URL
+
+and clang-analyzer also needs:
+	- GITHUB_PR_NUMBER

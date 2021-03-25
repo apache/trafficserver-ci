@@ -1,0 +1,74 @@
+pipeline {
+    agent {
+        docker {
+            image 'controller.trafficserver.org/ats/docs_build:30'
+            registryUrl 'https://controller.trafficserver.org/'
+            label 'docker'
+            // We need host networking for clang-format to download
+            args '--network host'
+        }
+    }
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    echo "${sha1}"
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'head -1 README'
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    // STILL NEED TO MAKE CLANG_FORMAT IMG, Include Pip for pep8
+                    sh('head -1 README')
+                    sh '''#!/bin/bash
+                            git grep -IE ' +$' | fgrep -v '.gold:'
+                            if [ "1" != "$?" ]; then
+                                echo "Error: Trailing whitespaces are not allowed!"
+                                echo "Error: Please run: git grep -IE ' +$'"
+                                exit 1
+                            fi
+                            echo "Success! No trailing whitespace"
+                            git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp'
+                            if [ "1" != "$?" ]; then
+                                echo "Error: Please make sure to run dos2unix on the above file(s)"
+                                exit 1
+                            fi
+                            echo "Success! No DOS carriage return"
+
+                            set -x
+
+                            autoreconf -if && ./configure && make clang-format
+                            [ "0" != "$?" ] && exit 1
+
+                            # Only enforce autopep8 on branches where the pre-commit hook was updated to
+                            # check it. Otherwise, none of the PRs for older branches will pass this check.
+                            if grep -q autopep8 tools/git/pre-commit; then
+                                make autopep8
+                                [ "0" != "$?" ] && exit 1
+                            fi
+
+                            git diff --exit-code
+                            [ "0" != "$?" ] && exit 1
+
+                            # Normal exit
+                            exit 0                            
+                        '''
+                }
+            }
+        }
+    }
+    
+    post { 
+        cleanup { 
+            cleanWs()
+        }
+    }
+}
