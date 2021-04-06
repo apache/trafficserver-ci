@@ -16,12 +16,16 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI curl; \
     # autest stuff
     yum -y install python3 httpd-tools procps-ng nmap-ncat python3-pip \
-    python3-gunicorn python3-requests python3-devel python3-psutil;
+    python3-gunicorn python3-requests python3-devel python3-psutil telnet golang;
 
 RUN pip3 install pipenv httpbin
 RUN if [ ! -z "$(grep -i centos /etc/redhat-release)" ]; then \
     yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel; \
     fi
-RUN update-crypto-policies --set LEGACY
-RUN yum clean all
 
+RUN update-crypto-policies --set LEGACY
+RUN echo 'export GOROOT=/usr/local/go' | tee -a /etc/profile
+RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile
+RUN source /etc/profile
+RUN go get github.com/summerwind/h2spec/cmd/h2spec
+RUN yum clean all
