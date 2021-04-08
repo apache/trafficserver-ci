@@ -28,4 +28,5 @@ RUN echo 'export GOROOT=/usr/local/go' | tee -a /etc/profile
 RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile
 RUN source /etc/profile
 RUN go get github.com/summerwind/h2spec/cmd/h2spec
+RUN cp /root/go/bin/h2spec /usr/local/bin
 RUN yum clean all
