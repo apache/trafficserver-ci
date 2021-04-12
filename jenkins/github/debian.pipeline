@@ -1,0 +1,42 @@
+pipeline {
+    agent {
+        docker {
+            image 'controller.trafficserver.org/ats/debian:10'
+            registryUrl 'https://controller.trafficserver.org/'
+            label 'docker'
+        }
+    }
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    echo "${sha1}"
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    sh('autoreconf -fiv')
+                    sh('./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --with-user=jenkins --enable-debug --enable-werror')
+                    sh('make -j4 V=1 Q=')
+                    sh('make -j 2 check VERBOSE=Y V=1')
+                    sh('make install')
+                    sh('/tmp/ats/bin/traffic_server -K -k -R 1')
+                }
+            }
+        }
+    }
+    
+    post { 
+        cleanup { 
+            cleanWs()
+        }
+    }
+}
