@@ -2,7 +2,6 @@ pipeline {
     agent {
         docker {
             image 'ats/old_ci/fedora:30'
-            //registryUrl 'https://controller.trafficserver.org/'
             args '-v /home/rooter/ccache:/tmp/ccache:rw'
             label 'linux'
         }
@@ -19,12 +18,7 @@ pipeline {
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
                         extensions: [],
-                        //+refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin-pull/pull/${GITHUB_PR_NUMBER}/merge
-                        //userRemoteConfigs: [[url: 'https://github.com/ezelkow1/trafficserver', refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-
-                        //userRemoteConfigs: [[url: 'https://github.com/ezelkow1/trafficserver', refspec: '+refs/pull/${sha1}/merge:refs/remotes/origin/pull/${sha1}/merge']]])
-                    sh 'head -1 README'
                 }
                 echo 'Finished Cloning'
             }
@@ -33,12 +27,12 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    //sh('source ci/jenkins/bin/environment.sh && source ci/jenkins/bin/build.sh && ~jenkins/bin/regression.sh')
-                    sh('head -1 README')
-                    //sh('autoreconf -fiv')
-                    //sh('./configure --enable-experimental-plugins')
-                    //sh('./configure')
-                    //sh('make -j3')
+                    sh('autoreconf -fiv')
+                    sh('./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --with-user=jenkins --enable-werror --enable-debug --enable-wccp --enable-luajit')
+                    sh('make -j4 V=1 Q=')
+                    sh('make -j 2 check VERBOSE=Y V=1')
+                    sh('make install')
+                    sh('/tmp/ats/bin/traffic_server -K -k -R 1')
                 }
             }
         }
