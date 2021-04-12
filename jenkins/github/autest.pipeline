@@ -1,0 +1,67 @@
+pipeline {
+    agent {
+        docker {
+            image 'controller.trafficserver.org/ats/centos:8'
+            registryUrl 'https://controller.trafficserver.org/'
+            args '--init --cap-add=SYS_PTRACE --network=host -u root'
+            label 'docker'
+        }
+    }
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    sh('source /opt/rh/gcc-toolset-9/enable')
+                    sh('update-crypto-policies --set LEGACY')
+                    sh('autoreconf -fiv')
+                    sh('./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-luajit')
+                    sh('make -j4')
+                    sh('make install')
+                }
+            }
+        }
+        stage('AuTest') {
+            steps {
+                echo 'Starting AuTest'
+                dir('src/tests') {
+                    sh '''
+                        set +e
+                        mkdir -p ${WORKSPACE}/output/${GITHUB_PR_NUMBER}
+                        ./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f active_timeout runroot_manager || true
+                        if [ -n "$(ls -A /tmp/sandbox/)" ]; then
+                            cp -rf /tmp/sandbox/ ${WORKSPACE}/output/${GITHUB_PR_NUMBER}/
+                            chmod -R 777 ${WORKSPACE}
+                            exit 1
+                        else
+                            touch ${WORKSPACE}/output/${GITHUB_PR_NUMBER}/No_autest_failures
+                            chmod -R 777 ${WORKSPACE}
+                            exit 0
+                        fi
+                        '''
+                }
+            }
+        }
+    }
+    
+    post { 
+        always {
+            sh('ls ${WORKSPACE}/output/${GITHUB_PR_NUMBER}')
+            archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true
+        }
+        cleanup { 
+            cleanWs()
+        }
+    }
+}
