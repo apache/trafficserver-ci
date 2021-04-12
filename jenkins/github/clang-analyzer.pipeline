@@ -15,11 +15,7 @@ pipeline {
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
                         extensions: [],
-                        //+refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin-pull/pull/${GITHUB_PR_NUMBER}/merge
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                        //userRemoteConfigs: [[url: 'https://github.com/ezelkow1/trafficserver', refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                        //userRemoteConfigs: [[url: 'https://github.com/ezelkow1/trafficserver', refspec: '+refs/pull/${sha1}/merge:refs/remotes/origin/pull/${sha1}/merge']]])
-                    sh 'head -1 README'
                 }
                 echo 'Finished Cloning'
             }
@@ -28,24 +24,27 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    sh('head -1 README')
                     sh('autoreconf -fiv')
                     sh('scan-build-10 --keep-cc ./configure --enable-experimental-plugins --with-luajit')
-                    sh('make -j3 -C lib all-local V=1 Q=')
+                    sh('make -j4 -C lib all-local V=1 Q=')
                     sh '''scan-build-10 --keep-cc -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker \
                     alpha.core.BoolAssignment -enable-checker alpha.core.CastSize -enable-checker alpha.core.SizeofPtr \
                     --status-bugs --keep-empty \
-                    -o /home/rooter/workspace/Github_Builds/clang-analyzer/output/${GITHUB_PR_NUMBER} --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}" \
+                    -o ${WORKSPACE}/output/${GITHUB_PR_NUMBER} --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}" \
                     make -j3 V=1 Q='''
                     //sh('CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins')
-                    sh('make -j3')
+                    sh('make -j4')
+               
+                    sh '''
+                    [ ! -f ${WORKSPACE}/output/${GITHUB_PR_NUMBER}/index.html ] && touch ${WORKSPACE}/output/No\\ Errors\\ Reported; exit 0 || exit 1
+                    '''
                 }
             }
         }
     }
     
     post { 
-        success {
+        always {
             archiveArtifacts artifacts: 'output/**/*', fingerprint: true, allowEmptyArchive: true
         }
         cleanup { 
