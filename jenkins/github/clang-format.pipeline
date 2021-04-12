@@ -26,8 +26,6 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    // STILL NEED TO MAKE CLANG_FORMAT IMG, Include Pip for pep8
-                    sh('head -1 README')
                     sh '''#!/bin/bash
                             git grep -IE ' +$' | fgrep -v '.gold:'
                             if [ "1" != "$?" ]; then
