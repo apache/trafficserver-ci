@@ -57,7 +57,6 @@ pipeline {
     
     post { 
         always {
-            sh('ls ${WORKSPACE}/output/${GITHUB_PR_NUMBER}')
             archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true
         }
         cleanup { 
