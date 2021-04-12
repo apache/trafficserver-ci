@@ -17,7 +17,6 @@ pipeline {
                         branches: [[name: sha1]],
                         extensions: [],
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                    sh 'head -1 README'
                 }
                 echo 'Finished Cloning'
             }
@@ -26,7 +25,6 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    // STILL NEED TO MAKE CLANG_FORMAT IMG, Include Pip for pep8
                     sh('head -1 README')
                     sh('autoreconf -if && ./configure')
                     sh('rm -f lib/ts/stamp-h1')
@@ -36,6 +34,7 @@ pipeline {
 
                     // Mark as failed if there are any unknown licesnes
                     sh('grep \'0 Unknown Licenses\' RAT.txt > /dev/null || exit -1')
+                    sh('exit 0')
                 }
             }
         }
