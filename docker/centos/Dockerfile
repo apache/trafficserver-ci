@@ -23,6 +23,16 @@ RUN if [ ! -z "$(grep -i centos /etc/redhat-release)" ]; then \
     yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel; \
     fi
 
+# Install openssl-quic
+RUN yum install -y python38-devel
+RUN alternatives --set python /usr/bin/python3.8
+RUN yum -y install libev-devel jemalloc-devel libxml2-devel \
+    c-ares-devel libevent-devel jansson-devel zlib-devel systemd-devel
+COPY /build_h3_tools.sh /var/tmp/build_h3_tools.sh
+RUN bash /var/tmp/build_h3_tools.sh
+# Make sure we pick up this built version of curl, which is in /opt/bin.
+RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/curl_http3.sh
+
 RUN update-crypto-policies --set LEGACY
 RUN echo 'export GOROOT=/usr/local/go' | tee -a /etc/profile
 RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile
