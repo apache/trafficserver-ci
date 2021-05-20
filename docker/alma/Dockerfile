@@ -21,6 +21,16 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
 RUN pip3 install pipenv httpbin
 RUN yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel
 
+# Install openssl-quic
+RUN yum install -y python38-devel
+RUN alternatives --set python /usr/bin/python3.8
+RUN yum -y install libev-devel jemalloc-devel libxml2-devel \
+    c-ares-devel libevent-devel jansson-devel zlib-devel systemd-devel
+COPY /build_h3_tools.sh /var/tmp/build_h3_tools.sh
+RUN bash /var/tmp/build_h3_tools.sh
+# Make sure we pick up this built version of curl, which is in /opt/bin.
+RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/curl_http3.sh
+
 RUN update-crypto-policies --set LEGACY
 RUN go get github.com/summerwind/h2spec/cmd/h2spec
 RUN cp /root/go/bin/h2spec /usr/local/bin
