@@ -1,0 +1,75 @@
+pipeline {
+	agent {
+		docker {
+			registryUrl 'https://controller.trafficserver.org/'
+			image 'controller.trafficserver.org/ats/ubuntu:20.04'
+			args '-v /home/jenkins/clang-analyzer:/tmp/clang-analyzer:rw'
+			label 'docker'
+		}			
+	}			
+
+	stages {
+		stage('Initialization') {
+			steps {
+				script {
+					if (! env.GITHUB_BRANCH) {
+						def bparts = env.JOB_NAME.split('/')
+						if (2 != bparts.length) {
+							error("Invalid branch name from ${JOB_NAME}")
+						}
+						env.GITHUB_BRANCH = bparts[0]
+					}
+
+					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
+					if (env.SHA1) {
+						currentBuild.description = env.SHA1
+					}
+				}
+			}
+		}
+
+		stage('Clone') {
+			options { retry(2) }
+			steps {
+				dir('ci') {
+					git url: 'https://github.com/traeak/trafficserver-ci',
+						branch: 'full_pipeline'
+				}		
+				dir('src') {
+					script {
+						String branch = env.SHA1
+						if (! branch) {
+							branch = '*/' + env.GITHUB_BRANCH
+						}
+						checkout([$class: 'GitSCM',
+							branches: [[name: branch]],
+							userRemoteConfigs: [[url: env.GITHUB_URL]]])
+					}
+				}
+				echo 'Finished Cloning'
+			}
+		}
+		stage('Build') {
+			steps {
+				echo 'Starting build'
+				dir('src') {
+					sh '''
+					enable_clang=1
+					#source ../ci/jenkins/bin/environment.sh
+					../ci/jenkins/bin/clang-analyzer.sh
+					# $status gets set in the clang-analyzer.sh script
+					#exit $status
+					'''
+				}
+			}
+		}
+	}
+	post {
+		always {
+			archiveArtifacts artifacts: 'output/**/*', fingerprint: true, allowEmptyArchive: true
+		}
+		cleanup {
+			cleanWs()
+		}
+	}
+}
