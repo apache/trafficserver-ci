@@ -1,0 +1,101 @@
+DRY_RUN = false
+
+def doParallelBuilds() {
+	def buildjobs = []
+
+	def types = env.TYPES.split(' ')
+	def compilers = env.COMPILERS.split(' ')
+
+	for (type in types) {
+		for (compiler in compilers) {
+			buildjobs.add([env.DISTRO, compiler, type].join(','))
+		}
+	}
+
+	String jjob = env.GITHUB_BRANCH + '/os_build'
+
+	def builders = [:]
+
+	currentBuild.result = 'SUCCESS'
+
+	for (buildjob in buildjobs) {
+		def params = buildjob.split(',')
+		def distro = params[0]
+		def compiler = params[1]
+		def type = params[2]
+		String jobName = distro + ' ' + compiler + ' ' + type
+		builders[jobName] = {
+			stage(jobName) {
+				script {
+					String name = jobName + ' ' + env.GITHUB_BRANCH
+					echo "Build: " + name
+					if (DRY_RUN) { jjob = "Branch_Builds/dummy" }
+					def buildres = build(job: jjob, propagate: false,
+						parameters: [
+							string(name: 'GITHUB_URL', value: env.GITHUB_URL),
+							string(name: 'GITHUB_BRANCH', value: env.GITHUB_BRANCH),
+							string(name: 'DISTRO', value: distro),
+							string(name: 'COMPILER', value: compiler),
+							string(name: 'TYPE', value: type)
+						])
+					if ('SUCCESS' != buildres.getResult()) {
+						error("${jobName} build failed")
+						currentBuild.result = 'FAILURE'
+					}
+				}
+			}
+		}
+	}
+
+	parallel builders
+
+}
+
+String shaForBranch(url, branch) {
+	sha1 = sh (
+		script: "set -- `git ls-remote -h $url refs/heads/$branch`; echo \${1}",
+		returnStdout: true
+	).trim()
+	return sha1
+}
+
+pipeline {
+	agent none
+
+	stages {
+		stage('Initialization') {
+			agent { label 'master' }
+			steps {
+				script {
+					if (! env.DISTRO) {
+						def dparts = env.JOB_BASE_NAME.split("_|-")
+						if (3 != dparts.length) {
+							error("Invalid job base name " + env.JOB_BASE_NAME)
+						}
+						env.DISTRO = [ dparts[1], dparts[2] ].join(':')
+					}
+					if (! env.GITHUB_BRANCH) {
+						def bparts = env.JOB_NAME.split('/')
+						if (2 != bparts.length) {
+							error("Invalid branch name from " + env.JOB_NAME)
+						}
+						env.GITHUB_BRANCH = bparts[0]
+					}
+
+					currentBuild.displayName = env.GITHUB_BRANCH + " " + env.DISTRO
+					if (! env.SHA1) {
+						env.SHA1 = shaForBranch(env.GITHUB_URL, env.GITHUB_BRANCH)
+					}
+					sh 'printenv'
+				}
+			}
+		}
+		stage('Builds') {
+			steps {
+				script {
+					doParallelBuilds()
+				}
+			}
+		}
+	}
+}

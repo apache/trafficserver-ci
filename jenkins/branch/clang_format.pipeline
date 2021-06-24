@@ -1,0 +1,69 @@
+pipeline {
+	agent {
+		docker {
+			registryUrl 'https://controller.trafficserver.org/'
+			image 'controller.trafficserver.org/ats/docs_build:30'
+			label 'docker'
+			args '--network host'
+		}
+	}
+	stages {
+		stage('Initialization') {
+			steps {
+				script {
+					if (! env.GITHUB_BRANCH) {
+						def bparts = env.JOB_NAME.split('/')
+						if (2 != bparts.length) {
+							error("Invalid branch name from ${JOB_NAME}")
+						}
+						env.GITHUB_BRANCH = bparts[0]
+					}
+
+					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
+					if (env.SHA1) {
+						currentBuild.description = env.SHA1
+					}
+				}
+			}
+		}
+
+		stage('Clone') {
+			options { retry(2) }
+			steps {
+				dir('ci') {
+					git url: 'https://github.com/traeak/trafficserver-ci',
+						branch: 'full_pipeline'
+				}
+				dir('src') {
+					script {
+						String branch = env.SHA1
+						if (! branch) {
+							branch = '*/' + env.GITHUB_BRANCH
+						}
+						checkout([$class: 'GitSCM',
+							branches: [[name: branch]],
+							userRemoteConfigs: [[url: env.GITHUB_URL]]])
+					}
+				}
+				echo 'Finished Cloning'
+			}
+		}
+		stage('Build') {
+			steps {
+				echo 'Starting build'
+				dir('src') {
+					sh '''
+					source ../ci/jenkins/bin/environment.sh && ../ci/jenkins/bin/clang-format.sh
+					'''
+					echo "Skipping build"
+				}
+			}
+		}
+	}
+
+	post {
+		cleanup {
+			cleanWs()
+		}
+	}
+}

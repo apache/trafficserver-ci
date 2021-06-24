@@ -1,0 +1,165 @@
+DUMMY = false
+
+def doParallelBuilds() {
+
+	def jobnames = []
+
+	// Detect buildable os- jobs in branch folder
+	Jenkins.instance.getAllItems(Job.class).each {
+		if (it.class == org.jenkinsci.plugins.workflow.job.WorkflowJob && it.isBuildable()) {
+			def jobname = it.fullName
+			if (0 == jobname.indexOf(env.GITHUB_BRANCH + '/os-')) {
+				jobnames.add(jobname)
+			}
+		}
+	}
+
+	def builders = [:]
+
+	for (jobname in jobnames) {
+		def name = jobname
+		builders[name] = {
+			stage(name) {
+				echo name
+				script {
+					result = buildJob(name, name)
+					if (result == 'FAILURE') {
+						error("${name} build failed")
+					}
+				}
+			}
+		}
+	}
+
+	parallel builders
+}
+
+String buildJob(String ghcontext, String jobName) {
+	echo "Build of: " + jobName
+	if (DUMMY) { jobName = "Branch_Builds/dummy" }
+	def jobBuild = build(job: jobName, propagate: false,
+		parameters: [
+			string(name: 'GITHUB_URL', value: GITHUB_URL),
+			string(name: 'GITHUB_BRANCH', value: GITHUB_BRANCH),
+			string(name: 'SHA1', value: SHA1),
+		]
+	)
+	def result = jobBuild.getResult()
+	echo "Build of " + jobName + " returned result: " + result
+	if ('FAILURE' == result) { error("${jobName} failed") }
+	return result
+}
+
+def shaForBranch(url, branch) {
+	sha1 = sh (
+		script: "set -- `git ls-remote -h $url refs/heads/$branch`; echo \${1}",
+		returnStdout: true
+	).trim()
+	return sha1
+}
+
+pipeline {
+	agent none
+
+	stages {
+		stage('Initialization') {
+			agent { label 'master' }
+			steps {
+				script {
+					if (! env.GITHUB_BRANCH) {
+						def bparts = env.JOB_NAME.split('/')
+						if (2 != bparts.length) {
+							error("Invalid branch name from ${JOB_NAME}")
+						}
+						env.GITHUB_BRANCH = bparts[0]
+					}
+					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
+					if (! env.SHA1) {
+						env.SHA1 = shaForBranch(env.GITHUB_URL, env.GITHUB_BRANCH)
+					}
+					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
+					currentBuild.description = env.SHA1
+
+					sh 'printenv'
+				}
+			}
+		}
+
+		stage('Validation') {
+			parallel {
+				stage('In Tree') {
+					steps {
+						script {
+							buildJob('in_tree', env.GITHUB_BRANCH + '/in_tree')
+						}
+					}
+				}
+				stage('Out Of Tree') {
+					steps {
+						script {
+							buildJob('out_of_tree', env.GITHUB_BRANCH + '/out_of_tree')
+						}
+					}
+				}
+				stage('RAT') {
+					steps {
+						script {
+							buildJob('rat', env.GITHUB_BRANCH + '/rat')
+						}
+					}
+				}
+				stage('clang format') {
+					steps {
+						script {
+							buildJob('clang_format', env.GITHUB_BRANCH + '/clang_format')
+						}
+					}
+				}
+			}
+		}
+
+		stage('Snapshot') {
+			steps {
+				script {
+					//buildJob('snapshot', env.GITHUB_BRANCH + '/snapshot')
+					echo "Skipping snapshot"
+				}
+			}
+		}
+
+		stage('OS Builds') {
+			steps {
+				script {
+					doParallelBuilds()
+				}
+			}
+		}
+
+		stage('Verification') {
+			parallel {
+				stage('clang analyzer') {
+					steps {
+						script {
+							buildJob('clang-analyzer', env.GITHUB_BRANCH + '/clang_analyzer')
+						}
+					}
+				}
+				stage('autests') {
+					steps {
+						script {
+							buildJob('autest', env.GITHUB_BRANCH + '/autest')
+						}
+					}
+				}
+				stage('cache_tests') {
+					steps {
+						script {
+							//buildJob('cache_tests', env.GITHUB_BRANCH + '/cache-tests')
+							echo "skipping cache-tests"
+						}
+					}
+				}
+			}
+		}
+	}
+}

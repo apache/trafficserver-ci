@@ -1,0 +1,71 @@
+pipeline {
+	agent {
+		docker {
+			registryUrl 'https://controller.trafficserver.org/'
+			image 'controller.trafficserver.org/ats/fedora:32'
+			args '-v "${HOME}"/ccache:/tmp/ccache:rw'
+		}
+	}
+	
+	environment {
+		CCACHE_DIR = "/tmp/ccache"
+	}
+
+	stages {
+		stage('Initialization') {
+			steps {
+				script {
+					if (! env.GITHUB_BRANCH) {
+						def bparts = env.JOB_NAME.split('/')
+						if (2 != bparts.length) {
+							error("Invalid branch name from ${JOB_NAME}")
+						}
+						env.GITHUB_BRANCH = bparts[0]
+					}
+					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
+					if (env.SHA1) {
+						currentBuild.description = env.SHA1
+					}
+					sh 'printenv'
+				}
+			}
+		}
+		
+		stage('Clone') {
+			options { retry(2) }
+			steps {
+				dir('ci') {
+					git url: 'https://github.com/traeak/trafficserver-ci',
+						branch: 'full_pipeline'
+				}
+				dir('src') {
+					script {
+						String branch = env.SHA1
+						if (! branch) {
+							branch = '*/' + env.GITHUB_BRANCH
+						}
+						checkout([$class: 'GitSCM',
+							branches: [[name: branch]],
+							userRemoteConfigs: [[url: env.GITHUB_URL]]])
+					}
+				}
+			}
+		}
+		
+		stage('Build') {
+			steps {
+				dir('src') {
+					echo "Building"
+					sh '''
+					source ../ci/jenkins/bin/environment.sh && ../ci/jenkins/bin/out_of_tree.sh
+					'''
+				}
+			}
+		}
+	}
+	post {
+		always {
+			cleanWs()
+		}
+	}
+}

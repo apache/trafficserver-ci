@@ -1,0 +1,79 @@
+pipeline {
+	agent {
+		docker {
+			registryUrl 'https://controller.trafficserver.org/'
+			image 'controller.trafficserver.org/ats/${DISTRO}'
+			args '-v /home/jenkins/ccache:/tmp/ccache:rw --network=host'
+			label 'linux'
+		}
+	}
+	environment {
+		CCACHE_DIR = "/tmp/ccache"
+	}
+	stages {
+		stage('Initialization') {
+			steps {
+				script {
+					String newname = "${GITHUB_BRANCH} ${DISTRO} ${COMPILER} ${TYPE}"
+					currentBuild.displayName = "#${BUILD_NUMBER} " + newname
+					if (env.SHA1) {
+						currentBuild.description = env.SHA1
+					}
+					sh 'printenv'
+				}
+			}
+		}
+		stage('Clone') {
+			options { retry(2) }
+			steps {
+				echo 'Starting Clone'
+				dir('ci') {
+					git branch: 'full_pipeline',
+						url: 'https://github.com/traeak/trafficserver-ci'
+				}
+				dir('src') {
+					script {
+						String branch = env.SHA1
+						if (! branch) {
+							branch = '*/' + env.GITHUB_BRANCH
+						}
+						checkout([$class: 'GitSCM',
+							branches: [[name: branch]],
+							userRemoteConfigs: [[url: env.GITHUB_URL]]])
+					}
+				}
+				echo 'Finished Clone'
+			}
+		}
+		stage('Build') {
+			steps {
+				echo 'Starting Build'
+				dir('src') {
+					sh '''
+					source ../ci/jenkins/bin/environment.sh
+					autoreconf -if
+					source ../ci/jenkins/bin/build.sh
+					'''
+				}
+				echo 'Finished Build'
+			}
+		}
+		stage('Tests') {
+			steps {
+				echo 'Starting Tests'
+				dir('src') {
+					sh '''
+					source ../ci/jenkins/bin/environment.sh
+					source ../ci/jenkins/bin/regression.sh
+					'''
+				}
+				echo 'Finished Tests'
+			}
+		}
+	}
+	post {
+		cleanup {
+			cleanWs()
+		}
+	}
+}
