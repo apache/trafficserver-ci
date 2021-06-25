@@ -36,7 +36,7 @@ WERROR=""
 
 # Optional settings
 ASAN=""
-[ "1" == "$enable_asan" ] && ASAN="--enable-asan"
+test "${FEATURES#*asan}" != "${FEATURES}" && ASAN="--enable-asan"
 
 echo "DEBUG: $DEBUG"
 echo "CCACHE: $CCACHE"
