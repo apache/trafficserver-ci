@@ -29,7 +29,7 @@ pipeline {
 				echo 'Starting Clone'
 				dir('ci') {
 					git branch: 'full_pipeline',
-						url: 'https://github.com/traeak/trafficserver-ci'
+						url: 'https://github.com/apache/trafficserver-ci'
 				}
 				dir('src') {
 					script {

@@ -31,7 +31,7 @@ pipeline {
 			options { retry(2) }
 			steps {
 				dir('ci') {
-					git url: 'https://github.com/traeak/trafficserver-ci',
+					git url: 'https://github.com/apache/trafficserver-ci',
 						branch: 'full_pipeline'
 				}
 				dir('src') {
