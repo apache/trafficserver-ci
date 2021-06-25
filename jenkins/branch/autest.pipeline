@@ -28,7 +28,7 @@ pipeline {
 			steps {
 				dir('ci') {
 					git url: 'https://github.com/apache/trafficserver-ci',
-						branch: 'full_pipeline'
+						branch: 'main'
 				}
 				dir('src') {
 					script {
