@@ -32,6 +32,7 @@ def doParallelBuilds() {
 					if (DRY_RUN) { jjob = "Branch_Builds/dummy" }
 					def buildres = build(job: jjob, propagate: false,
 						parameters: [
+							string(name: 'FEATURES', value: env.FEATURES),
 							string(name: 'GITHUB_URL', value: env.GITHUB_URL),
 							string(name: 'GITHUB_BRANCH', value: env.GITHUB_BRANCH),
 							string(name: 'DISTRO', value: distro),
