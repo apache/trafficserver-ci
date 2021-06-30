@@ -53,6 +53,10 @@ pipeline {
 					source /opt/rh/gcc-toolset-9/enable
 					sudo update-crypto-policies --set LEGACY
 
+					# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+					# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+					export PATH=/opt/bin:${PATH}
+
 					# Change permissions so that all files are readable
 					# (default user umask may change and make these unreadable)
 					sudo chmod -R o+r .
@@ -71,6 +75,10 @@ pipeline {
 				dir('src/tests') {
 					sh '''
 						set +e
+						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+						export PATH=/opt/bin:${PATH}
+
 						mkdir -p ${WORKSPACE}/output/${GITHUB_BRANC}
 						./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
 						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
