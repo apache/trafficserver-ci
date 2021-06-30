@@ -8,7 +8,7 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     # Autoconf
     autoconf automake libtool \
     # Various other tools
-    git rpm-build distcc-server file wget openssl hwloc nghttp2 libnghttp2-devel; \
+    sudo git rpm-build distcc-server file wget openssl hwloc nghttp2 libnghttp2-devel; \
     # Devel packages that ATS needs
     yum -y install openssl-devel expat-devel pcre-devel libcap-devel hwloc-devel libunwind-devel \
     xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
@@ -40,3 +40,18 @@ RUN source /etc/profile
 RUN go get github.com/summerwind/h2spec/cmd/h2spec
 RUN cp /root/go/bin/h2spec /usr/local/bin
 RUN yum clean all
+
+# Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
+# configured with, so that has to be used. Otherwise there will be permissions
+# issues.
+ARG username=jenkins
+ARG uid=1200
+RUN useradd \
+    --home-dir /home/${username} \
+    --groups users,wheel \
+    --uid ${uid} \
+    --shell /bin/bash \
+    --create-home \
+    ${username}
+RUN echo "${username} ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
+RUN chown -R ${username} /home/${username}

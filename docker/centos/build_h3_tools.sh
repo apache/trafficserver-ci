@@ -116,7 +116,16 @@ echo "Building nghttp2 ..."
 [ ! -d nghttp2 ] && git clone https://github.com/tatsuhiro-t/nghttp2.git
 cd nghttp2
 git checkout --track -b quic origin/quic
-git checkout d2e570c72e169ed88557ce5108df34d34d4f7f08
+# This commit will be removed whenever the nghttp2 author rebases origin/quic.
+# For reference, this commit is currently described as:
+#
+# commit cdf58e370e6a843b0965aabcd75908ca52633b60
+# Author: Tatsuhiro Tsujikawa <tatsuhiro.t@gmail.com>
+# Date:   Sat Mar 27 23:37:37 2021 +0900
+#
+#     Compile with the latest ngtcp2
+
+git checkout cdf58e370e6a843b0965aabcd75908ca52633b60
 autoreconf -if
 ./configure --prefix=${BASE} PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
