@@ -13,7 +13,7 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     yum -y install openssl-devel expat-devel pcre-devel libcap-devel hwloc-devel libunwind-devel \
     xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
-    perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI curl tcl-devel; \
+    perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI curl tcl-devel java; \
     # autest stuff
     yum -y install python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang;
