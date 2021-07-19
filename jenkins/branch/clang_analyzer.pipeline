@@ -2,7 +2,7 @@ pipeline {
 	agent {
 		docker {
 			registryUrl 'https://controller.trafficserver.org/'
-			image 'controller.trafficserver.org/ats/ubuntu:20.04'
+			image 'controller.trafficserver.org/ats/centos:8'
 			args '-v /home/jenkins/clang-analyzer:/tmp/clang-analyzer:rw'
 			label 'docker'
 		}			
