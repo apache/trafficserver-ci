@@ -63,3 +63,17 @@ RUN useradd \
     ${username}
 RUN echo "${username} ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
 RUN chown -R ${username} /home/${username}
+
+# Install lcov requirements.
+RUN yum install -y perl-IO-Compress
+ARG lcov_build_dir=/var/tmp/lcov_build_dir
+RUN mkdir -p ${lcov_build_dir}
+WORKDIR ${lcov_build_dir}
+RUN git clone https://github.com/linux-test-project/lcov.git; \
+    cd lcov; \
+    # v1.15 is required for g++ version 9 compiled files.
+    git checkout v1.15; \
+    make install
+WORKDIR /root
+RUN rm -rf ${lcov_build_dir}
+RUN yum clean all
