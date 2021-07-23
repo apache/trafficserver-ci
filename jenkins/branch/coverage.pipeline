@@ -1,183 +1,196 @@
 pipeline {
-    agent {
-        docker {
-            registryUrl 'https://controller.trafficserver.org/'
-            image 'controller.trafficserver.org/ats/centos:8'
-            args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
-            label 'docker'
-        }
-    }
-    environment {
-        CCACHE_DIR = "/tmp/ccache"
-    }
+	agent {
+		docker {
+			registryUrl 'https://controller.trafficserver.org/'
+			image 'controller.trafficserver.org/ats/centos:8'
+			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+			label 'docker'
+		}
+	}
+	environment {
+		CCACHE_DIR = "/tmp/ccache"
+	}
 
-    stages {
-        stage('Initialization') {
-            steps {
-                script {
-                    currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
-                    if (env.SHA1) {
-                        currentBuild.description = env.SHA1
-                    }
-                }
-            }
-        }
+	stages {
+		stage('Initialization') {
+			steps {
+				script {
+					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
+					if (env.SHA1) {
+						currentBuild.description = env.SHA1
+					}
+				}
+			}
+		}
 
-        stage('Clone') {
-            options { retry(2) }
-            steps {
-                dir('ci') {
-                    git url: 'https://github.com/apache/trafficserver-ci',
-                        branch: 'main'
-                }
-                dir('src') {
-                    script {
-                        String branch = env.SHA1
-                        if (! branch) {
-                            branch = '*/' + env.GITHUB_BRANCH
-                        }
-                        checkout([$class: 'GitSCM',
-                            branches: [[name: branch]],
-                            userRemoteConfigs: [[url: env.GITHUB_URL]]])
-                    }
-                }
+		stage('Clone') {
+			steps {
+				dir('ci') {
+					git url: 'https://github.com/apache/trafficserver-ci',
+						branch: 'main'
+				}
+				dir('src') {
+					script {
+						String branch = env.SHA1
+						if (! branch) {
+							branch = '*/' + env.GITHUB_BRANCH
+						}
+						try {
+							checkout([$class: 'GitSCM',
+							branches: [[name: branch]],
+							userRemoteConfigs: [[url: env.GITHUB_URL]]],
+							extensions: [[$class: 'CloneOption', timeout: 5, shallow: true]],
+							)
+						} catch (error) {
+							echo "Clone failed, retry"
+							retry(2) {
+								checkout([$class: 'GitSCM',
+									branches: [[name: branch]],
+									userRemoteConfigs: [[url: env.GITHUB_URL]]],
+									extensions: [[$class: 'CloneOption', timeout: 5, shallow: true]],
+								)
+							}
+						}
+					}
 
-                echo 'Finished Cloning'
-            }
-        }
-        stage('Build') {
-            steps {
-                echo 'Starting build'
-                dir('src') {
-                    sh '''#!/bin/bash
+					echo 'Finished Cloning'
+				}
+			}
+		}
 
-                    source /opt/rh/gcc-toolset-9/enable
-                    sudo update-crypto-policies --set LEGACY
+		stage('Build') {
+			steps {
+				echo 'Starting build'
+				dir('src') {
+					sh '''#!/bin/bash
 
-                    # We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-                    # The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-                    export PATH=/opt/bin:${PATH}
+					source /opt/rh/gcc-toolset-9/enable
+					sudo update-crypto-policies --set LEGACY
 
-                    # Change permissions so that all files are readable
-                    # (default user umask may change and make these unreadable)
-                    sudo chmod -R o+r .
-                    autoreconf -fiv
-                    ./configure \
-                        --enable-experimental-plugins \
-                        --enable-example-plugins \
-                        --prefix=/tmp/ats \
-                        --enable-werror \
-                        --enable-debug \
-                        --enable-wccp \
-                        --enable-luajit \
-                        --enable-ccache \
-                        --enable-coverage
-                        make -j4 V=1 Q=
-                        make install
-                    '''
-                }
-            }
-        }
+					# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+					# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+					export PATH=/opt/bin:${PATH}
 
-        stage('Initialize Coverage') {
-            steps {
-                echo 'Starting Unit (Catch) Tests'
-                dir('src') {
-                    sh '''#!/bin/bash
-                        source /opt/rh/gcc-toolset-9/enable
+					# Change permissions so that all files are readable
+					# (default user umask may change and make these unreadable)
+					sudo chmod -R o+r .
+					autoreconf -fiv
+					./configure \
+						--enable-experimental-plugins \
+						--enable-example-plugins \
+						--prefix=/tmp/ats \
+						--enable-werror \
+						--enable-debug \
+						--enable-wccp \
+						--enable-luajit \
+						--enable-ccache \
+						--enable-coverage
+						make -j4 V=1 Q=
+						make install
+					'''
+				}
+			}
+		}
 
-                        # Create a base tracefile before the tests are run.
-                        lcov --directory . --no-external --capture --initial --output-file /tmp/lcov_tracefile_base.info
-                       '''
-                }
-            }
-        }
-        stage('Test') {
-            steps {
-                echo 'Starting Unit (Catch) Tests'
-                dir('src') {
-                    sh '''#!/bin/bash
-                        set -x
-                        [ "${RUN_UNIT_TESTS}" == "true" ] || exit 0
-                        source /opt/rh/gcc-toolset-9/enable
-                        make -j4 check
-                        '''
-                }
-                echo 'Starting the regression tests'
-                dir('src') {
-                    sh '''#!/bin/bash
-                        set -x
-                        [ "${RUN_REGRESSION_TESTS}" == "true" ] || exit 0
-                        /tmp/ats/bin/traffic_server -K -k -R 1
-                       '''
-                }
-                echo 'Starting AuTest'
-                dir('src/tests') {
-                    sh '''#!/bin/bash
-                        set -x
-                        [ "${RUN_AUTEST}" == "true" ] || exit 0
+		stage('Initialize Coverage') {
+			steps {
+				echo 'Starting Unit (Catch) Tests'
+				dir('src') {
+					sh '''#!/bin/bash
+						source /opt/rh/gcc-toolset-9/enable
 
-                        # We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-                        # The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-                        export PATH=/opt/bin:${PATH}
+						# Create a base tracefile before the tests are run.
+						lcov --directory . --no-external --capture --initial --output-file /tmp/lcov_tracefile_base.info
+						 '''
+				}
+			}
+		}
+		stage('Test') {
+			steps {
+				echo 'Starting Unit (Catch) Tests'
+				dir('src') {
+					sh '''#!/bin/bash
+						set -x
+						[ "${RUN_UNIT_TESTS}" == "true" ] || exit 0
+						source /opt/rh/gcc-toolset-9/enable
+						make -j4 check
+						'''
+				}
+				echo 'Starting the regression tests'
+				dir('src') {
+					sh '''#!/bin/bash
+						set -x
+						[ "${RUN_REGRESSION_TESTS}" == "true" ] || exit 0
+						/tmp/ats/bin/traffic_server -K -k -R 1
+						 '''
+				}
+				echo 'Starting AuTest'
+				dir('src/tests') {
+					sh '''#!/bin/bash
+						set -x
+						[ "${RUN_AUTEST}" == "true" ] || exit 0
 
-                        ./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox
-                        '''
-                }
-            }
-        }
-        stage('Coverage') {
-            steps {
-                echo 'Generating a coverage report'
-                dir('src') {
-                    sh '''#!/bin/bash
-                        set -x
-                        source /opt/rh/gcc-toolset-9/enable
+						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+						export PATH=/opt/bin:${PATH}
 
-                        # Use `.` for --directory, not `pwd`. For some reason that seems
-                        # important. It makes header files processed better.
-                        lcov --directory . --capture --output-file /tmp/lcov_tracefile_test.info
+						./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox
+						'''
+				}
+			}
+		}
+		stage('Coverage') {
+			steps {
+				echo 'Generating a coverage report'
+				dir('src') {
+					sh '''#!/bin/bash
+						set -x
+						source /opt/rh/gcc-toolset-9/enable
 
-                        # Combine with the base tracefile.
-                        lcov \
-                            --add-tracefile /tmp/lcov_tracefile_base.info \
-                            --add-tracefile /tmp/lcov_tracefile_test.info \
-                            --output-file /tmp/lcov_tracefile_total.info
+						# Use `.` for --directory, not `pwd`. For some reason that seems
+						# important. It makes header files processed better.
+						lcov --directory . --capture --output-file /tmp/lcov_tracefile_test.info
 
-                        # Filter out system and other unwanted files.
-                        lcov \
-                            --remove /tmp/lcov_tracefile_total.info \
-                                '/opt/*' \
-                                '/usr/*' \
-                                '*/TestBox.h' \
-                                '*/lib/yamlcpp/*' \
-                                '*/test/*' \
-                                '*/test_*' \
-                                '*/tests/*' \
-                                '*/unit-tests/*' \
-                                '*/unit_tests/*' \
-                            --output /tmp/lcov_tracefile_filtered.info
+						# Combine with the base tracefile.
+						lcov \
+							--add-tracefile /tmp/lcov_tracefile_base.info \
+							--add-tracefile /tmp/lcov_tracefile_test.info \
+							--output-file /tmp/lcov_tracefile_total.info
 
-                        git_commit="$(git log -n1 --oneline)"
-                        genhtml \
-                            --title "${git_commit}" \
-                            --output-directory /tmp/lcov-report \
-                            /tmp/lcov_tracefile_filtered.info
+						# Filter out system and other unwanted files.
+						lcov \
+							--remove /tmp/lcov_tracefile_total.info \
+								'/opt/*' \
+								'/usr/*' \
+								'*/TestBox.h' \
+								'*/lib/yamlcpp/*' \
+								'*/test/*' \
+								'*/test_*' \
+								'*/tests/*' \
+								'*/unit-tests/*' \
+								'*/unit_tests/*' \
+							--output /tmp/lcov_tracefile_filtered.info
 
-                        cp -rf /tmp/lcov-report ${WORKSPACE}/output/${GITHUB_BRANC}/
-                        sudo chmod -R 777 ${WORKSPACE}
-                       '''
-                }
-            }
-        }
-    }
+						git_commit="$(git log -n1 --oneline)"
+						genhtml \
+							--title "${git_commit}" \
+							--output-directory /tmp/lcov-report \
+							/tmp/lcov_tracefile_filtered.info
 
-    post {
-        always {
-            archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true
-        }
-        cleanup {
-            cleanWs()
-        }
-    }
+						cp -rf /tmp/lcov-report ${WORKSPACE}/output/${GITHUB_BRANC}/
+						sudo chmod -R 777 ${WORKSPACE}
+						 '''
+				}
+			}
+		}
+	}
+
+	post {
+		always {
+			archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true
+		}
+		cleanup {
+			cleanWs()
+		}
+	}
 }
