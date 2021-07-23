@@ -40,17 +40,15 @@ pipeline {
 						try {
 							checkout([$class: 'GitSCM',
 								branches: [[name: branch]],
-								userRemoteConfigs: [[url: env.GITHUB_URL]]],
-								extensions: [[$class: 'CloneOption', timeout: 5, shallow: true]],
-							)
+								userRemoteConfigs: [[url: env.GITHUB_URL]],
+								extensions: [[$class: 'CloneOption', timeout: 5]]])
 						} catch (error) {
 							echo "Clone failed, retry"
 							retry(2) {
 								checkout([$class: 'GitSCM',
 									branches: [[name: branch]],
-									userRemoteConfigs: [[url: env.GITHUB_URL]]],
-									extensions: [[$class: 'CloneOption', timeout: 5, shallow: true]],
-								)
+									userRemoteConfigs: [[url: env.GITHUB_URL]],
+									extensions: [[$class: 'CloneOption', timeout: 5]]])
 							}
 						}
 					}
