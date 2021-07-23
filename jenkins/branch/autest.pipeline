@@ -24,7 +24,6 @@ pipeline {
 		}
 
 		stage('Clone') {
-			options { retry(2) }
 			steps {
 				dir('ci') {
 					git url: 'https://github.com/apache/trafficserver-ci',
@@ -36,9 +35,23 @@ pipeline {
 						if (! branch) {
 							branch = '*/' + env.GITHUB_BRANCH
 						}
-						checkout([$class: 'GitSCM',
-							branches: [[name: branch]],
-							userRemoteConfigs: [[url: env.GITHUB_URL]]])
+
+						try {
+							checkout([$class: 'GitSCM',
+								branches: [[name: branch]],
+								userRemoteConfigs: [[url: env.GITHUB_URL]]],
+								extensions: [[$class: 'CloneOption', timeout: 5, shallow: true]],
+							)
+						} catch (error) {
+							echo "Clone failed, retry"
+							retry(2) {
+								checkout([$class: 'GitSCM',
+									branches: [[name: branch]],
+									userRemoteConfigs: [[url: env.GITHUB_URL]]],
+									extensions: [[$class: 'CloneOption', timeout: 5, shallow: true]],
+								)
+							}
+						}
 					}
 				}
 
