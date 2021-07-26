@@ -33,7 +33,6 @@ pipeline {
 		
 		stage('Clone') {
 			steps {
-				cleanWs()
 				dir('ci') {
 					git url: 'https://github.com/apache/trafficserver-ci',
 						branch: 'main'
