@@ -3,7 +3,7 @@ pipeline {
 		docker {
 			registryUrl 'https://controller.trafficserver.org/'
 			image 'controller.trafficserver.org/ats/centos:8'
-			label 'docker'
+			label 'branch'
 			// We need host networking for clang-format to download
 			args '--network host'
 		}
