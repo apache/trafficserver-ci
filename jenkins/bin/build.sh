@@ -35,15 +35,15 @@ CCACHE="--enable-ccache"
 WERROR=""
 
 # Optional settings
-ASAN=""
-test "${FEATURES#*asan}" != "${FEATURES}" && ASAN="--enable-asan"
-test "${FEATURES#*lsan}" != "${FEATURES}" && ASAN="--enable-lsan"
-test "${FEATURES#*tsan}" != "${FEATURES}" && ASAN="--enable-tsan"
+SANIT=""
+test "${FEATURES#*asan}" != "${FEATURES}" && SANIT="${SANIT} --enable-asan"
+test "${FEATURES#*lsan}" != "${FEATURES}" && SANIT="${SANIT} --enable-lsan"
+test "${FEATURES#*tsan}" != "${FEATURES}" && SANIT="${SANIT} --enable-tsan"
 
 echo "DEBUG: $DEBUG"
 echo "CCACHE: $CCACHE"
 echo "WERROR: $WERROR"
-echo "ASAN: $ASAN"
+echo "SANIT: $SANIT"
 
 # Change to the build area (this is previously setup in extract.sh)
 #cd "${ATS_BUILD_BASEDIR}/build"
@@ -63,7 +63,7 @@ set -x
     ${WERROR} \
     ${DEBUG} \
     ${HARDENING} \
-    ${ASAN}
+    ${SANIT}
 
 echo
 echo -n "Main build and install started at " && date
