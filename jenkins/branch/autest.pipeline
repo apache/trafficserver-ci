@@ -92,14 +92,14 @@ pipeline {
 						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
 
-						mkdir -p ${WORKSPACE}/output/${GITHUB_BRANC}
+						mkdir -p ${WORKSPACE}/output/${GITHUB_BRANCH}
 						./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
 						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
-							cp -rf /tmp/sandbox/ ${WORKSPACE}/output/${GITHUB_BRANC}/
+							cp -rf /tmp/sandbox/ ${WORKSPACE}/output/${GITHUB_BRANCH}/
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 1
 						else
-							sudo touch ${WORKSPACE}/output/${GITHUB_BRANC}/No_autest_failures
+							sudo touch ${WORKSPACE}/output/${GITHUB_BRANCH}/No_autest_failures
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 0
 						fi
