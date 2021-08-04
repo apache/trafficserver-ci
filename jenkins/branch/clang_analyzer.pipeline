@@ -2,7 +2,7 @@ pipeline {
 	agent {
 		docker {
 			registryUrl 'https://controller.trafficserver.org/'
-			image 'controller.trafficserver.org/ats/centos:8'
+			image 'controller.trafficserver.org/ats/ubuntu:20.04'
 			args '-v /home/jenkins/clang-analyzer:/tmp/clang-analyzer:rw'
 			label 'branch'
 		}			
@@ -66,13 +66,7 @@ pipeline {
 			steps {
 				echo 'Starting build'
 				dir('src') {
-					sh '''
-					enable_clang=1
-					#source ../ci/jenkins/bin/environment.sh
-					../ci/jenkins/bin/clang-analyzer.sh
-					# $status gets set in the clang-analyzer.sh script
-					#exit $status
-					'''
+					sh 'source ../ci/jenkins/bin/clang-analyzer.sh'
 				}
 			}
 		}
