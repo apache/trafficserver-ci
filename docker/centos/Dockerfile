@@ -29,14 +29,13 @@ RUN alternatives --set python /usr/bin/python3.8
 RUN yum -y install libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel jansson-devel zlib-devel systemd-devel
 
-ARG h3_tools_dir=/var/tmp/h3_tools_tmp
+ARG h3_tools_dir=/root/build_h3_tools
 RUN mkdir -p ${h3_tools_dir}
 WORKDIR ${h3_tools_dir}
 COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
 # This will install OpenSSL QUIC and related tools in /opt.
 RUN bash ${h3_tools_dir}/build_h3_tools.sh
 WORKDIR /root
-RUN rm -rf ${h3_tools_dir}
 
 # Make sure we pick up this built version of curl, which is in /opt/bin.
 RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/curl_http3.sh
