@@ -1,9 +1,0 @@
-version: "2"
-services:
-  cache-tests:
-    build: .
-    ports:
-      - "127.0.0.1:8000:8000"
-    network_mode: host
-    volumes:
-      - /location_of_cache_tests/results_dir:/cache-tests/results:rw
