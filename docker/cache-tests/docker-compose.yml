@@ -1,9 +1,11 @@
-version: "2"
+version: "3.4"
 services:
   cache-tests:
-    build: .
-    ports:
-      - "127.0.0.1:8000:8000"
+    container_name: cache-tests
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
     network_mode: host
     volumes:
       - /location_of_cache_tests/results_dir:/cache-tests/results:rw
