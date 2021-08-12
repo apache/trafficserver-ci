@@ -14,7 +14,7 @@ pipeline {
 		stage('Initialization') {
 			steps {
 				script {
-					String newname = "${GITHUB_BRANCH} ${DISTRO} ${COMPILER} ${TYPE}"
+					String newname = "${GITHUB_BRANCH} ${DISTRO} ${COMPILER} ${TYPE} ${FEATURES}"
 					currentBuild.displayName = "#${BUILD_NUMBER} " + newname
 					if (env.SHA1) {
 						currentBuild.description = env.SHA1

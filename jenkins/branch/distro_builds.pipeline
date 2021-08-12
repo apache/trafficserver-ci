@@ -83,7 +83,7 @@ pipeline {
 						env.GITHUB_BRANCH = bparts[0]
 					}
 
-					currentBuild.displayName = env.GITHUB_BRANCH + " " + env.DISTRO
+					currentBuild.displayName = env.GITHUB_BRANCH + " " + env.DISTRO + " " + env.FEATURES
 					if (! env.SHA1) {
 						env.SHA1 = shaForBranch(env.GITHUB_URL, env.GITHUB_BRANCH)
 					}
