@@ -3,7 +3,7 @@ pipeline {
 		docker {
 			registryUrl 'https://controller.trafficserver.org/'
 			image 'controller.trafficserver.org/ats/cache-tests-build:latest'
-			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+			args '--user root --init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
 			label 'branch'
 		}
 	}
