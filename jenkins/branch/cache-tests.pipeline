@@ -83,7 +83,8 @@ pipeline {
                     			/opt/ats/bin/traffic_manager &
                     			cat /opt/ats/etc/trafficserver/remap.config
                     			sleep 2
-                    			npm run --silent cli --base=http://localhost:8080/ > output.json
+                    			npm run --silent cli --base=http://localhost:8080/ > ${WORKSPACE}/output/${GITHUB_BRANCH}.json
+					ls ${WORKSPACE}/output
 					'''
 				}
 			}
