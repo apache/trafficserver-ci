@@ -154,7 +154,7 @@ pipeline {
 				stage('cache_tests') {
 					steps {
 						script {
-							//buildJob('cache_tests', env.GITHUB_BRANCH + '/cache-tests')
+							buildJob('cache-tests', env.GITHUB_BRANCH + '/cache-tests')
 							echo "skipping cache-tests"
 						}
 					}
