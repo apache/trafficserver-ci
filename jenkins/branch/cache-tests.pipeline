@@ -81,7 +81,6 @@ pipeline {
 					sh '''
 					cd /cache-tests
                     			/opt/ats/bin/traffic_manager &
-                    			cat /opt/ats/etc/trafficserver/remap.config
 					mkdir -p ${WORKSPACE}/output
                     			sleep 2
                     			npm run --silent cli --base=http://localhost:8080/ > ${WORKSPACE}/output/${GITHUB_BRANCH}.json
