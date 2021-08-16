@@ -68,19 +68,22 @@ pipeline {
 					./configure --prefix=/opt/ats --enable-ccache
 					make -j4
 					make install
-          				echo 'map / https://jenkins.trafficserver.org/cache-tests/' >> /opt/ats/etc/trafficserver/remap.config
+                   			echo 'map / https://jenkins.trafficserver.org/cache-tests/' >> /opt/ats/etc/trafficserver/remap.config
 					'''
 				}
 			}
 		}
 
-		stage('AuTest') {
+		stage('Cache-Tests') {
 			steps {
 				echo 'Starting Cache-Tests'
-				dir('/cache-tests') {
+				dir('src') {
 					sh '''
-         				/opt/ats/bin/traffic_manager &
-          				npm run --silent cli --base=http://localhost:8080/ > output.json
+					cd /cache-tests
+                    			/opt/ats/bin/traffic_manager &
+                    			cat /opt/ats/etc/trafficserver/remap.config
+                    			sleep 2
+                    			npm run --silent cli --base=http://localhost:8080/ > output.json
 					'''
 				}
 			}
