@@ -94,7 +94,7 @@ if [ "1" == "$enable_clang" ]; then
     export CXXFLAGS="-Qunused-arguments"
     export WITH_LIBCPLUSPLUS="yes"
 elif [ "1" == "$enable_icc" ]; then
-    source /opt/rh/devtoolset-7/enable
+    source /opt/rh/devtoolset-9/enable
     source /opt/intel/bin/iccvars.sh intel64
     export CC=icc
     export CXX=icpc
@@ -102,14 +102,14 @@ else
     # Default is gcc / g++
     export CC=gcc
     export CXX=g++
-    if test -f "/opt/rh/devtoolset-7/enable"; then
+    if test -f "/opt/rh/devtoolset-9/enable"; then
         # This changes the path such that gcc / g++ is the right version. This is for CentOS 6 / 7.
-        source /opt/rh/devtoolset-7/enable
-        echo "Enabling devtoolset-7"
-    elif test -x "/usr/bin/g++-7"; then
+        source /opt/rh/devtoolset-9/enable
+        echo "Enabling devtoolset-9"
+    elif test -x "/usr/bin/g++-9"; then
         # This is for Debian platforms
-        export CC=/usr/bin/gcc-7
-        export CXX=/usr/bin/g++-7
+        export CC=/usr/bin/gcc-9
+        export CXX=/usr/bin/g++-9
     fi
 fi
 
