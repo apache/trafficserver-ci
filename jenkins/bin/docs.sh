@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -16,38 +16,68 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+set -x
+
 # These shenanigans are here to allow it to run both manually, and via Jenkins
 test -z "${ATS_MAKE}" && ATS_MAKE="make"
-test ! -z "${WORKSPACE}" && cd "${WORKSPACE}/src"
 
 # Skip if nothing in doc has changed
-INCLUDE_FILES=$(for i in $(git grep literalinclude doc/ | awk '{print $3}'); do basename $i; done | sort -u | paste -sd\|)
-echo $INCLUDE_FILES
-if [ ! -z "$ghprbActualCommit" ]; then
-    git diff ${ghprbActualCommit}^...${ghprbActualCommit} --name-only | egrep -E "(^doc/|$INCLUDE_FILES)" > /dev/null
-    if [ $? = 1 ]; then
-        echo "No relevant files changed, skipping run"
-        exit 0
-    fi
-fi
+#if [ -z "${GITHUB_BRANCH}" ]; then
+#	INCLUDE_FILES=$(for i in $(git grep literalinclude doc/ | awk '{print $3}'); do basename $i; done | sort -u | paste -sd\|)
+#	echo $INCLUDE_FILES
+#	if [ ! -z "$ghprbActualCommit" ]; then
+#		git diff ${ghprbActualCommit}^...${ghprbActualCommit} --name-only | egrep -E "(^doc/|$INCLUDE_FILES)" > /dev/null
+#		if [ $? = 1 ]; then
+#			echo "No relevant files changed, skipping run"
+#			exit 0
+#		fi
+#	fi
+#fi
 
-# Run configure on the docs builds each time in case there have been updates
-autoreconf -fi && ./configure --enable-docs || exit 1
+outdirname=${GITHUB_PR_NUMBER}
+test -z "${GITHUB_PR_NUMBER}" && outdirname=${GITHUB_BRANCH}
+
+outputdir="${PWD}/output"
+enoutdir="${outputdir}/en/${outdirname}"
+jaoutdir="${outputdir}/ja/${outdirname}"
+
+sudo chmod -R 777 . || exit 1
 
 cd doc
+pipenv install || exit 1
 
-echo "Building English version"
+tmpfile=/tmp/build_the_docs.$$
+
+cat << _END_OF_DOC_ > ${tmpfile}
+#!/bin/bash
+set -e
+set -x
+cd ..
+autoreconf -fi && ./configure --enable-docs
+cd doc
+echo "Building EN Docs"
 rm -rf docbuild/html
-${ATS_MAKE} -e SPHINXOPTS="-D language='en'" html
-[ $? != 0 ] && exit 1
+make -j4 -e SPHINXOPTS="-D language='en'" html
 
-# Only continue with the rsync and JA build if we're on the official docs updates
-[ -w /home/docs ] || exit 0
+mkdir -p "${enoutdir}"
+cp -rf docbuild/html/* "${enoutdir}"
 
-/usr/bin/rsync --delete -av docbuild/html/ /home/docs/en/${ATS_BRANCH}
-
-echo "Building JA version"
+echo "Building JA Docs"
 rm -rf docbuild/html
-${ATS_MAKE} -e SPHINXOPTS="-D language='ja'" html
-[ $? != 0 ] && exit 1
-/usr/bin/rsync --delete -av docbuild/html/ /home/docs/ja/${ATS_BRANCH}
+make -j4 -e SPHINXOPTS="-D language='ja'" html
+
+mkdir -p "${jaoutdir}"
+cp -rf docbuild/html/* "${jaoutdir}"
+_END_OF_DOC_
+
+chmod 755 ${tmpfile}
+echo "Running:"
+cat ${tmpfile}
+pipenv run ${tmpfile} || exit 1
+rm ${tmpfile}
+
+# If we made it here, the doc build ran and succeeded. Let's copy out the
+# docbuild contents so it can be published.
+ls "${outputdir}"
+sudo chmod -R u=rwX,g=rX,o=rX "${outputdir}" || exit 1
+exit 0

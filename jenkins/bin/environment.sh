@@ -31,8 +31,8 @@ echo -n "Build platform: "
 echo "Build on Docker: " $IS_DOCKER
 
 # Jenkins workspace
-WORKSPACE="${WORKSPACE:=${PWD}}"
-echo "Workspace is: " $WORKSPACE
+export WORKSPACE="${WORKSPACE:=${PWD}}"
+echo "Workspace is: " ${WORKSPACE}
 
 # ccache dir as mounted in container
 CCACHE_DIR="${CCACHE_DIR:=/tmp/ccache}"
