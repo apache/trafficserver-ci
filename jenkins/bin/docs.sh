@@ -83,7 +83,7 @@ cd "${outputdir}"
 
 sudo chmod -R u=rwX,g=rX,o=rX . || exit 1
 
-cp -avx ja /tmp/docs
-cp -avx en /tmp/docs
+sudo cp -avx ja /tmp/docs
+sudo cp -avx en /tmp/docs
 
 exit 0
