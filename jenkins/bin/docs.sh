@@ -34,16 +34,16 @@ test -z "${ATS_MAKE}" && ATS_MAKE="make"
 #	fi
 #fi
 
-outdirname=${GITHUB_PR_NUMBER}
-test -z "${GITHUB_PR_NUMBER}" && outdirname=${GITHUB_BRANCH}
+vername=${GITHUB_PR_NUMBER}
+test -z "${GITHUB_PR_NUMBER}" && vername=${GITHUB_BRANCH}
 
 outputdir="${PWD}/output"
-enoutdir="${outputdir}/en/${outdirname}"
-jaoutdir="${outputdir}/ja/${outdirname}"
+enoutdir="${outputdir}/en/${vername}"
+jaoutdir="${outputdir}/ja/${vername}"
 
 sudo chmod -R 777 . || exit 1
 
-cd doc
+pushd doc
 pipenv install || exit 1
 
 tmpfile=/tmp/build_the_docs.$$
@@ -79,5 +79,11 @@ rm ${tmpfile}
 # If we made it here, the doc build ran and succeeded. Let's copy out the
 # docbuild contents so it can be published.
 ls "${outputdir}"
-sudo chmod -R u=rwX,g=rX,o=rX "${outputdir}" || exit 1
+cd "${outputdir}"
+
+sudo chmod -R u=rwX,g=rX,o=rX . || exit 1
+
+cp -avx ja /tmp/docs
+cp -avx en /tmp/docs
+
 exit 0
