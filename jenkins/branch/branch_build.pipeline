@@ -151,6 +151,13 @@ pipeline {
 						}
 					}
 				}
+				stage('docs') {
+					steps {
+						script {
+							buildJob('docs', env.GITHUB_BRANCH + '/docs')
+						}
+					}
+				}
 				stage('cache_tests') {
 					steps {
 						script {
