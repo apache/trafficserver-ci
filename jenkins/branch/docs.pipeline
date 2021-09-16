@@ -3,7 +3,7 @@ pipeline {
 		docker {
 			image 'controller.trafficserver.org/ats/centos:8'
 			registryUrl 'https://controller.trafficserver.org/'
-			args '--network=host -v "/home/docs:/tmp/docs:rw"'
+			args '--network=host -v "/home/docs:/home/docs:rw"'
 			label 'docs'
 		}
 	}
