@@ -83,7 +83,9 @@ cd "${outputdir}"
 
 sudo chmod -R u=rwX,g=rX,o=rX . || exit 1
 
-sudo cp -avx ja /tmp/docs
-sudo cp -avx en /tmp/docs
+if [ "${PUBLISH_DOCS}" == "true" ]; then
+	sudo cp -avx ja /home/docs
+	sudo cp -avx en /home/docs
+fi
 
 exit 0
