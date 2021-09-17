@@ -86,6 +86,7 @@ sudo chmod -R u=rwX,g=rX,o=rX . || exit 1
 if [ "${PUBLISH_DOCS}" == "true" ]; then
 	sudo cp -avx ja /home/docs
 	sudo cp -avx en /home/docs
+	/home/docs/docs_purge.sh ${vername}
 fi
 
 exit 0
