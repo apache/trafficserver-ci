@@ -7,9 +7,11 @@ String buildJob(String ghcontext, String jobName) {
             currentBuild.description = "Builds:<br>"
         }
         currentBuild.displayName = "PR: #${GITHUB_PR_NUMBER} - Build: #${BUILD_NUMBER}"
-        def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: GITHUB_PR_HEAD_SHA), string(name: 'GITHUB_URL', value: GITHUB_REPO_GIT_URL), string(name: 'GITHUB_PR_NUMBER', value: GITHUB_PR_NUMBER)]
-        def jobResult = jobBuild.getResult()
+        def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: GITHUB_PR_HEAD_SHA), string(name: 'GITHUB_URL', value: GITHUB_REPO_GIT_URL), string(name: 'GITHUB_PR_NUMBER', value: GITHUB_PR_NUMBER), string(name:'GITHUB_PR_TARGET_BRANCH', value: GITHUB_PR_TARGET_BRANCH)]
         def jobURL = jobBuild.getAbsoluteUrl()
+        currentBuild.description += " ${jobName} - <a href=${jobURL}>${jobURL}</a> <br>"
+
+        def jobResult = jobBuild.getResult()
 
         echo "Build of '${jobName}' returned result: ${jobResult}"
 
@@ -18,7 +20,6 @@ String buildJob(String ghcontext, String jobName) {
         } else {
             setGitHubPullRequestStatus(context: ghcontext, message: "Failure - ${jobURL}", state: jobResult, targetUrl: "${jobURL}")
         }
-        currentBuild.description += " ${jobName} - ${jobURL} <br>"
         return jobResult
 }
 
@@ -61,11 +62,27 @@ pipeline {
                         }
                     }
                 }
+                stage('Docs') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*docs.*/ }
+                        }
+                    }
+                    steps {
+                        script {
+                            result = buildJob('Docs', 'Github_Builds/docs')
+                            if (result == 'FAILURE') {
+                                error('Docs failed')
+                            }
+                        }
+                    }
+                }                
             }
         }
         
-        
-        stage('OS Builds') {
+ 
+        stage('Build and Test') {
             parallel {
                 stage('Ubuntu Build') {
                     when {
@@ -133,12 +150,24 @@ pipeline {
                         }
                     }
                 }
-            }
-        }
-        
-        
-        stage('Tests') {
-            parallel {
+
+                //stage('FreeBSD Build') {
+                //    when {
+                //        anyOf {
+                //            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                //            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*freebsd.*/ }
+                //        }
+                //    }                    
+                //    steps {
+                //        script {
+                //            result = buildJob('FreeBSD', 'Github_Builds/freebsd')
+                //            if (result == 'FAILURE') {
+                //                error('FreeBSD build failed')
+                //            }
+                //        }
+                //   }
+                //}                
+
                 stage('Clang-Analyzer') {
                     when {
                         anyOf {
@@ -171,8 +200,7 @@ pipeline {
                         }
                     }
                 }
-            }
-        }
-        
-    }
+            } // parallel for "Build and Test"
+        } // End Stage("Build and Test")
+    } // End Stages
 }
