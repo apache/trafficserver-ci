@@ -15,8 +15,24 @@ pipeline {
                     echo "${sha1}"
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
-                        extensions: [],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
                 }
                 echo 'Finished Cloning'
             }
@@ -25,16 +41,21 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    sh('head -1 README')
-                    sh('autoreconf -if && ./configure')
-                    sh('rm -f lib/ts/stamp-h1')
+                    // For Jenkins debugging. We comit the top of README in our debug PRs.
+                    sh('head README')
 
-                    // Run RAT
-                    sh('make rat | tee RAT.txt')
+                    sh '''#!/bin/bash
+                        set -x
+                        autoreconf -if && ./configure
+                        rm -f lib/ts/stamp-h1
 
-                    // Mark as failed if there are any unknown licesnes
-                    sh('grep \'0 Unknown Licenses\' RAT.txt > /dev/null || exit -1')
-                    sh('exit 0')
+                        # Run RAT
+                        make rat | tee RAT.txt
+
+                        # Mark as failed if there are any unknown licenses
+                        grep '0 Unknown Licenses' RAT.txt > /dev/null || exit -1
+                        exit 0
+                    '''
                 }
             }
         }
