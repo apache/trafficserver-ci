@@ -4,8 +4,13 @@ pipeline {
             image 'controller.trafficserver.org/ats/ubuntu:20.04'
             registryUrl 'https://controller.trafficserver.org/'
             label 'docker'
+            args '-v ${HOME}/ccache:/tmp/ccache:rw'            
         }
     }
+    environment {
+        CCACHE_DIR = "/tmp/ccache"
+        CCACHE_BASEDIR = "${WORKSPACE}"
+    }    
     stages {
         stage('Clone') {
             steps {
@@ -13,8 +18,24 @@ pipeline {
                     echo "${sha1}"
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
-                        extensions: [],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
                 }
                 echo 'Finished Cloning'
             }
@@ -23,12 +44,21 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    sh('autoreconf -fiv')
-                    sh('CC="clang" CXX="clang++" ./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --with-user=jenkins --enable-werror')
-                    sh('make -j4 V=1 Q=')
-                    sh('make -j 2 check VERBOSE=Y V=1')
-                    sh('make install')
-                    sh('/tmp/ats/bin/traffic_server -K -k -R 1')
+                    // For Jenkins debugging. We comit the top of README in our debug PRs.
+                    sh('head README')
+
+                    sh '''#!/bin/bash
+                        
+                        set -x
+                        autoreconf -fiv
+                        mkdir out_of_source_build_dir
+                        cd out_of_source_build_dir
+                        CC="clang" CXX="clang++" ../configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-ccache || exit 1
+                        make -j4 V=1 Q= || exit 1
+                        make -j 2 check VERBOSE=Y V=1 || exit 1
+                        make install || exit 1
+                        /tmp/ats/bin/traffic_server -K -k -R 1 || exit 1
+                    '''
                 }
             }
         }
