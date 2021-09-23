@@ -1,0 +1,118 @@
+pipeline {
+    agent {
+        docker {
+            image 'controller.trafficserver.org/ats/centos:8'
+            registryUrl 'https://controller.trafficserver.org/'
+            args '--network=host'
+            label 'docker'
+        }
+    }
+
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    echo "${sha1}"
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    // For Jenkins debugging. We comit to the top of README in our debug PRs.
+                    sh('head README')
+                    
+                    sh '''#!/bin/bash
+                    set -x
+                    # Skip if nothing in doc has changed
+                    INCLUDE_FILES=$(for i in $(git grep literalinclude doc/ | awk '{print $3}'); do basename $i; done | sort -u | paste -sd\\|)
+                    echo $INCLUDE_FILES
+                    SHA=$(git rev-parse HEAD)
+                    echo $SHA
+                    git diff $SHA^...$SHA --name-only | egrep -E "(^doc/|$INCLUDE_FILES)" > /dev/null
+                    if [ $? = 1 ]; then
+                        echo "No relevant files changed, skipping run"
+                        exit 0
+                    fi
+
+                    sudo chmod -R 777 . || exit 1
+                    cd doc
+                    pipenv install || exit 1
+                    
+                    tmpfile=/tmp/build_the_docs.$$
+                    
+                    cat << _END_OF_DOC_ > ${tmpfile}
+#!/bin/bash
+set -e
+set -x
+cd ..
+autoreconf -fi && ./configure --enable-docs
+cd doc
+echo "Building English Docs"
+rm -rf docbuild/html
+make -j4 -e SPHINXOPTS="-W -D language='en'" html
+_END_OF_DOC_
+                    
+                    chmod 755 ${tmpfile}
+                    echo "Running:"
+                    cat ${tmpfile}
+                    pipenv run ${tmpfile} || exit 1
+                    rm ${tmpfile}
+                    
+                    # If we made it here, the doc build ran and succeeded. Let's copy out the
+                    # docbuild contents so it can be published.
+                    export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
+                    mkdir -p ${export_dir}
+                    cp -rf docbuild "${export_dir}"
+                    ls "${export_dir}/docbuild"
+                    sudo chmod -R 777 ${WORKSPACE}
+                    exit 0
+                    '''
+                }
+            }
+        }
+    }
+    post {
+        success {
+            archiveArtifacts artifacts: "output/${GITHUB_PR_NUMBER}/docbuild/html/**/*", fingerprint: false, allowEmptyArchive: true
+            publishHTML (target : [
+                allowMissing: true,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: "output/${GITHUB_PR_NUMBER}/docbuild/html/",
+                reportFiles: 'index.html',
+                reportName: "Sphinx Docs"])
+
+            sh'''#!/bin/bash
+                echo
+                echo "See the job's Build artifacts and click on index.html for the rendered docs."
+                echo
+                '''
+        }
+        cleanup { 
+            cleanWs()
+        }
+    }    
+}
