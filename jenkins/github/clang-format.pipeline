@@ -15,9 +15,24 @@ pipeline {
                     echo "${sha1}"
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
-                        extensions: [],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                    sh 'head -1 README'
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
                 }
                 echo 'Finished Cloning'
             }
@@ -26,15 +41,19 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
+                    // STILL NEED TO MAKE CLANG_FORMAT IMG, Include Pip for pep8
+                    sh('head README')
+
                     sh '''#!/bin/bash
-                            git grep -IE ' +$' | fgrep -v '.gold:'
+                            set -x
+                            git grep -IE ' +$' | fgrep -v '.gold:' | fgrep -v '.test_input'
                             if [ "1" != "$?" ]; then
                                 echo "Error: Trailing whitespaces are not allowed!"
                                 echo "Error: Please run: git grep -IE ' +$'"
                                 exit 1
                             fi
                             echo "Success! No trailing whitespace"
-                            git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp'
+                            git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp' | fgrep -v '.test_input'
                             if [ "1" != "$?" ]; then
                                 echo "Error: Please make sure to run dos2unix on the above file(s)"
                                 exit 1
