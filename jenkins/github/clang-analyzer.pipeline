@@ -14,8 +14,24 @@ pipeline {
                     echo "${sha1}"
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
-                        extensions: [],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
                 }
                 echo 'Finished Cloning'
             }
@@ -24,19 +40,23 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    sh('autoreconf -fiv')
-                    sh('scan-build-10 --keep-cc ./configure --enable-experimental-plugins --with-luajit')
-                    sh('make -j4 -C lib all-local V=1 Q=')
-                    sh '''scan-build-10 --keep-cc -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker \
-                    alpha.core.BoolAssignment -enable-checker alpha.core.CastSize -enable-checker alpha.core.SizeofPtr \
-                    --status-bugs --keep-empty \
-                    -o ${WORKSPACE}/output/${GITHUB_PR_NUMBER} --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}" \
-                    make -j3 V=1 Q='''
-                    //sh('CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins')
-                    sh('make -j4')
-               
-                    sh '''
-                    [ ! -f ${WORKSPACE}/output/${GITHUB_PR_NUMBER}/index.html ] && touch ${WORKSPACE}/output/No\\ Errors\\ Reported; exit 0 || exit 1
+                    // For Jenkins debugging. We comit to the top of README in our debug PRs.
+                    sh('head README')
+                    
+                    sh '''#!/bin/bash
+                        set -x
+                        autoreconf -fiv
+                        scan-build-10 --keep-cc ./configure --enable-experimental-plugins --with-luajit
+                        make -j4 -C lib all-local V=1 Q=
+                        scan-build-10 --keep-cc -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker \
+                            alpha.core.BoolAssignment -enable-checker alpha.core.CastSize -enable-checker alpha.core.SizeofPtr \
+                            --status-bugs --keep-empty \
+                            -o ${WORKSPACE}/output/${GITHUB_PR_NUMBER} --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}" \
+                            make -j3 V=1 Q=
+                        #CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins
+                        make -j4
+                   
+                        [ ! -f ${WORKSPACE}/output/${GITHUB_PR_NUMBER}/index.html ] && touch ${WORKSPACE}/output/No\\ Errors\\ Reported; exit 0 || exit 1
                     '''
                 }
             }
