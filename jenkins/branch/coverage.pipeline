@@ -15,10 +15,18 @@ pipeline {
 		stage('Initialization') {
 			steps {
 				script {
+					if (! env.GITHUB_BRANCH) {
+						def bparts = env.JOB_NAME.split('/')
+						if (2 != bparts.length) {
+							error("Invalid branch name from ${JOB_NAME}")
+						}
+						env.GITHUB_BRANCH = bparts[0]
+					}
 					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
 					if (env.SHA1) {
 						currentBuild.description = env.SHA1
 					}
+					sh 'printenv'
 				}
 			}
 		}
