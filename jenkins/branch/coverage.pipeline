@@ -185,7 +185,7 @@ pipeline {
 							--output-directory /tmp/lcov-report \
 							/tmp/lcov_tracefile_filtered.info
 
-						cp -rf /tmp/lcov-report ${WORKSPACE}/output/${GITHUB_BRANCH}/
+						cp -rf /tmp/lcov-report ${WORKSPACE}/output/
 						sudo chmod -R 777 ${WORKSPACE}
 						 '''
 				}
