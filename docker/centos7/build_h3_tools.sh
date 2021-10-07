@@ -38,7 +38,7 @@ set -e
 source /opt/rh/devtoolset-9/enable
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1k+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1l+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -81,10 +81,10 @@ set -x
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout a6e9d76db343605dae9b59d71d2811b195ae7434
+git checkout f7e2b9a89838769039ddea4214a31b66c78a8651
 ./config --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j $(nproc)
-${MAKE} install
+${MAKE} install_sw
 
 # The symlink target provides a more convenient path for the user while also
 # providing, in the symlink source, the precise branch of the OpenSSL build.
@@ -97,7 +97,12 @@ echo "Building nghttp3..."
 cd nghttp3
 git checkout d9605232a39e171f7b5b76d16213e0925bd1ed58
 autoreconf -if
-./configure --prefix=${BASE} PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
@@ -108,7 +113,12 @@ echo "Building ngtcp2..."
 cd ngtcp2
 git checkout d23e3431d86e5047a756172c6b2cbecab9cea3d4
 autoreconf -if
-./configure --prefix=${BASE} PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
@@ -146,6 +156,14 @@ echo "Building curl ..."
 cd curl
 git checkout 2bfa57bff184437028025933d26fecb215355173
 autoreconf -i
-./configure --prefix=${BASE} --with-ssl=${OPENSSL_PREFIX} --with-nghttp2=${BASE} --with-nghttp3=${BASE} --with-ngtcp2=${BASE} CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
+./configure \
+  --prefix=${BASE} \
+  --with-ssl=${OPENSSL_PREFIX} \
+  --with-nghttp2=${BASE} \
+  --with-nghttp3=${BASE} \
+  --with-ngtcp2=${BASE} \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
 ${MAKE} install
