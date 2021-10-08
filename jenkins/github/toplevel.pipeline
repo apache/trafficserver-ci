@@ -8,7 +8,6 @@ String buildJob(String ghcontext, String jobName) {
         }
         currentBuild.displayName = "PR: #${GITHUB_PR_NUMBER} - Build: #${BUILD_NUMBER}"
         def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: GITHUB_PR_HEAD_SHA), string(name: 'GITHUB_URL', value: GITHUB_REPO_GIT_URL), string(name: 'GITHUB_PR_NUMBER', value: GITHUB_PR_NUMBER), string(name:'GITHUB_PR_TARGET_BRANCH', value: GITHUB_PR_TARGET_BRANCH)]
-        jobBuild.setDisplayName("Github PR #${GITHUB_PR_NUMBER}: ${GITHUB_PR_TITLE}")
         def jobURL = jobBuild.getAbsoluteUrl()
         currentBuild.description += " ${jobName} - <a href=${jobURL}>${jobURL}</a> <br>"
 
