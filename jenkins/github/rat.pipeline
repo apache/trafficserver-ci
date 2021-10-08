@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'controller.trafficserver.org/ats/docs_build:30'
+            image 'controller.trafficserver.org/ats/centos:8'
             registryUrl 'https://controller.trafficserver.org/'
             label 'docker'
             // We need host networking for clang-format to download
