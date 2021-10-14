@@ -5,7 +5,7 @@ String buildJob(String ghcontext, String jobName) {
         if (currentBuild.description == null) {
             currentBuild.description = "Builds:<br>"
         }
-        githubNotify description: ghcontext, status: 'PENDING', sha: ghprbActualCommit
+        githubNotify(description: ghcontext, context: 'Status', status: 'PENDING', sha: ghprbActualCommit)
         //publishChecks(
         //        name: ghcontext,
         //        status: "IN_PROGRESS")
@@ -22,7 +22,7 @@ String buildJob(String ghcontext, String jobName) {
 //        if (jobResult == 'SUCCESS') {
 //        } else {
 //        }
-          githubNotify description: ghcontext, status: jobResult, targetUrl: jobURL, sha: ghprbActualCommit
+          githubNotify(description: ghcontext, context: 'Status', status: jobResult, targetUrl: jobURL, sha: ghprbActualCommit)
           //publishChecks(
           //              name: ghcontext,
           //              status: "COMPLETED",
