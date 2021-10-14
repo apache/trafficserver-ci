@@ -8,7 +8,7 @@ String buildJob(String ghcontext, String jobName) {
         
         publishChecks(
                 name: ghcontext,
-                status: "PENDING")
+                status: "IN_PROGRESS")
                 
         currentBuild.displayName = "PR: #${ghprbPullId} - Build: #${BUILD_NUMBER}"
         def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: ghprbActualCommit), string(name: 'GITHUB_URL', value: 'https://github.com/ezelkow1/trafficserver'), string(name: 'GITHUB_PR_NUMBER', value: ghprbPullId), string(name:'GITHUB_PR_TARGET_BRANCH', value: ghprbTargetBranch)]
