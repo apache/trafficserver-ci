@@ -57,10 +57,13 @@ pipeline {
                     steps {
                         script {
                             echo ghprbCommentBody
+                            setBuildStatus('Clang-Format', 'https://github.com/ezelkow1/trafficserver', 'Building', 'PENDING')
                             result = buildJob('Clang-Format', 'Github_Builds/clang-format')
                             if (result == 'FAILURE') {
                                 error('Clang-Format failed')
+                                setBuildStatus('Clang-Format', 'https://github.com/ezelkow1/trafficserver', 'done', 'FAILED')
                             }
+                            setBuildStatus('Clang-Format', 'https://github.com/ezelkow1/trafficserver', 'done', 'SUCCESS')
                         }
                     }
                 }
