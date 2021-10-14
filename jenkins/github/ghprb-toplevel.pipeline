@@ -9,24 +9,7 @@ publishChecks(
     name: "check", 
     detailsURL: "ci.jenkins.io", 
     status: "COMPLETED",
-    conclusion: "SUCCESS",
-    output: [
-        title: "output",
-        summary: "summary",
-        text: "text",
-        annotations: [
-            [path: "src/main/foo.java", startLine: 0, endLine: 0, annotationLevel: "WARNING", message: "foo test"],
-            [path: "src/main/bar.java", startLine: 1, endLine: 1, annotationLevel: "WARNING", message: "bar test"]
-        ],
-        images: [
-            [alt: "foo alt", imageUrl: "foo url", caption: "foo image"],    
-            [alt: "foo alt", imageUrl: "foo url", caption: "foo image"]
-        ]
-    ],
-    actions: [
-        [label: "foo label", description: "foo action", identifier: "foo identifier"],
-        [label: "bar label", description: "bar action", identifier: "bar identifier"]
-    ]
+    conclusion: "SUCCESS"
 )            
         currentBuild.displayName = "PR: #${ghprbPullId} - Build: #${BUILD_NUMBER}"
         def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: ghprbActualCommit), string(name: 'GITHUB_URL', value: 'https://github.com/ezelkow1/trafficserver'), string(name: 'GITHUB_PR_NUMBER', value: ghprbPullId), string(name:'GITHUB_PR_TARGET_BRANCH', value: ghprbTargetBranch)]
