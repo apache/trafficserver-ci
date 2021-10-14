@@ -1,7 +1,8 @@
 TOP_JOB_DESC = "Builds:\\n"
 
 String buildJob(String ghcontext, String jobName) {
-        setGitHubPullRequestStatus(context: ghcontext, message: 'Building', state: 'PENDING')
+        //setGitHubPullRequestStatus(context: ghcontext, message: 'Building', state: 'PENDING')
+        completedStatus('PENDING', 'Building')
         
         if (currentBuild.description == null) {
             currentBuild.description = "Builds:<br>"
