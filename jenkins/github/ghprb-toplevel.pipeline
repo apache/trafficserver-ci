@@ -3,7 +3,14 @@ TOP_JOB_DESC = "Builds:\\n"
 String buildJob(String ghcontext, String jobName) {
         //setGitHubPullRequestStatus(context: ghcontext, message: 'Building', state: 'PENDING')
         //completedStatus('PENDING', 'Building')
-        publishChecks name: ghcontext, title: ghcontext, summary: 'PENDING'
+        //publishChecks name: ghcontext, title: ghcontext, summary: 'PENDING'
+        ChecksDetails details = new ChecksDetailsBuilder()
+        .withName(ghcontext)
+        .withStatus(ChecksStatus.Pending)
+        .build()
+        
+        ChecksPublisher publisher = ChecksPublisherFactory.fromJob(job)
+        publisher.publish(details);
         
         if (currentBuild.description == null) {
             currentBuild.description = "Builds:<br>"
@@ -16,16 +23,20 @@ String buildJob(String ghcontext, String jobName) {
         def jobResult = jobBuild.getResult()
 
         echo "Build of '${jobName}' returned result: ${jobResult}"
-        publishChecks name: ghcontext, title: ghcontext, summary: jobResult, details: jobURL
         
-//        if (jobResult == 'SUCCESS') {
+        //publishChecks name: ghcontext, title: ghcontext, summary: jobResult, details: jobURL
+        
+        if (jobResult == 'SUCCESS') {
             //setGitHubPullRequestStatus(context: ghcontext, message: "Success - ${jobURL}", state: jobResult)
             //completedStatus(jobResult, 'Success - ${jobURL}')
 //          publishChecks name: ghcontext, title: ghcontext, summary: jobResult, details: jobURL
-//        } else {
+            details.withConclusion(ChecksConclusion.SUCCESS).build()
+        } else {
             //setGitHubPullRequestStatus(context: ghcontext, message: "Failure - ${jobURL}", state: jobResult, targetUrl: "${jobURL}")
             //completedStatus(jobResult, 'Failure - ${jobURL}')
-//        }
+            details.withConclusion(ChecksConclusion.FAILURE).build()            
+        }
+        publisher.publish(details)
         return jobResult
 }
 
