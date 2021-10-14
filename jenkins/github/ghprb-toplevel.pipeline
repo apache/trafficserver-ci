@@ -47,9 +47,9 @@ pipeline {
                     steps {
                         script {
                             echo ghprbCommentBody
-                            result = buildJob('Clang-Format', 'Github_Builds/clang-format')
+                            result = buildJob('Clang-Format-Test', 'Github_Builds/clang-format-test')
                             if (result == 'FAILURE') {
-                                error('Clang-Format failed')
+                                error('Clang-Format-TEST failed')
                             }
                         }
                     }
