@@ -5,6 +5,8 @@ String buildJob(String ghcontext, String jobName) {
         if (currentBuild.description == null) {
             currentBuild.description = "Builds:<br>"
         }
+        
+        git 'https://github.com/ezelkow1/trafficserver'
 publishChecks(
     name: "check", 
     detailsURL: "ci.jenkins.io", 
