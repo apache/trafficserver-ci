@@ -15,7 +15,7 @@ String buildJob(String ghcontext, String jobName) {
         if (currentBuild.description == null) {
             currentBuild.description = "Builds:<br>"
         }
-        setBuildStatus(ghcontext, 'https://github.com/ezelkow1/trafficserver', 'Building', 'PENDING')
+        //setBuildStatus(ghcontext, 'https://github.com/ezelkow1/trafficserver', 'Building', 'PENDING')
         //git 'https://github.com/ezelkow1/trafficserver'
 //publishChecks(
 //    name: "check", 
@@ -34,7 +34,7 @@ String buildJob(String ghcontext, String jobName) {
         def jobResult = jobBuild.getResult()
 
         echo "Build of '${jobName}' returned result: ${jobResult}"
-        setBuildStatus(ghcontext, 'https://github.com/ezelkow1/trafficserver', jobURL, jobResult)
+        //setBuildStatus(ghcontext, 'https://github.com/ezelkow1/trafficserver', jobURL, jobResult)
 //        if (jobResult == 'SUCCESS') {
 //        } else {
 //        }
