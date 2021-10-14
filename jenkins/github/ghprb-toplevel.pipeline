@@ -41,7 +41,7 @@ pipeline {
                     when {
                         anyOf {
                             environment name: 'ghprbCommentBody', value: ''
-                            expression { ghprbCommentBody ==~ /.*clang-format.*/ }
+                            expression { ghprbCommentBody ==~ /.*clang-format-test.*/ }
                         }
                     }
                     steps {
