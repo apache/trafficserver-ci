@@ -1,20 +1,15 @@
 TOP_JOB_DESC = "Builds:\\n"
 
 String buildJob(String ghcontext, String jobName) {
-        //setGitHubPullRequestStatus(context: ghcontext, message: 'Building', state: 'PENDING')
-        //completedStatus('PENDING', 'Building')
-        //publishChecks name: ghcontext, title: ghcontext, summary: 'PENDING'
-        ChecksDetails details = new ChecksDetailsBuilder()
-        .withName(ghcontext)
-        .withStatus(ChecksStatus.Pending)
-        .build()
-        
-        ChecksPublisher publisher = ChecksPublisherFactory.fromJob(job)
-        publisher.publish(details);
         
         if (currentBuild.description == null) {
             currentBuild.description = "Builds:<br>"
         }
+        
+        publishChecks(
+                name: ghcontext,
+                status: "PENDING")
+                
         currentBuild.displayName = "PR: #${ghprbPullId} - Build: #${BUILD_NUMBER}"
         def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: ghprbActualCommit), string(name: 'GITHUB_URL', value: 'https://github.com/ezelkow1/trafficserver'), string(name: 'GITHUB_PR_NUMBER', value: ghprbPullId), string(name:'GITHUB_PR_TARGET_BRANCH', value: ghprbTargetBranch)]
         def jobURL = jobBuild.getAbsoluteUrl()
@@ -24,19 +19,16 @@ String buildJob(String ghcontext, String jobName) {
 
         echo "Build of '${jobName}' returned result: ${jobResult}"
         
-        //publishChecks name: ghcontext, title: ghcontext, summary: jobResult, details: jobURL
-        
-        if (jobResult == 'SUCCESS') {
-            //setGitHubPullRequestStatus(context: ghcontext, message: "Success - ${jobURL}", state: jobResult)
-            //completedStatus(jobResult, 'Success - ${jobURL}')
-//          publishChecks name: ghcontext, title: ghcontext, summary: jobResult, details: jobURL
-            details.withConclusion(ChecksConclusion.SUCCESS).build()
-        } else {
-            //setGitHubPullRequestStatus(context: ghcontext, message: "Failure - ${jobURL}", state: jobResult, targetUrl: "${jobURL}")
-            //completedStatus(jobResult, 'Failure - ${jobURL}')
-            details.withConclusion(ChecksConclusion.FAILURE).build()            
-        }
-        publisher.publish(details)
+//        if (jobResult == 'SUCCESS') {
+//        } else {
+//        }
+
+          publishChecks(
+                        name: ghcontext,
+                        status: "COMPLETED",
+                        conclusion: jobResult,
+                        detailsURL: jobURL)
+
         return jobResult
 }
 
