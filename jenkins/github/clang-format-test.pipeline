@@ -1,0 +1,97 @@
+pipeline {
+    agent {
+        docker {
+            image 'controller.trafficserver.org/ats/centos:8'
+            registryUrl 'https://controller.trafficserver.org/'
+            label 'docker'
+            // We need host networking for clang-format to download
+            args '--network host'
+        }
+    }
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    echo "${sha1}"
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                        publishChecks(
+    name: "clang-format-test", 
+    detailsURL: "ci.jenkins.io", 
+    status: "IN_PROGRESS",
+    conclusion: "NONE"
+)     
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    // STILL NEED TO MAKE CLANG_FORMAT IMG, Include Pip for pep8
+                    sh('head README')
+
+                    sh '''#!/bin/bash
+                            set -x
+                            git grep -IE ' +$' | fgrep -v '.gold:' | fgrep -v '.test_input'
+                            if [ "1" != "$?" ]; then
+                                echo "Error: Trailing whitespaces are not allowed!"
+                                echo "Error: Please run: git grep -IE ' +$'"
+                                exit 1
+                            fi
+                            echo "Success! No trailing whitespace"
+                            git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp' | fgrep -v '.test_input'
+                            if [ "1" != "$?" ]; then
+                                echo "Error: Please make sure to run dos2unix on the above file(s)"
+                                exit 1
+                            fi
+                            echo "Success! No DOS carriage return"
+
+                            set -x
+
+                            autoreconf -if && ./configure && make clang-format
+                            [ "0" != "$?" ] && exit 1
+
+                            # Only enforce autopep8 on branches where the pre-commit hook was updated to
+                            # check it. Otherwise, none of the PRs for older branches will pass this check.
+                            if grep -q autopep8 tools/git/pre-commit; then
+                                make autopep8
+                                [ "0" != "$?" ] && exit 1
+                            fi
+
+                            git diff --exit-code
+                            [ "0" != "$?" ] && exit 1
+
+                            # Normal exit
+                            exit 0                            
+                        '''
+                }
+            }
+        }
+    }
+    
+    post { 
+        cleanup { 
+            cleanWs()
+        }
+    }
+}
