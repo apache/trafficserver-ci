@@ -73,7 +73,7 @@ pipeline {
 				}
 			}
 			post {
-				success {
+				always {
 					archiveArtifacts artifacts: "src/output/**/*", fingerprint: false, allowEmptyArchive: true
 					publishHTML (target : [
 						allowMissing: true,
@@ -87,9 +87,8 @@ pipeline {
 						echo
 						echo "See the job's Build artifacts and click on index.html for the rendered docs."
 						echo
-						'''
-				}
-				always {
+					'''
+
 					cleanWs()
 				}
 			}
@@ -99,14 +98,7 @@ pipeline {
 			when {
 				environment name: 'PUBLISH_DOCS', value: 'true'
 			}
-			agent {
-				docker {
-					image 'controller.trafficserver.org/ats/centos:8'
-					registryUrl 'https://controller.trafficserver.org/'
-					args '--network=host -v "/home/docs/:/home/docs:rw"'
-					label 'docs'
-				}
-			}
+			agent { label 'controller' }
 			steps {
 				echo "Installing"
 				script {
@@ -114,8 +106,8 @@ pipeline {
 						echo "unstashing"
 						unstash 'docs'
 						sh '''
-						sudo cp -avx ja /home/docs
-						sudo cp -avx en /home/docs
+						cp -avx ja /home/docs
+						cp -avx en /home/docs
 						/home/docs/docs_purge.sh ${GITHUB_BRANCH}
 						'''
 					}
