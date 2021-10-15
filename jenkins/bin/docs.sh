@@ -43,7 +43,7 @@ jaoutdir="${outputdir}/ja/${vername}"
 
 sudo chmod -R 777 . || exit 1
 
-pushd doc
+cd doc
 pipenv install || exit 1
 
 tmpfile=/tmp/build_the_docs.$$
@@ -83,10 +83,10 @@ cd "${outputdir}"
 
 sudo chmod -R u=rwX,g=rX,o=rX . || exit 1
 
-if [ "${PUBLISH_DOCS}" == "true" ]; then
-	sudo cp -avx ja /home/docs
-	sudo cp -avx en /home/docs
-	/home/docs/docs_purge.sh ${vername}
-fi
+#if [ "${PUBLISH_DOCS}" == "true" ]; then
+#	sudo cp -avx ja /home/docs
+#	sudo cp -avx en /home/docs
+#	/home/docs/docs_purge.sh ${vername}
+#fi
 
 exit 0
