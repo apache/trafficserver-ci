@@ -165,6 +165,13 @@ pipeline {
 						}
 					}
 				}
+				stage('coverage') {
+					steps {
+						script {
+							buildJob('coverage', env.GITHUB_BRANCH + '/coverage')
+						}
+					}
+				}
 			}
 		}
 	}
