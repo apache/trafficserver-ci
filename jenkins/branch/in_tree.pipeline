@@ -7,7 +7,7 @@ pipeline {
 			label 'branch'
 		}
 	}
-	
+
 	environment {
 		CCACHE_DIR = "/tmp/ccache"
 	}
@@ -31,7 +31,7 @@ pipeline {
 				}
 			}
 		}
-		
+
 		stage('Clone') {
 			steps {
 				dir('ci') {
@@ -44,15 +44,9 @@ pipeline {
 						if (! branch) {
 							branch = '*/' + env.GITHUB_BRANCH
 						}
-						try {
-							checkout([$class: 'GitSCM',
-								branches: [[name: branch]],
-								userRemoteConfigs: [[url: env.GITHUB_URL]],
-								extensions: [[$class: 'CloneOption', timeout: 10]]
-							])
-						} catch (error) {
-							echo "Clone failed, retry"
-							retry(2) {
+
+            timeout(time: 1, unit: 'MINUTES') {
+							retry(3) {
 								checkout([$class: 'GitSCM',
 									branches: [[name: branch]],
 									userRemoteConfigs: [[url: env.GITHUB_URL]],
@@ -64,7 +58,7 @@ pipeline {
 				}
 			}
 		}
-		
+
 		stage('Build') {
 			steps {
 				dir('src') {
