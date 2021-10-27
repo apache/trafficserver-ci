@@ -36,7 +36,7 @@
 set -e
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1k+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1l+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -79,10 +79,10 @@ set -x
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout a6e9d76db343605dae9b59d71d2811b195ae7434
+git checkout 5b312bf1bd1361216a817f338eca3830b7c15d85
 ./config --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j $(nproc)
-${MAKE} install
+${MAKE} install_sw
 
 # The symlink target provides a more convenient path for the user while also
 # providing, in the symlink source, the precise branch of the OpenSSL build.
@@ -93,9 +93,14 @@ cd ..
 echo "Building nghttp3..."
 [ ! -d nghttp3 ] && git clone https://github.com/ngtcp2/nghttp3.git
 cd nghttp3
-git checkout 40943cacd18f3c8460843bffcb31775e589de668
+git checkout d9605232a39e171f7b5b76d16213e0925bd1ed58
 autoreconf -if
-./configure --prefix=${BASE} PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
@@ -104,9 +109,14 @@ cd ..
 echo "Building ngtcp2..."
 [ ! -d ngtcp2 ] && git clone https://github.com/ngtcp2/ngtcp2.git
 cd ngtcp2
-git checkout 75c5f08ef75055adb5412682b1c96773e2a29665
+git checkout d23e3431d86e5047a756172c6b2cbecab9cea3d4
 autoreconf -if
-./configure --prefix=${BASE} PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
@@ -119,15 +129,20 @@ git checkout --track -b quic origin/quic
 # This commit will be removed whenever the nghttp2 author rebases origin/quic.
 # For reference, this commit is currently described as:
 #
-# commit cdf58e370e6a843b0965aabcd75908ca52633b60
+# commit 19cf303828eca4653130e1aaf27aa57319e3b819
 # Author: Tatsuhiro Tsujikawa <tatsuhiro.t@gmail.com>
 # Date:   Sat Mar 27 23:37:37 2021 +0900
 #
 #     Compile with the latest ngtcp2
 
-git checkout cdf58e370e6a843b0965aabcd75908ca52633b60
+git checkout 19cf303828eca4653130e1aaf27aa57319e3b819
 autoreconf -if
-./configure --prefix=${BASE} PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
@@ -136,8 +151,16 @@ cd ..
 echo "Building curl ..."
 [ ! -d curl ] && git clone https://github.com/curl/curl.git
 cd curl
-git checkout 56cf2de5ac217296778c8fc0d037c922e63ff38e
+git checkout 2bfa57bff184437028025933d26fecb215355173
 autoreconf -i
-./configure --prefix=${BASE} --with-ssl=${OPENSSL_PREFIX} --with-nghttp2=${BASE} --with-nghttp3=${BASE} --with-ngtcp2=${BASE} CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
+./configure \
+  --prefix=${BASE} \
+  --with-ssl=${OPENSSL_PREFIX} \
+  --with-nghttp2=${BASE} \
+  --with-nghttp3=${BASE} \
+  --with-ngtcp2=${BASE} \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
 ${MAKE} -j $(nproc)
 ${MAKE} install
