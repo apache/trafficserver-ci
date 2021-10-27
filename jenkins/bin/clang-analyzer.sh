@@ -16,7 +16,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-#!/bin/bash
 set -x
 
 test -z "${WORKSPACE}" && WORKSPACE=".."
@@ -31,6 +30,7 @@ scan-build-10 --keep-cc \
 
 # build things like yamlcpp without the analyzer 
 make -j4 -C lib all-local V=1 Q=
+rptdir="${WORKSPACE}/output/${GITHUB_BRANCH}"
 
 scan-build-10 --keep-cc \
   -enable-checker alpha.unix.cstring.BufferOverlap \
@@ -38,17 +38,21 @@ scan-build-10 --keep-cc \
   -enable-checker alpha.core.CastSize \
   -enable-checker alpha.core.SizeofPtr \
   --status-bugs --keep-empty \
-  -o ${WORKSPACE}/output/${GITHUB_BRANCH} \
-	--html-title="clang-analyzer: ${GITHUB_BRANCH}" \
+  -o ${rptdir} \
+  --html-title="clang-analyzer: ${GITHUB_BRANCH}" \
   make -j4 V=1 Q=
 
 make -j4
 
-if [ ! -f ${WORKSPACE}/output/${GITHUB_BRANCH}/index.html ]; then
-  touch "${WORKSPACE}/output/${GITHUB_BRANCH}/No Errors Reported"
-	status=0
+shopt -s nullglob
+rptlist=(${rptdir}/**/index.html)
+
+# no index.html means no report
+if [ ${#rptlist[@]} -eq 0 ]; then
+  touch "${rptdir}/No Errors Reported"
+   status=0
 else
-	status=1
+   status=1
 fi
 
 exit $status
