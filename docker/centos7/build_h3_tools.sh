@@ -81,7 +81,7 @@ set -x
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout f7e2b9a89838769039ddea4214a31b66c78a8651
+git checkout 5b312bf1bd1361216a817f338eca3830b7c15d85
 ./config --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j $(nproc)
 ${MAKE} install_sw
