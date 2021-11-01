@@ -32,6 +32,7 @@ pipeline {
                                 ]
                             ],
                         ],
+                        quietRemoteBranches: true,
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
 
                     sh 'git show -n 10 --decorate --graph --oneline --no-patch'
