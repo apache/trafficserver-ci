@@ -18,7 +18,8 @@ String buildJob(String ghcontext, String jobName) {
         if (jobResult == 'SUCCESS') {
             setGitHubPullRequestStatus(context: ghcontext, message: "Success - ${jobURL}", state: jobResult)
         } else {
-            setGitHubPullRequestStatus(context: ghcontext, message: "Failure - ${jobURL}", state: jobResult, targetUrl: "${jobURL}")
+            //setGitHubPullRequestStatus(context: ghcontext, message: "Failure - ${jobURL}", state: jobResult, targetUrl: "${jobURL}")
+            setGitHubPullRequestStatus(context: ghcontext, message: "Failure - ${jobURL}", state: jobResult)
         }
         return jobResult
 }
