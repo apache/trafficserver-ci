@@ -1,13 +1,19 @@
+import groovy.json.JsonOutput
 TOP_JOB_DESC = "Builds:\\n"
+def curlStatus(String message, String state, String context, String sha, String url) {
 
-void setBuildStatus(String ghcontext, String ghurl, String message, String state) {
-  step([
-      $class: "GitHubCommitStatusSetter",
-      reposSource: [$class: "ManuallyEnteredRepositorySource", url: ghurl],
-      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: ghcontext],
-      errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
-      statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
-  ]);
+  withCredentials([string(credentialsId: JENKINS_CREDENTIAL_ID, variable: 'SECRET')]) {
+    def json = JsonOutput.toJson([state: "${state}", context: "${context}", target_url: "${url}", description:"${message}"])
+    httpRequest(customHeaders: [[maskValue: false, name: 'Accept', value: 'application/vnd.github.v3+json'], [maskValue: false, name: 'Authorization', value: "token "+SECRET]], 
+        httpMode: 'POST',
+        requestBody: "${json}", 
+        responseHandle: 'NONE',
+        url: "${GITHUB_API_STATUS_URL}${sha}",
+        wrapAsMultipart: false,
+        quiet: true,
+        consoleLogResponseBody: false)
+  }
+
 }
 
 String buildJob(String ghcontext, String jobName) {
@@ -15,29 +21,23 @@ String buildJob(String ghcontext, String jobName) {
         if (currentBuild.description == null) {
             currentBuild.description = "Builds:<br>"
         }
-        //setBuildStatus(ghcontext, 'https://github.com/ezelkow1/trafficserver', 'Building', 'PENDING')
-        //git 'https://github.com/ezelkow1/trafficserver'
-//publishChecks(
-//    name: "check", 
-//    detailsURL: "ci.jenkins.io", 
-//    status: "COMPLETED",
-//    conclusion: "SUCCESS"
-//)            
-
-//publishChecks name: 'Test', status: 'IN_PROGRESS', title: 'Tester', conclusion: 'NONE'
-
+  
+        curlStatus('Building', 'pending', ghcontext, ghprbActualCommit, "")
+  
         currentBuild.displayName = "PR: #${ghprbPullId} - Build: #${BUILD_NUMBER}"
-        def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: ghprbActualCommit), string(name: 'GITHUB_URL', value: 'https://github.com/ezelkow1/trafficserver'), string(name: 'GITHUB_PR_NUMBER', value: ghprbPullId), string(name:'GITHUB_PR_TARGET_BRANCH', value: ghprbTargetBranch)]
+        def jobBuild = build job: jobName, propagate: false, parameters: [string(name: 'SHA1', value: ghprbActualCommit), string(name: 'GITHUB_URL', value: GITHUB_URL), string(name: 'GITHUB_PR_NUMBER', value: ghprbPullId), string(name:'GITHUB_PR_TARGET_BRANCH', value: ghprbTargetBranch)]
         def jobURL = jobBuild.getAbsoluteUrl()
         currentBuild.description += " ${jobName} - <a href=${jobURL}>${jobURL}</a> <br>"
 
         def jobResult = jobBuild.getResult()
 
         echo "Build of '${jobName}' returned result: ${jobResult}"
-        //setBuildStatus(ghcontext, 'https://github.com/ezelkow1/trafficserver', jobURL, jobResult)
-//        if (jobResult == 'SUCCESS') {
-//        } else {
-//        }
+
+        if (jobResult == 'SUCCESS') {
+                    curlStatus('Success', 'success', ghcontext, ghprbActualCommit, jobURL)
+        } else {
+                    curlStatus('Failure', 'failure', ghcontext, ghprbActualCommit, jobURL)
+        }
         return jobResult
 }
 
@@ -50,27 +50,23 @@ pipeline {
                 stage('Clang-Format') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*clang-format.*/ }
                         }
                     }
                     steps {
                         script {
-                            echo ghprbCommentBody
-                            setBuildStatus('Clang-Format', 'https://github.com/ezelkow1/trafficserver', 'Building', 'PENDING')
-                            result = buildJob('Clang-Format', 'Github_Builds/clang-format')
+                            result = buildJob('Clang-Format', 'Github_Builds/clang-format-test')
                             if (result == 'FAILURE') {
                                 error('Clang-Format failed')
-                                setBuildStatus('Clang-Format', 'https://github.com/ezelkow1/trafficserver', 'done', 'FAILED')
                             }
-                            setBuildStatus('Clang-Format', 'https://github.com/ezelkow1/trafficserver', 'done', 'SUCCESS')
                         }
                     }
                 }
                 stage('RAT') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*RAT.*/ }
                         }
                     }
@@ -86,7 +82,7 @@ pipeline {
                 stage('Docs') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*docs.*/ }
                         }
                     }
@@ -108,7 +104,7 @@ pipeline {
                 stage('Ubuntu Build') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*ubuntu.*/ }
                         }
                     }
@@ -124,7 +120,7 @@ pipeline {
                 stage('Fedora Build') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*fedora.*/ }
                         }
                     }                    
@@ -140,7 +136,7 @@ pipeline {
                 stage('Debian Build') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*debian.*/ }
                         }
                     }                    
@@ -158,7 +154,7 @@ pipeline {
                 stage('CentOS Build') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*centos.*/ }
                         }
                     }                    
@@ -175,7 +171,7 @@ pipeline {
                 //stage('FreeBSD Build') {
                 //    when {
                 //        anyOf {
-                //            environment name: 'ghprbCommentBody', value: ''
+                //            environment name: 'ghprbCommentBody', value: '[approve ci]'
                 //            expression { ghprbCommentBody ==~ /.*freebsd.*/ }
                 //        }
                 //    }                    
@@ -192,7 +188,7 @@ pipeline {
                 stage('Clang-Analyzer') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*clang-analyzer.*/ }
                         }
                     }                    
@@ -208,7 +204,7 @@ pipeline {
                 stage('AuTest') {
                     when {
                         anyOf {
-                            environment name: 'ghprbCommentBody', value: ''
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
                             expression { ghprbCommentBody ==~ /.*autest.*/ }
                         }
                     }
