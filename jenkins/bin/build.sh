@@ -30,6 +30,10 @@ HARDENING=""
 # When to turn on ccache, disabled for some builds
 CCACHE="--enable-ccache"
 
+# Check for /opt/openssl11
+OPENSSL=""
+test -d "/opt/openssl11" && OPENSSL="--with-openssl=/opt/openssl11"
+
 # When to enable -Werror
 #WERROR="--enable-werror"
 WERROR=""
@@ -59,6 +63,7 @@ set -x
     --enable-experimental-plugins \
     --enable-example-plugins \
     --with-user=jenkins \
+    ${OPENSSL} \
     ${CCACHE} \
     ${WERROR} \
     ${DEBUG} \
