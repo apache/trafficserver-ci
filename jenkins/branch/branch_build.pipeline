@@ -130,7 +130,9 @@ pipeline {
 		stage('OS Builds') {
 			steps {
 				script {
-					doParallelBuilds()
+				  catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+					  doParallelBuilds()
+					}
 				}
 			}
 		}
