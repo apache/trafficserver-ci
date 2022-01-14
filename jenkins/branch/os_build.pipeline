@@ -2,7 +2,7 @@ pipeline {
 	agent {
 		docker {
 			registryUrl 'https://controller.trafficserver.org/'
-			image 'controller.trafficserver.org/ats/${DISTRO}'
+			image 'controller.trafficserver.org/ats/' + env.DISTRO
 			args '-v /home/jenkins/ccache:/tmp/ccache:rw --network=host'
 			label 'branch'
 		}
