@@ -151,18 +151,18 @@ pipeline {
                     }
                 }
 
-                stage('CentOS Build') {
+                stage('Rocky Build') {
                     when {
                         anyOf {
                             environment name: 'ghprbCommentBody', value: '[approve ci]'
-                            expression { ghprbCommentBody ==~ /.*centos.*/ }
+                            expression { ghprbCommentBody ==~ /.*rocky.*/ }
                         }
                     }                    
                     steps {
                         script {
-                            result = buildJob('CentOS', 'Github_Builds/centos')
+                            result = buildJob('Rocky', 'Github_Builds/rocky')
                             if (result == 'FAILURE') {
-                                error('CentOS build failed')
+                                error('Rocky build failed')
                             }
                         }
                     }

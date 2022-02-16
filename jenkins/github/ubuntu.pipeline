@@ -50,6 +50,7 @@ pipeline {
                     sh '''#!/bin/bash
                         
                         set -x
+                        set -e
                         autoreconf -fiv
                         mkdir out_of_source_build_dir
                         cd out_of_source_build_dir

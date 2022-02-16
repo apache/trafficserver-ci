@@ -1,10 +1,4 @@
-FROM centos:8
-
-# Since CentOS is no longer officially supported, update the mirror lists to
-# vault.centos.org.
-RUN \
-    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*; \
-    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+FROM rockylinux:8
 
 RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabled powertools; yum repolist; \
 
@@ -25,9 +19,7 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang;
 
 RUN pip3 install pipenv httpbin
-RUN if [ ! -z "$(grep -i centos /etc/redhat-release)" ]; then \
-    yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel; \
-    fi
+RUN yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel
 
 # Install openssl-quic
 RUN yum install -y python38-devel

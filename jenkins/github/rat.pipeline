@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'controller.trafficserver.org/ats/centos:8'
+            image 'controller.trafficserver.org/ats/rockylinux:8'
             registryUrl 'https://controller.trafficserver.org/'
             label 'docker'
             // We need host networking for clang-format to download
@@ -46,6 +46,7 @@ pipeline {
 
                     sh '''#!/bin/bash
                         set -x
+                        set -e
                         autoreconf -if && ./configure
                         rm -f lib/ts/stamp-h1
 

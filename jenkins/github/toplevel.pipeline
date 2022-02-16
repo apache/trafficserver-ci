@@ -136,18 +136,18 @@ pipeline {
                     }
                 }
 
-                stage('CentOS Build') {
+                stage('Rocky Build') {
                     when {
                         anyOf {
                             environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
-                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*centos.*/ }
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*rocky.*/ }
                         }
                     }                    
                     steps {
                         script {
-                            result = buildJob('CentOS', 'Github_Builds/centos')
+                            result = buildJob('Rocky', 'Github_Builds/rocky')
                             if (result == 'FAILURE') {
-                                error('CentOS build failed')
+                                error('Rocky build failed')
                             }
                         }
                     }

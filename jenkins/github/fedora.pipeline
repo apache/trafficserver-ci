@@ -49,6 +49,7 @@ pipeline {
                     
                     sh '''#!/bin/bash
                         set -x
+                        set -e
                         #source ci/jenkins/bin/environment.sh && source ci/jenkins/bin/build.sh && ~jenkins/bin/regression.sh
                         autoreconf -fiv
                         ./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache

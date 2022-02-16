@@ -36,7 +36,7 @@
 set -e
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1l+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1m+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -79,7 +79,7 @@ set -x
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout 5b312bf1bd1361216a817f338eca3830b7c15d85
+git checkout 7c0006ccf891c20cd0b1e9e6a436f9d1f3153b7b
 ./config --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j $(nproc)
 ${MAKE} install_sw
@@ -93,14 +93,15 @@ cd ..
 echo "Building nghttp3..."
 [ ! -d nghttp3 ] && git clone https://github.com/ngtcp2/nghttp3.git
 cd nghttp3
-git checkout d9605232a39e171f7b5b76d16213e0925bd1ed58
+git checkout b9e565cb48e92ded110162a65511f78681fb13c3
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
   PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
-  LDFLAGS="${LDFLAGS}"
+  LDFLAGS="${LDFLAGS}" \
+  --enable-lib-only
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
@@ -109,14 +110,15 @@ cd ..
 echo "Building ngtcp2..."
 [ ! -d ngtcp2 ] && git clone https://github.com/ngtcp2/ngtcp2.git
 cd ngtcp2
-git checkout d23e3431d86e5047a756172c6b2cbecab9cea3d4
+git checkout 982502f9ac594a45bc13804416a443522d906f29
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
   PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
-  LDFLAGS="${LDFLAGS}"
+  LDFLAGS="${LDFLAGS}" \
+  --enable-lib-only
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
@@ -125,24 +127,25 @@ cd ..
 echo "Building nghttp2 ..."
 [ ! -d nghttp2 ] && git clone https://github.com/tatsuhiro-t/nghttp2.git
 cd nghttp2
-git checkout --track -b quic origin/quic
+
 # This commit will be removed whenever the nghttp2 author rebases origin/quic.
 # For reference, this commit is currently described as:
 #
-# commit 19cf303828eca4653130e1aaf27aa57319e3b819
+# commit 25f29e7634a2c8c5ba5c63432e5d94217a6535ef
 # Author: Tatsuhiro Tsujikawa <tatsuhiro.t@gmail.com>
-# Date:   Sat Mar 27 23:37:37 2021 +0900
+# Date:   Mon Aug 16 16:58:11 2021 +0900
 #
 #     Compile with the latest ngtcp2
+git checkout 25f29e7634a2c8c5ba5c63432e5d94217a6535ef
 
-git checkout 19cf303828eca4653130e1aaf27aa57319e3b819
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
   PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
-  LDFLAGS="${LDFLAGS}"
+  LDFLAGS="${LDFLAGS}" \
+  --enable-lib-only
 ${MAKE} -j $(nproc)
 ${MAKE} install
 cd ..
