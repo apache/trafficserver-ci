@@ -1,0 +1,10 @@
+--- include/tscore/BufferWriterForward.h	2022-02-16 10:12:58.479082634 -0800
++++ include/tscore/BufferWriterForward.h.new	2022-02-16 10:12:39.591080450 -0800
+@@ -28,6 +28,7 @@
+ #include <cstring>
+ #include <vector>
+ #include <map>
++#include <limits>
+ 
+ #include "tscpp/util/TextView.h"
+ #include "tscore/ink_assert.h"
