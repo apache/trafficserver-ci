@@ -66,7 +66,7 @@ pipeline {
 				dir('src') {
 					sh '''#!/bin/bash
 
-					source /opt/rh/gcc-toolset-9/enable
+					source /opt/rh/gcc-toolset-11/enable
 					sudo update-crypto-policies --set LEGACY
 
 					# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
@@ -99,7 +99,7 @@ pipeline {
 				echo 'Starting Unit (Catch) Tests'
 				dir('src') {
 					sh '''#!/bin/bash
-						source /opt/rh/gcc-toolset-9/enable
+						source /opt/rh/gcc-toolset-11/enable
 
 						# Create a base tracefile before the tests are run.
 						lcov --directory . --no-external --capture --initial --output-file /tmp/lcov_tracefile_base.info
@@ -114,7 +114,7 @@ pipeline {
 					sh '''#!/bin/bash
 						set -x
 						[ "${RUN_UNIT_TESTS}" == "true" ] || exit 0
-						source /opt/rh/gcc-toolset-9/enable
+						source /opt/rh/gcc-toolset-11/enable
 						make -j4 check
 						'''
 				}
@@ -147,7 +147,7 @@ pipeline {
 				dir('src') {
 					sh '''#!/bin/bash
 						set -x
-						source /opt/rh/gcc-toolset-9/enable
+						source /opt/rh/gcc-toolset-11/enable
 
 						# Use `.` for --directory, not `pwd`. For some reason that seems
 						# important. It makes header files processed better.

@@ -56,7 +56,7 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''
-					source /opt/rh/gcc-toolset-9/enable
+					source /opt/rh/gcc-toolset-11/enable
 					sudo update-crypto-policies --set LEGACY
 
 					# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.

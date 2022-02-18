@@ -19,7 +19,7 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang;
 
 RUN pip3 install pipenv httpbin
-RUN yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel
+RUN yum -y install gcc-toolset-11 gcc-toolset-11-libasan-devel
 
 # Install openssl-quic
 RUN yum install -y python38-devel
