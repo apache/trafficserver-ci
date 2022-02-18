@@ -1,5 +1,11 @@
 FROM centos:7
 
+# Since CentOS is no longer officially supported, update the mirror lists to
+# vault.centos.org.
+RUN \
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*; \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
+
 RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabled powertools; yum repolist; \
 
     yum -y update; \

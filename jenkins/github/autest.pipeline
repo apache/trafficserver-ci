@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'controller.trafficserver.org/ats/centos:8'
+            image 'controller.trafficserver.org/ats/rockylinux:8'
             registryUrl 'https://controller.trafficserver.org/'
             args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
             label 'docker'
@@ -50,6 +50,7 @@ pipeline {
                     sh '''#!/bin/bash
                     
                        set -x
+                       set -e
                        source /opt/rh/gcc-toolset-9/enable
                        sudo update-crypto-policies --set LEGACY
 

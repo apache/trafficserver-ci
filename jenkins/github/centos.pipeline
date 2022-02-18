@@ -49,6 +49,7 @@ pipeline {
 
                     sh '''#!/bin/bash
                         set -x
+                        set -e
                         source /opt/rh/gcc-toolset-9/enable
                         autoreconf -fiv
                         ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-luajit --enable-ccache

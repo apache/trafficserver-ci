@@ -45,6 +45,7 @@ pipeline {
                     
                     sh '''#!/bin/bash
                         set -x
+                        set -e
                         autoreconf -fiv
                         scan-build-10 --keep-cc ./configure --enable-experimental-plugins --with-luajit
                         make -j4 -C lib all-local V=1 Q=
