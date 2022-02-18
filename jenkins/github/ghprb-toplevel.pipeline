@@ -151,23 +151,6 @@ pipeline {
                     }
                 }
 
-                stage('CentOS Build') {
-                    when {
-                        anyOf {
-                            environment name: 'ghprbCommentBody', value: '[approve ci]'
-                            expression { ghprbCommentBody ==~ /.*centos.*/ }
-                        }
-                    }                    
-                    steps {
-                        script {
-                            result = buildJob('CentOS', 'Github_Builds/centos')
-                            if (result == 'FAILURE') {
-                                error('CentOS build failed')
-                            }
-                        }
-                    }
-                }
-
                 stage('Rocky Build') {
                     when {
                         anyOf {
