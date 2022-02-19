@@ -13,9 +13,6 @@ pipeline {
                 dir('src') {
                     git 'http://jenkins.trafficserver.org/mirror/trafficserver.git'
                 }
-                dir('ci') {
-                    git branch: 'main', url: 'https://github.com/ezelkow1/trafficserver-ci.git'
-                } 
                 echo 'Finished Cloning'
             }
         }
