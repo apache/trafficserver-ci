@@ -106,6 +106,10 @@ else
         # This changes the path such that gcc / g++ is the right version. This is for CentOS 6 / 7.
         source /opt/rh/devtoolset-9/enable
         echo "Enabling devtoolset-9"
+    elif test -f "/opt/rh/gcc-toolset-11/enable"; then
+        # This changes the path such that gcc / g++ is the right version. This is for Rockylinux 8
+        source /opt/rh/gcc-toolset-11/enable
+        echo "Enabling gcc-toolset-11"
     elif test -x "/usr/bin/g++-9"; then
         # This is for Debian platforms
         export CC=/usr/bin/gcc-9
