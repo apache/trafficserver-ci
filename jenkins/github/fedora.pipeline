@@ -46,11 +46,27 @@ pipeline {
                 dir('src') {
                     // For Jenkins debugging. We comit to the top of README in our debug PRs.
                     sh('head README')
-                    
+
                     sh '''#!/bin/bash
                         set -x
                         set -e
-                        autoreconf -fiv
+                        autoreconf_passed=0
+                        for i in {1..5}
+                        do
+                          autoreconf -fiv && autoreconf_passed=1 && break
+                          echo
+                          echo "autoreconf failed. Trying again after a two second delay."
+                          sleep 2
+                        done
+
+                        if [ ${autoreconf_passed} -eq 0 ]
+                        then
+                          echo
+                          echo "autoreconf failed too many times. Giving up."
+                          git status
+                          git show
+                        fi
+
                         # Remove the --with-openssl argument when we support OpenSSL 3.x.
                         ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
                         make -j4 V=1 Q=
