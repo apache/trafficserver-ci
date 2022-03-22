@@ -46,11 +46,11 @@ pipeline {
                 dir('src') {
                     // For Jenkins debugging. We comit to the top of README in our debug PRs.
                     sh('head README')
-                    
+
                     sh '''#!/bin/bash
                         set -x
                         set -e
-                        autoreconf -fiv
+                        SHELL=/bin/bash autoreconf -fiv
                         # Remove the --with-openssl argument when we support OpenSSL 3.x.
                         ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
                         make -j4 V=1 Q=

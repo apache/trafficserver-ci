@@ -21,7 +21,7 @@ pipeline {
                 echo 'Starting build'
                 dir('src') {
                     sh('ls')
-                    sh('autoreconf -fiv')
+                    sh('SHELL=/bin/bash autoreconf -fiv')
                     sh('./configure --enable-experimental-plugins')
                     sh('make -j2')
                 }
