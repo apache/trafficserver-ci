@@ -22,7 +22,7 @@ pipeline {
 				script {
 					if (! env.GITHUB_BRANCH) {
 						def bparts = env.JOB_NAME.split('/')
-						if (1 != bparts.length) {
+						if (2 != bparts.length) {
 							error("Invalid branch name from ${JOB_NAME}")
 						}
 						env.GITHUB_BRANCH = bparts[0]
