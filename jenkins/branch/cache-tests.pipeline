@@ -1,34 +1,40 @@
 pipeline {
-	agent {
-		docker {
-			registryUrl 'https://controller.trafficserver.org/'
-			image 'controller.trafficserver.org/ats/cache-tests-build:latest'
-			args '--user root --init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
-			label 'branch'
-		}
-	}
+	agent none
+
 	environment {
 		CCACHE_DIR = "/tmp/ccache"
 	}
 
 	stages {
-		stage('Initialization') {
+		stage('Test') {
+
+			agent {
+				docker {
+					registryUrl 'https://controller.trafficserver.org/'
+					//image 'controller.trafficserver.org/ats/debian:11'
+					image 'controller.trafficserver.org/ats/cache-tests'
+					args '--user root --init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+					label 'branch'
+				}
+			}
+
 			steps {
 				script {
+					if (! env.GITHUB_BRANCH) {
+						def bparts = env.JOB_NAME.split('/')
+						if (1 != bparts.length) {
+							error("Invalid branch name from ${JOB_NAME}")
+						}
+						env.GITHUB_BRANCH = bparts[0]
+					}
 					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
 					if (env.SHA1) {
 						currentBuild.description = env.SHA1
 					}
+					sh 'printenv'
 				}
-			}
-		}
 
-		stage('Clone') {
-			steps {
-				dir('ci') {
-					git url: 'https://github.com/apache/trafficserver-ci',
-						branch: 'main'
-				}
+				echo "Checking out and building basic ATS"
 				dir('src') {
 					script {
 						String branch = env.SHA1
@@ -36,7 +42,7 @@ pipeline {
 							branch = '*/' + env.GITHUB_BRANCH
 						}
 
-            timeout(time: 1, unit: 'MINUTES') {
+						timeout(time: 1, unit: 'MINUTES') {
 							retry(3) {
 								checkout([$class: 'GitSCM',
 									branches: [[name: branch]],
@@ -45,50 +51,57 @@ pipeline {
 								])
 							}
 						}
+
+						sh '''
+							chmod -R o+r .
+							autoreconf -fiv
+							./configure --prefix=/opt/ats --enable-ccache
+							make -j4 install
+							echo 'map / https://jenkins.trafficserver.org/cache-tests/' >> \
+								/opt/ats/etc/trafficserver/remap.config
+						'''
 					}
 				}
 
-				echo 'Finished Cloning'
-			}
-		}
-		stage('Build') {
-			steps {
-				echo 'Starting build'
+				echo "Running npm test"
 				dir('src') {
-					sh '''
-					chmod -R o+r .
-					autoreconf -fiv
-					./configure --prefix=/opt/ats --enable-ccache
-					make -j4
-					make install
-                   			echo 'map / https://jenkins.trafficserver.org/cache-tests/' >> /opt/ats/etc/trafficserver/remap.config
-					'''
+					script {
+						sh '''
+							cd /cache-tests
+							mkdir -p ${WORKSPACE}/output
+							/opt/ats/bin/traffic_manager &
+							sleep 2
+							npm run --silent cli --base=http://localhost:8080/ > ${WORKSPACE}/output/ats-${GITHUB_BRANCH}.json
+							chmod 644 ${WORKSPACE}/output/ats-${GITHUB_BRANCH}.json
+							chown -R 1200:1200 ${WORKSPACE}/output
+						'''
+					}
+				}
+
+				echo "Stashing"
+				dir('output') {
+					stash includes: '*.json', name: "results"
 				}
 			}
 		}
 
-		stage('Cache-Tests') {
+		stage('Publish') {
+			agent { label 'controller' }
 			steps {
-				echo 'Starting Cache-Tests'
-				dir('src') {
+				echo "Installing"
+				script {
+					echo "Unstashing"
+					unstash 'results'
 					sh '''
-					cd /cache-tests
-                    			/opt/ats/bin/traffic_manager &
-					mkdir -p ${WORKSPACE}/output
-                    			sleep 2
-                    			npm run --silent cli --base=http://localhost:8080/ > ${WORKSPACE}/output/${GITHUB_BRANCH}.json
+						cp -avx ats-${GITHUB_BRANCH}.json /opt/cache-tests/cache-tests/results/
 					'''
 				}
 			}
-		}
-	}
-
-	post {
-		always {
-			archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true
-		}
-		cleanup {
-			cleanWs()
+			post {
+				always {
+					cleanWs()
+				}
+			}
 		}
 	}
 }

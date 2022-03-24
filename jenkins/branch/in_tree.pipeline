@@ -45,7 +45,7 @@ pipeline {
 							branch = '*/' + env.GITHUB_BRANCH
 						}
 
-            timeout(time: 1, unit: 'MINUTES') {
+						timeout(time: 1, unit: 'MINUTES') {
 							retry(3) {
 								checkout([$class: 'GitSCM',
 									branches: [[name: branch]],
