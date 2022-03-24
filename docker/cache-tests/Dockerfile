@@ -1,6 +1,15 @@
-FROM node:16
+FROM controller.trafficserver.org/ats/debian:11
+
 EXPOSE 8000
 
-RUN git clone https://github.com/http-tests/cache-tests.git
-RUN cd cache-tests && npm i
-CMD cd cache-tests && npm run server
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update ; \
+  apt-get -y install npm curl ; \
+        apt-get autoremove ; \
+        apt-get clean ;
+
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+RUN apt install -y nodejs
+COPY cache-tests /cache-tests
+RUN mkdir -p /opt/ && chmod 777 /opt/
+RUN cd /cache-tests && npm i

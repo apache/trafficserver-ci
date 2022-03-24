@@ -1,11 +1,25 @@
 version: "3.4"
 services:
-  cache-tests:
-    container_name: cache-tests
+  builder:
     build:
       context: .
       dockerfile: Dockerfile
       network: host
+    image: cache-tests
+    working_dir: /home/jenkins/workspace
     network_mode: host
+    cap_add: [ SYS_PTRACE ]
+    command: bash
+
+  server:
+    image: cache-tests
+    container_name: cache-tests-server
+    restart: unless-stopped
+    network_mode: host
+    expose:
+      - "8000"
     volumes:
-      - /location_of_cache_tests/results_dir:/cache-tests/results:rw
+      - ./cache-tests/results:/cache-tests/results:Z
+    working_dir: /cache-tests
+    cap_add: [ SYS_PTRACE ]
+    command: npm run server

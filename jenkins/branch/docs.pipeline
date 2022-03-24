@@ -67,7 +67,7 @@ pipeline {
 					script {
 						if (env.PUBLISH_DOCS == "true") {
 							echo 'stashing docs'
-			  			stash includes: 'en/**,ja/**', name: "docs"
+							stash includes: 'en/**,ja/**', name: "docs"
 						}
 					}
 				}
