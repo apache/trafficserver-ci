@@ -11,9 +11,9 @@ pipeline {
 			agent {
 				docker {
 					registryUrl 'https://controller.trafficserver.org/'
-					//image 'controller.trafficserver.org/ats/debian:11'
 					image 'controller.trafficserver.org/ats/cache-tests'
-					args '--user root --init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+					//args '--user root --init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+					args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
 					label 'branch'
 				}
 			}
@@ -81,6 +81,11 @@ pipeline {
 				echo "Stashing"
 				dir('output') {
 					stash includes: '*.json', name: "results"
+				}
+			}
+			post {
+				always {
+					cleanWs()
 				}
 			}
 		}
