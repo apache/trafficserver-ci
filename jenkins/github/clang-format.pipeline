@@ -1,8 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'controller.trafficserver.org/ats/rockylinux:8'
-            registryUrl 'https://controller.trafficserver.org/'
+            image 'ci.trafficserver.apache.org/ats/rockylinux:8'
+            registryUrl 'https://ci.trafficserver.apache.org/'
             label 'docker'
             // We need host networking for clang-format to download
             args '--network host'
