@@ -13,7 +13,7 @@ For this to work a desired clone of the cache-tests git repo
 needs to reside in /opt/cache-tests/cache-tests on the `controller`.
 
 Periodically this git repo should be updated which will require rebuilding
-the cache-tests image: `controller.trafficserver.org/ats/cache-tests`
+the cache-tests image: `ci.trafficserver.apache.org/ats/cache-tests`
 and restarting the Publishing server.
 
 Currently the `debian:11` image from the ats docker repo is used
@@ -45,8 +45,8 @@ git stash ; git fetch ; git pull ; git stash apply
 # rebuild and push cache-tests image
 cd /opt/cache-tests
 docker-compose build builder
-docker tag <hash> controller.trafficserver.org:5000/ats/cache-tests
-docker push controller.trafficserver.org:5000/ats/cache-tests
+docker tag <hash> ci.trafficserver.apache.org:5000/ats/cache-tests
+docker push ci.trafficserver.apache.org:5000/ats/cache-tests
 
 docker-compose up -d server
 ```

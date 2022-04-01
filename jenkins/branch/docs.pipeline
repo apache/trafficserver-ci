@@ -5,8 +5,8 @@ pipeline {
 		stage('Build') {
 			agent {
 				docker {
-					image 'controller.trafficserver.org/ats/rockylinux:8'
-					registryUrl 'https://controller.trafficserver.org/'
+					image 'ci.trafficserver.apache.org/ats/rockylinux:8'
+					registryUrl 'https://ci.trafficserver.apache.org/'
 					args '--network=host'
 					label 'branch'
 				}

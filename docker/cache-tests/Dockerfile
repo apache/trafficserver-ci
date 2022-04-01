@@ -1,4 +1,4 @@
-FROM controller.trafficserver.org/ats/debian:11
+FROM ci.trafficserver.apache.org/ats/debian:11
 
 EXPOSE 8000
 

@@ -1,8 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'controller.trafficserver.org/ats/ubuntu:20.04'
-            registryUrl 'https://controller.trafficserver.org/'
+            image 'ci.trafficserver.apache.org/ats/ubuntu:20.04'
+            registryUrl 'https://ci.trafficserver.apache.org/'
             label 'docker'
         }
     }
