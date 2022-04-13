@@ -65,6 +65,7 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''#!/bin/bash
+					set -x
 
 					source /opt/rh/gcc-toolset-11/enable
 					sudo update-crypto-policies --set LEGACY
@@ -87,8 +88,8 @@ pipeline {
 						--enable-luajit \
 						--enable-ccache \
 						--enable-coverage
-						make -j4 V=1 Q=
-						make install
+					make -j4 V=1 Q=
+					make install
 					'''
 				}
 			}
@@ -96,9 +97,10 @@ pipeline {
 
 		stage('Initialize Coverage') {
 			steps {
-				echo 'Starting Unit (Catch) Tests'
+				echo 'Initializing lcov'
 				dir('src') {
 					sh '''#!/bin/bash
+						set -x
 						source /opt/rh/gcc-toolset-11/enable
 
 						# Create a base tracefile before the tests are run.
