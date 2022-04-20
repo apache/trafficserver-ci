@@ -9,7 +9,7 @@ pipeline {
     }
     environment {
         CCACHE_DIR = "/tmp/ccache"
-        CCACHE_BASEDIR = "${WORKSPACE}"        
+        CCACHE_BASEDIR = "${WORKSPACE}"
     }
     stages {
         stage('Clone') {
@@ -50,7 +50,25 @@ pipeline {
                     sh '''#!/bin/bash
                         set -x
                         set -e
-                        CONFIG_SHELL=/bin/bash autoreconf -fiv
+
+                        autoreconf_succeeded=0
+                        for i in {1..5}
+                        do
+                          if CONFIG_SHELL=/bin/bash autoreconf -fiv
+                          then
+                            autoreconf_succeeded=1
+                            break
+                          fi
+                          sleep 2
+                          echo "autoreconf failed attempt ${i}/5"
+                        done
+
+                        if [ ${autoreconf_succeeded} -eq 0 ]
+                        then
+                          echo "Failed to run autoreconf. Exiting with an error."
+                          exit 1
+                        fi
+
                         # Remove the --with-openssl argument when we support OpenSSL 3.x.
                         ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
                         make -j4 V=1 Q=
@@ -62,8 +80,8 @@ pipeline {
             }
         }
     }
-    post { 
-        cleanup { 
+    post {
+        cleanup {
             cleanWs()
         }
     }
