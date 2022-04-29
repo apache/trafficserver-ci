@@ -124,12 +124,20 @@ $CC -v
 echo "CXX: $CXX"
 $CXX -v
 
+if [ -x "/bin/bash" ]; then
+  export CONFIG_SHELL=/bin/bash
+fi
+
+if [ -x "/bin/m4" ]; then
+  export M4=/bin/m4
+fi
+
 # Figure out parallelism for regular builds / bots
 export ATS_MAKE_FLAGS="-j4"
 if [ "yes" == "$IS_DOCKER" ]; then
-    export ATS_BUILD_BASEDIR="${WORKSPACE}"
+  export ATS_BUILD_BASEDIR="${WORKSPACE}"
 else
-    export ATS_BUILD_BASEDIR="${WORKSPACE}/${BUILD_NUMBER}"
+  export ATS_BUILD_BASEDIR="${WORKSPACE}/${BUILD_NUMBER}"
 fi
 
 # sanitizer environment
