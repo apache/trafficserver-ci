@@ -54,7 +54,7 @@ pipeline {
                         autoreconf_succeeded=0
                         for i in {1..5}
                         do
-                          if CONFIG_SHELL=/bin/bash autoreconf -fiv
+                          if M4=/bin/m4 CONFIG_SHELL=/bin/bash autoreconf -fiv
                           then
                             autoreconf_succeeded=1
                             break
