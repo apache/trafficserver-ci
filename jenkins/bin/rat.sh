@@ -16,6 +16,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+set -x
+
 cd "${WORKSPACE}/src"
 
 autoreconf -if && ./configure

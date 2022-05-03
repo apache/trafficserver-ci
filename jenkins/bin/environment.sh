@@ -16,8 +16,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+set -x
+
 # Show which platform we're actually building on
-set +x
 
 # Deduct if this build is on a docker instance
 IS_DOCKER="no"
@@ -149,5 +150,3 @@ fi
 #export CCACHE_BASEDIR=${ATS_BUILD_BASEDIR}
 #export CCACHE_COMPRESS=true
 
-# Restore verbose shell output
-set -x

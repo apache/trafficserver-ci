@@ -56,6 +56,7 @@ pipeline {
 				dir('src') {
 					// For Jenkins debugging. We comit to the top of README in our debug PRs.
 					sh '''
+                                        set -x
 					head README
 					source ../ci/jenkins/bin/environment.sh
 					bash -x ../ci/jenkins/bin/docs.sh
