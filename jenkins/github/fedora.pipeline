@@ -51,10 +51,15 @@ pipeline {
                         set -x
                         set -e
 
+                        export PATH=/bin:${PATH}
+                        echo "PATH: $PATH"
+                        export M4=/bin/m4
+                        export CONFIG_SHELL=/bin/bash
+
                         autoreconf_succeeded=0
                         for i in {1..5}
                         do
-                          if M4=/bin/m4 CONFIG_SHELL=/bin/bash autoreconf -fiv
+                          if autoreconf -fiv
                           then
                             autoreconf_succeeded=1
                             break
