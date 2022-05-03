@@ -56,6 +56,7 @@ pipeline {
 				echo 'Starting Build'
 				dir('src') {
 					sh '''
+                                        set -x
 					source ../ci/jenkins/bin/environment.sh
 					autoreconf -if
 					source ../ci/jenkins/bin/build.sh
@@ -69,6 +70,7 @@ pipeline {
 				echo 'Starting Tests'
 				dir('src') {
 					sh '''
+                                        set -x
 					source ../ci/jenkins/bin/environment.sh
 					source ../ci/jenkins/bin/regression.sh
 					'''

@@ -16,6 +16,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+set -x
+
 #cd "${ATS_BUILD_BASEDIR}/build"
 #cd "${ATS_BUILD_BASEDIR}"
 [ -d BUILDS ] && cd BUILDS

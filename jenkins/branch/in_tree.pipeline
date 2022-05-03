@@ -64,6 +64,7 @@ pipeline {
 				dir('src') {
 					echo "Building"
 					sh '''
+                                        set -x
 					source ../ci/jenkins/bin/environment.sh && ../ci/jenkins/bin/in_tree.sh
 					'''
 				}

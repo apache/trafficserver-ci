@@ -18,6 +18,8 @@
 
 # This does intentionally not run the regressions, it's primarily a "build" test
 
+set -x
+
 cd "${WORKSPACE}/src"
 
 autoreconf -fi

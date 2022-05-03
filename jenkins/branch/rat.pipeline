@@ -61,6 +61,7 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''
+                                        set -x
 					source ../ci/jenkins/bin/environment.sh && ../ci/jenkins/bin/rat.sh
 					'''
 				}
