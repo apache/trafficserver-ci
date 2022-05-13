@@ -30,6 +30,7 @@ RUN mkdir /opt/openssl11 \
     && ln -s /usr/lib64/openssl11 /opt/openssl11/lib \
     && ln -s /usr/include/openssl11 /opt/openssl11/include
 
+RUN pip3 install --upgrade pip
 RUN pip3 install pipenv httpbin
 RUN if [ ! -z "$(grep -i centos /etc/redhat-release)" ]; then \
     yum install -y centos-release-scl; \
