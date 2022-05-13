@@ -13,6 +13,7 @@ RUN yum -y update; \
     yum -y install python3 httpd-tools procps-ng nmap-ncat pipenv; \
     # This is stuff for docs building
     yum -y install java lbzip2 rsync;
+RUN pip3 install --upgrade pip
 RUN pip3 install sphinx
 RUN pip3 install sphinxcontrib.plantuml
 RUN pip3 install sphinx-rtd-theme

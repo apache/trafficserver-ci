@@ -18,6 +18,7 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     yum -y install python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang;
 
+RUN pip3 install --upgrade pip
 RUN pip3 install pipenv httpbin
 RUN yum -y install gcc-toolset-9 gcc-toolset-9-libasan-devel
 
