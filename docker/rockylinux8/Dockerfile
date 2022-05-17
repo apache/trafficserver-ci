@@ -43,8 +43,9 @@ RUN update-crypto-policies --set LEGACY
 RUN echo 'export GOROOT=/usr/local/go' | tee -a /etc/profile
 RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile
 RUN source /etc/profile
-RUN go get github.com/summerwind/h2spec/cmd/h2spec
-RUN cp /root/go/bin/h2spec /usr/local/bin
+RUN wget https://github.com/summerwind/h2spec/releases/download/v2.6.0/h2spec_linux_amd64.tar.gz
+RUN tar xf h2spec_linux_amd64.tar.gz
+RUN cp --force h2spec /usr/local/bin/h2spec
 RUN yum clean all
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
