@@ -43,7 +43,7 @@ pipeline {
                 dir('src') {
                     // For Jenkins debugging. We comit to the top of README in our debug PRs.
                     sh('head README')
-                    
+
                     sh '''#!/bin/bash
                     set -x
                     # Skip if nothing in doc has changed
@@ -60,9 +60,9 @@ pipeline {
                     sudo chmod -R 777 . || exit 1
                     cd doc
                     pipenv install || exit 1
-                    
+
                     tmpfile=/tmp/build_the_docs.$$
-                    
+
                     cat << _END_OF_DOC_ > ${tmpfile}
 #!/bin/bash
 set -e
@@ -72,9 +72,13 @@ autoreconf -fi && ./configure --enable-docs
 cd doc
 echo "Building English Docs"
 rm -rf docbuild/html
-make -j4 -e SPHINXOPTS="-W -D language='en'" html
+sphinxopts="-W -D language='en'"
+if [ "${GITHUB_PR_TARGET_BRANCH}" = "8.1.x" ]; then
+  sphinxopts="-D language='en'"
+fi
+make -j4 -e SPHINXOPTS="${sphinxopts}" html
 _END_OF_DOC_
-                    
+
                     chmod 755 ${tmpfile}
                     echo "Running:"
                     cat ${tmpfile}

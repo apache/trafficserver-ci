@@ -57,7 +57,12 @@ autoreconf -fi && ./configure --enable-docs
 cd doc
 echo "Building EN Docs"
 rm -rf docbuild/html
-make -j4 -e SPHINXOPTS="-D language='en'" html
+
+sphinxopts="-W -D language='en'"
+if [ "${GITHUB_BRANCH}" = "8.1.x" ]; then
+  sphinxopts="-D language='en'"
+fi
+make -j4 -e SPHINXOPTS="${sphinxopts}" html
 
 mkdir -p "${enoutdir}"
 cp -rf docbuild/html/* "${enoutdir}"
