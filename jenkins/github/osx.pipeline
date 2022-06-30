@@ -23,7 +23,7 @@ pipeline {
                 dir('src') {
                     sh('head -1 README')
                     sh('autoreconf -fiv')
-                    sh('CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins')
+                    sh('CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins --with-openssl=/usr/local/opt/openssl')
                     sh('make -j3')
                 }
             }
