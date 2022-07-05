@@ -170,22 +170,22 @@ pipeline {
                     }
                 }
 
-                //stage('FreeBSD Build') {
-                //    when {
-                //        anyOf {
-                //            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
-                //            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*freebsd.*/ }
-                //        }
-                //    }                    
-                //    steps {
-                //        script {
-                //            result = buildJob('FreeBSD', 'Github_Builds/freebsd')
-                //            if (result == 'FAILURE') {
-                //                error('FreeBSD build failed')
-                //            }
-                //        }
-                //   }
-                //}                
+                stage('FreeBSD Build') {
+                    when {
+                        anyOf {
+                            environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+                            expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*freebsd.*/ }
+                        }
+                    }                    
+                    steps {
+                        script {
+                            result = buildJob('FreeBSD', 'Github_Builds/freebsd')
+                            if (result == 'FAILURE') {
+                                error('FreeBSD build failed')
+                            }
+                        }
+                   }
+                }                
 
                 stage('Clang-Analyzer') {
                     when {
