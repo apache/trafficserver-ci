@@ -7,6 +7,7 @@ pipeline {
 			label 'branch'
 		}
 	}
+
 	environment {
 		CCACHE_DIR = "/tmp/ccache"
 	}
@@ -15,9 +16,26 @@ pipeline {
 		stage('Initialization') {
 			steps {
 				script {
-					currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
 					if (env.SHA1) {
 						currentBuild.description = env.SHA1
+					}
+					if (env.AUTEST_SHARD) {
+						String[] arr = env.AUTEST_SHARD.split('of')
+						if (2 == arr.length) {
+							shard = arr[0] as int
+							shardcnt = arr[1] as int
+							if (shard < shardcnt) {
+								env.SHARD = shard
+								env.SHARDCNT = shardcnt
+								currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH} ${AUTEST_SHARD}"
+							}
+						}
+					}
+
+					if (!env.SHARD || ! env.SHARDCNT) {
+						currentBuild.displayName = "#${BUILD_NUMBER} ${GITHUB_BRANCH}"
+						env.SHARD = 0
+						env.SHARDCNT = 0
 					}
 				}
 			}
@@ -79,14 +97,35 @@ pipeline {
 			steps {
 				echo 'Starting AuTest'
 				dir('src/tests') {
-					sh '''
-						set +e
+
+					sh '''#!/bin/bash -x
+						#set +e
 						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
 						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
 
 						mkdir -p ${WORKSPACE}/output/${GITHUB_BRANCH}
-						./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
+
+						if [ ${SHARDCNT} -le 0 ]; then
+							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
+						else
+							testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
+
+							testsall=( $(
+								for el in  "${testsall[@]}" ; do
+									echo $el
+								done | sort) )
+							ntests=${#testsall[@]}
+
+							shardsize=$((${ntests} / ${SHARDCNT}))
+							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
+							shardbeg=$((${shardsize} * ${SHARD}))
+							sliced=${testsall[@]:${shardbeg}:${shardsize}}
+							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f ${sliced[@]} || true
+
+							exit
+						fi
+
 						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
 							cp -rf /tmp/sandbox/ ${WORKSPACE}/output/${GITHUB_BRANCH}/
 							sudo chmod -R 777 ${WORKSPACE}

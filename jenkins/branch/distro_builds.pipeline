@@ -12,7 +12,7 @@ def doParallelBuilds() {
 		}
 	}
 
-	String jjob = env.GITHUB_BRANCH + '/os_build'
+	String jjob = env.JOB_DIR + '/os_build'
 
 	def builders = [:]
 
@@ -68,6 +68,12 @@ pipeline {
 			agent { label 'master' }
 			steps {
 				script {
+					if (! env.JOB_DIR) {
+						def bparts = env.JOB_NAME.split('/')
+						bparts.pop()
+						env.JOB_DIR = bparts.join('/')
+					}
+
 					if (! env.DISTRO) {
 						def dparts = env.JOB_BASE_NAME.split("_|-")
 						if (3 != dparts.length) {
@@ -75,6 +81,7 @@ pipeline {
 						}
 						env.DISTRO = [ dparts[1], dparts[2] ].join(':')
 					}
+
 					if (! env.GITHUB_BRANCH) {
 						def bparts = env.JOB_NAME.split('/')
 						if (2 != bparts.length) {
