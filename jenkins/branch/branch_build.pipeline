@@ -8,7 +8,7 @@ def doParallelBuilds() {
 	Jenkins.instance.getAllItems(Job.class).each {
 		if (it.class == org.jenkinsci.plugins.workflow.job.WorkflowJob && it.isBuildable()) {
 			def jobname = it.fullName
-			if (0 == jobname.indexOf(env.GITHUB_BRANCH + '/os-')) {
+			if (0 == jobname.indexOf(env.JOB_DIR + '/os-')) {
 				jobnames.add(jobname)
 			}
 		}
@@ -41,7 +41,26 @@ String buildJob(String ghcontext, String jobName) {
 		parameters: [
 			string(name: 'GITHUB_URL', value: GITHUB_URL),
 			string(name: 'GITHUB_BRANCH', value: GITHUB_BRANCH),
+			string(name: 'JOB_DIR', value: JOB_DIR),
 			string(name: 'SHA1', value: SHA1),
+		]
+	)
+	def result = jobBuild.getResult()
+	echo "Build of " + jobName + " returned result: " + result
+	if ('FAILURE' == result) { error("${jobName} failed") }
+	return result
+}
+
+String autestJob(String ghcontext, String jobName, String shard) {
+	echo "Autest Build of: " + jobName + " " + shard
+	if (DUMMY) { jobName = "Branch_Builds/dummy" }
+	def jobBuild = build(job: jobName, propagate: false,
+		parameters: [
+			string(name: 'GITHUB_URL', value: GITHUB_URL),
+			string(name: 'GITHUB_BRANCH', value: GITHUB_BRANCH),
+			string(name: 'JOB_DIR', value: JOB_DIR),
+			string(name: 'SHA1', value: SHA1),
+			string(name: 'AUTEST_SHARD', value: shard),
 		]
 	)
 	def result = jobBuild.getResult()
@@ -66,6 +85,15 @@ pipeline {
 			agent { label 'master' }
 			steps {
 				script {
+					if (! env.AUTEST_SHARDS) {
+						env.AUTEST_SHARDS = 4
+					}
+					if (! env.JOB_DIR) {
+						def bparts = env.JOB_NAME.split('/')
+						bparts = bparts - bparts.last()
+						env.JOB_DIR = bparts.join('/')
+					}
+
 					if (! env.GITHUB_BRANCH) {
 						def bparts = env.JOB_NAME.split('/')
 						if (2 != bparts.length) {
@@ -81,6 +109,7 @@ pipeline {
 					currentBuild.description = env.SHA1
 
 					sh 'printenv'
+
 				}
 			}
 		}
@@ -90,28 +119,28 @@ pipeline {
 				stage('In Tree') {
 					steps {
 						script {
-							buildJob('in_tree', env.GITHUB_BRANCH + '/in_tree')
+							buildJob('in_tree', env.JOB_DIR + '/in_tree')
 						}
 					}
 				}
 				stage('Out Of Tree') {
 					steps {
 						script {
-							buildJob('out_of_tree', env.GITHUB_BRANCH + '/out_of_tree')
+							buildJob('out_of_tree', env.JOB_DIR + '/out_of_tree')
 						}
 					}
 				}
 				stage('RAT') {
 					steps {
 						script {
-							buildJob('rat', env.GITHUB_BRANCH + '/rat')
+							buildJob('rat', env.JOB_DIR + '/rat')
 						}
 					}
 				}
 				stage('clang format') {
 					steps {
 						script {
-							buildJob('clang_format', env.GITHUB_BRANCH + '/clang_format')
+							buildJob('clang_format', env.JOB_DIR + '/clang_format')
 						}
 					}
 				}
@@ -121,7 +150,7 @@ pipeline {
 		stage('Snapshot') {
 			steps {
 				script {
-					//buildJob('snapshot', env.GITHUB_BRANCH + '/snapshot')
+					//buildJob('snapshot', env.JOB_DIR + '/snapshot')
 					echo "Skipping snapshot"
 				}
 			}
@@ -142,35 +171,46 @@ pipeline {
 				stage('clang analyzer') {
 					steps {
 						script {
-							buildJob('clang-analyzer', env.GITHUB_BRANCH + '/clang_analyzer')
+							buildJob('clang-analyzer', env.JOB_DIR + '/clang_analyzer')
 						}
 					}
 				}
 				stage('autests') {
 					steps {
 						script {
-							buildJob('autest', env.GITHUB_BRANCH + '/autest')
+							if (env.AUTEST_SHARDS) {
+								def nshards = env.AUTEST_SHARDS as int
+								def jobs = [:]
+								for (ind = 0 ; ind < nshards ; ind++) {
+									index = ind
+									String shard = index + "of" + env.AUTEST_SHARDS
+									jobs[shard] = { autestJob('autest', env.JOB_DIR + '/autest', shard) }
+								}
+								parallel jobs
+							} else {
+								buildJob('autest', env.JOB_DIR + '/autest')
+							}
 						}
 					}
 				}
 				stage('docs') {
 					steps {
 						script {
-							buildJob('docs', env.GITHUB_BRANCH + '/docs')
+							buildJob('docs', env.JOB_DIR + '/docs')
 						}
 					}
 				}
 				stage('cache_tests') {
 					steps {
 						script {
-							buildJob('cache-tests', env.GITHUB_BRANCH + '/cache-tests')
+							buildJob('cache-tests', env.JOB_DIR + '/cache-tests')
 						}
 					}
 				}
 				stage('coverage') {
 					steps {
 						script {
-							buildJob('coverage', env.GITHUB_BRANCH + '/coverage')
+							buildJob('coverage', env.JOB_DIR + '/coverage')
 						}
 					}
 				}
