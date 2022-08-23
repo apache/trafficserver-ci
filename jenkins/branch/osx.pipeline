@@ -1,0 +1,49 @@
+pipeline {
+	agent {label 'osx'}
+	stages {
+		stage('Clone') {
+			steps {
+				dir('src') {
+				  script {
+						String branch = env.SHA1
+						if (! branch) {
+					  	branch = '*/' + env.GITHUB_BRANCH
+						}
+
+						checkout([$class: 'GitSCM',
+							branches: [[name: branch]],
+							userRemoteConfigs: [[url: env.GITHUB_URL]],
+							extensions: [[$class: 'CloneOption', timeout: 10]],
+						])
+				  }
+				}
+				echo 'Finished Cloning'
+			}
+		}
+		stage('Build') {
+			steps {
+				echo 'Starting build'
+				dir('src') {
+				  sh '''
+						head -1 README
+						autoreconf -fiv
+						CC="clang" \
+							CXX="clang++" \
+							CXXFLAGS="-Qunused-arguments" \
+							WITH_LIBCPLUSPLUS="yes" \
+							./configure \
+							--enable-experimental-plugins \
+							--with-openssl=/usr/local/opt/openssl
+						make -j3
+					'''
+				}
+			}
+		}
+	}
+	
+	post { 
+		cleanup { 
+			cleanWs()
+		}
+	}
+}
