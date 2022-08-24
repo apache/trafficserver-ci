@@ -1,0 +1,43 @@
+pipeline {
+	agent {label 'freebsd'}
+	stages {
+		stage('Clone') {
+			steps {
+				dir('src') {
+				  script {
+						String branch = env.SHA1
+						if (! branch) {
+					  	branch = '*/' + env.GITHUB_BRANCH
+						}
+
+						checkout([$class: 'GitSCM',
+							branches: [[name: branch]],
+							userRemoteConfigs: [[url: env.GITHUB_URL]],
+							extensions: [[$class: 'CloneOption', timeout: 10]],
+						])
+				  }
+				}
+				echo 'Finished Clone'
+			}
+		}
+		stage('Build') {
+			steps {
+				echo 'Starting build'
+				dir('src') {
+					sh '''
+						head -1 README
+						autoreconf -fiv
+						./configure --enable-experimental-plugins
+						gmake -j3
+					'''
+				}
+			}
+		}
+	}
+	
+	post { 
+		cleanup { 
+			cleanWs()
+		}
+	}
+}

@@ -1,30 +1,63 @@
 DUMMY = false
 
+def isBuildable(String jobpath) {
+	return Jenkins.instance.getItemByFullName(jobpath) &&
+			Jenkins.instance.getItemByFullName(jobpath).isBuildable()
+}
+
 def doParallelBuilds() {
 
-	def jobnames = []
+	def jobpaths = []
+
+	def osprefix = env.JOB_DIR + '/os-'
 
 	// Detect buildable os- jobs in branch folder
+	// This comes back with folder/name
+	// buildJob wants /folder/name
 	Jenkins.instance.getAllItems(Job.class).each {
 		if (it.class == org.jenkinsci.plugins.workflow.job.WorkflowJob && it.isBuildable()) {
-			def jobname = it.fullName
-			if (0 == jobname.indexOf(env.JOB_DIR + '/os-')) {
-				jobnames.add(jobname)
+			def jobpath = it.fullName
+			if (jobpath.startsWith(osprefix)) {
+				jobpaths.add(jobpath)
 			}
 		}
 	}
 
 	def builders = [:]
+	def prefix = env.JOB_DIR + '/'
 
-	for (jobname in jobnames) {
-		def name = jobname
+	for (jobpath in jobpaths) {
+		def name = jobpath.substring(prefix.size())
+		echo "Adding ${jobpath} as ${name}"
 		builders[name] = {
 			stage(name) {
-				echo name
+				echo jobpath
 				script {
-					result = buildJob(name, name)
+					result = buildJob(jobpath, name)
 					if (result == 'FAILURE') {
 						error("${name} build failed")
+					}
+				}
+			}
+		}
+	}
+
+	String jobstr = "osx freebsd"
+	def extrajobs = jobstr.split(" ")
+
+	for (job in extrajobs) {
+		def name = job
+		def jobpath = prefix + name
+		echo "Adding ${jobpath} as ${name}"
+		if (isBuildable(jobpath)) {
+			builders[name] = {
+				stage(name) {
+					echo jobpath
+					script {
+						result = buildJob(jobpath, name)
+						if (result == 'FAILURE') {
+							error("${name} build failed")
+						}
 					}
 				}
 			}
@@ -34,10 +67,11 @@ def doParallelBuilds() {
 	parallel builders
 }
 
-String buildJob(String ghcontext, String jobName) {
-	echo "Build of: " + jobName
-	if (DUMMY) { jobName = "Branch_Builds/dummy" }
-	def jobBuild = build(job: jobName, propagate: false,
+// jobpath is relative or absolute path to job, jobname is display name
+String buildJob(String jobpath, String jobname) {
+	echo "Build of: ${jobname} as ${jobpath}"
+	if (DUMMY) { jobpath = "Branch_Builds/dummy" }
+	def jobBuild = build(job: '/' + jobpath, propagate: false,
 		parameters: [
 			string(name: 'GITHUB_URL', value: GITHUB_URL),
 			string(name: 'GITHUB_BRANCH', value: GITHUB_BRANCH),
@@ -46,15 +80,15 @@ String buildJob(String ghcontext, String jobName) {
 		]
 	)
 	def result = jobBuild.getResult()
-	echo "Build of " + jobName + " returned result: " + result
-	if ('FAILURE' == result) { error("${jobName} failed") }
+	echo "Build of " + jobname + " returned result: " + result
+	if ('FAILURE' == result) { error("${jobname} failed") }
 	return result
 }
 
-String autestJob(String ghcontext, String jobName, String shard) {
-	echo "Autest Build of: " + jobName + " " + shard
-	if (DUMMY) { jobName = "Branch_Builds/dummy" }
-	def jobBuild = build(job: jobName, propagate: false,
+String autestJob(String jobpath, String jobname, String shard) {
+	echo "Autest Build of: " + jobname + " " + shard
+	if (DUMMY) { jobpath = "Branch_Builds/dummy" }
+	def jobBuild = build(job: '/' + jobpath, propagate: false,
 		parameters: [
 			string(name: 'GITHUB_URL', value: GITHUB_URL),
 			string(name: 'GITHUB_BRANCH', value: GITHUB_BRANCH),
@@ -64,8 +98,8 @@ String autestJob(String ghcontext, String jobName, String shard) {
 		]
 	)
 	def result = jobBuild.getResult()
-	echo "Build of " + jobName + " returned result: " + result
-	if ('FAILURE' == result) { error("${jobName} failed") }
+	echo "Build of " + jobname + " returned result: " + result
+	if ('FAILURE' == result) { error("${jobname} failed") }
 	return result
 }
 
@@ -119,28 +153,32 @@ pipeline {
 				stage('In Tree') {
 					steps {
 						script {
-							buildJob('in_tree', env.JOB_DIR + '/in_tree')
+							echo "in_tree"
+							buildJob(env.JOB_DIR + '/in_tree', 'in_tree')
 						}
 					}
 				}
 				stage('Out Of Tree') {
 					steps {
 						script {
-							buildJob('out_of_tree', env.JOB_DIR + '/out_of_tree')
+							echo "out_of_tree"
+							buildJob(env.JOB_DIR + '/out_of_tree', 'out_of_tree')
 						}
 					}
 				}
 				stage('RAT') {
 					steps {
 						script {
-							buildJob('rat', env.JOB_DIR + '/rat')
+							echo "rat"
+							buildJob(env.JOB_DIR + '/rat', 'rat')
 						}
 					}
 				}
 				stage('clang format') {
 					steps {
 						script {
-							buildJob('clang_format', env.JOB_DIR + '/clang_format')
+							echo "clang_format"
+							buildJob(env.JOB_DIR + '/clang_format', 'clang_format')
 						}
 					}
 				}
@@ -150,8 +188,8 @@ pipeline {
 		stage('Snapshot') {
 			steps {
 				script {
-					//buildJob('snapshot', env.JOB_DIR + '/snapshot')
 					echo "Skipping snapshot"
+					//buildJob(env.JOB_DIR + '/snapshot', 'snapshot')
 				}
 			}
 		}
@@ -171,24 +209,27 @@ pipeline {
 				stage('clang analyzer') {
 					steps {
 						script {
-							buildJob('clang-analyzer', env.JOB_DIR + '/clang_analyzer')
+							echo "clang_analyzer"
+							buildJob(env.JOB_DIR + '/clang_analyzer', 'clang_analyzer')
 						}
 					}
 				}
 				stage('autests') {
 					steps {
 						script {
+							echo "autests"
+							String jobpath = env.JOB_DIR + '/autest'
 							if (env.AUTEST_SHARDS) {
 								def nshards = env.AUTEST_SHARDS as int
 								def jobs = [:]
 								for (ind = 0 ; ind < nshards ; ind++) {
 									index = ind
 									String shard = index + "of" + env.AUTEST_SHARDS
-									jobs[shard] = { autestJob('autest', env.JOB_DIR + '/autest', shard) }
+									jobs[shard] = { autestJob(jobpath, 'autest', shard) }
 								}
 								parallel jobs
 							} else {
-								buildJob('autest', env.JOB_DIR + '/autest')
+								buildJob(jobpath, 'autest')
 							}
 						}
 					}
@@ -196,21 +237,27 @@ pipeline {
 				stage('docs') {
 					steps {
 						script {
-							buildJob('docs', env.JOB_DIR + '/docs')
+							echo "docs"
+							buildJob(env.JOB_DIR + '/docs', 'docs')
 						}
 					}
 				}
 				stage('cache_tests') {
 					steps {
 						script {
-							buildJob('cache-tests', env.JOB_DIR + '/cache-tests')
+							echo "cache_tests"
+							buildJob(env.JOB_DIR + '/cache-tests', 'cache_tests')
 						}
 					}
 				}
 				stage('coverage') {
 					steps {
 						script {
-							buildJob('coverage', env.JOB_DIR + '/coverage')
+							echo "coverage"
+							String jobpath = env.JOB_DIR + '/coverage'
+							if (isBuildable(jobpath)) {
+							  buildJob(jobpath, 'coverage')
+							}
 						}
 					}
 				}
