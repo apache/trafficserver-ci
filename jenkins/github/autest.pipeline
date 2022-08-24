@@ -1,112 +1,153 @@
 pipeline {
-    agent {
-        docker {
-            image 'ci.trafficserver.apache.org/ats/rockylinux:8'
-            registryUrl 'https://ci.trafficserver.apache.org/'
-            args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
-            label 'docker'
-        }
-    }
-    environment {
-        CCACHE_DIR = "/tmp/ccache"
-        CCACHE_BASEDIR = "${WORKSPACE}"
-    }    
-    stages {
-        stage('Clone') {
-            steps {
-                dir('src') {
-                    echo "${sha1}"
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: sha1]],
-                        extensions: [
-                            // We have to set an idenity for the merge step because Git requires
-                            // the user.name and user.email to be set to do a merge.
-                            [$class: "UserIdentity",
-                                name: "ATS CI User",
-                                email: "noreply@trafficserver.apache.org"
-                            ],
-                            [$class: "PreBuildMerge",
-                                options: [
-                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
-                                    fastForwardMode: "NO_FF",
-                                    mergeRemote: "origin",
-                                    mergeStrategy: "DEFAULT"
-                                ]
-                            ],
-                        ],
-                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
-                }
-                echo 'Finished Cloning'
-            }
-        }
-        stage('Build') {
-            steps {
-                echo 'Starting build'
-                dir('src') {
-                    // For Jenkins debugging. We comit the top of README in our debug PRs.
-                    sh('head README')
+	agent {
+		docker {
+			image 'ci.trafficserver.apache.org/ats/rockylinux:8'
+			registryUrl 'https://ci.trafficserver.apache.org/'
+			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+			label 'docker'
+		}
+	}
+	environment {
+		CCACHE_DIR = "/tmp/ccache"
+		CCACHE_BASEDIR = "${WORKSPACE}"
+	}    
+	stages {
+		stage('Initialization') {
+			steps {
+				script {
+					if (env.AUTEST_SHARD) {
+						String[] arr = env.AUTEST_SHARD.split('of')
+						if (2 == arr.length) {
+							shard = arr[0] as int
+							shardcnt = arr[1] as int
+							if (shard < shardcnt) {
+								env.SHARD = shard
+								env.SHARDCNT = shardcnt
+							}
+						}
+					}
 
-                    sh '''#!/bin/bash
-                    
-                       set -x
-                       set -e
-                       source /opt/rh/gcc-toolset-11/enable
-                       sudo update-crypto-policies --set LEGACY
+					if (! env.SHARD || ! env.SHARDCNT) {
+						env.SHARD = 0
+						env.SHARDCNT = 0
+					}
+				}
+			}
+		}
+		stage('Clone') {
+			steps {
+				dir('src') {
+					echo "${sha1}"
+					checkout([$class: 'GitSCM',
+						branches: [[name: sha1]],
+						extensions: [
+							// We have to set an idenity for the merge step because Git requires
+							// the user.name and user.email to be set to do a merge.
+							[$class: "UserIdentity",
+								name: "ATS CI User",
+								email: "noreply@trafficserver.apache.org"
+							],
+							[$class: "PreBuildMerge",
+								options: [
+									mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+									fastForwardMode: "NO_FF",
+									mergeRemote: "origin",
+									mergeStrategy: "DEFAULT"
+								]
+							],
+						],
+						userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+					sh 'git show -n 10 --decorate --graph --oneline --no-patch'
+				}
+				echo 'Finished Cloning'
+			}
+		}
+		stage('Build') {
+			steps {
+				echo 'Starting build'
+				dir('src') {
+					// For Jenkins debugging. We comit the top of README in our debug PRs.
+					sh('head README')
 
-                       # We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-                       # The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-                       export PATH=/opt/bin:${PATH}
+					sh '''#!/bin/bash
+					
+						set -x
+						set -e
+						source /opt/rh/gcc-toolset-11/enable
+						sudo update-crypto-policies --set LEGACY
 
-                       # Change permissions so that all files are readable
-                       # (default user umask may change and make these unreadable)
-                       sudo chmod -R o+r .
-                       autoreconf -fiv
-                       ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
-                       make -j4
-                       make install
-                       '''
-                }
-            }
-        }
-        stage('AuTest') {
-            steps {
-                echo 'Starting AuTest'
-                dir('src/tests') {
-                    sh '''
-                       set +e
-                       # We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-                       # The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-                       export PATH=/opt/bin:${PATH}
-                       
-                       export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
-                       mkdir -p ${export_dir}
-                       ./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
-                       if [ -n "$(ls -A /tmp/sandbox/)" ]; then
-                           cp -rf /tmp/sandbox/ "${export_dir}"
-                           ls "${export_dir}"
-                           sudo chmod -R 777 ${WORKSPACE}
-                           exit 1
-                       else
-                           touch ${export_dir}/No_autest_failures
-                           sudo chmod -R 777 ${WORKSPACE}
-                           exit 0
-                       fi
-                       '''
-                }
-            }
-        }
-    }
-    
-    post { 
-        always {
-            // We exclude socket files because archiveArtifacts doesn't deal well with
-            // their file type.
-            archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
-            echo "See the build job description for a link to the sandbox."
-        }
-        cleanup { 
-            cleanWs()
-        }
-    }
+						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+						export PATH=/opt/bin:${PATH}
+
+						# Change permissions so that all files are readable
+						# (default user umask may change and make these unreadable)
+						sudo chmod -R o+r .
+						autoreconf -fiv
+						./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
+						make -j4
+						make install
+						'''
+				}
+			}
+		}
+		stage('AuTest') {
+			steps {
+				echo 'Starting AuTest'
+				dir('src/tests') {
+					sh '''#!/bin/bash -x
+						set +e
+						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+						export PATH=/opt/bin:${PATH}
+						
+						export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
+						mkdir -p ${export_dir}
+
+						if [ ${SHARDCNT} -le 0 ]; then
+							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
+						else
+							testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
+							testsall=( $(
+							  for el in  "${testsall[@]}" ; do
+							    echo $el
+							  done | sort) )
+							ntests=${#testsall[@]}
+
+													  shardsize=$((${ntests} / ${SHARDCNT}))
+							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
+							shardbeg=$((${shardsize} * ${SHARD}))
+							sliced=${testsall[@]:${shardbeg}:${shardsize}}
+							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f ${sliced[@]} || true
+
+						fi
+
+						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
+							touch ${export_dir}/Autest_failures
+							cp -rf /tmp/sandbox/ "${export_dir}"
+							ls "${export_dir}"
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 1
+						else
+							touch ${export_dir}/No_autest_failures
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 0
+						fi
+						'''
+				}
+			}
+		}
+	}
+	
+	post { 
+		always {
+			// We exclude socket files because archiveArtifacts doesn't deal well with
+			// their file type.
+			archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
+			echo "See the build job description for a link to the sandbox."
+		}
+		cleanup { 
+			cleanWs()
+		}
+	}
 }
