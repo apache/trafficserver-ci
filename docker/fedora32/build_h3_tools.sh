@@ -36,7 +36,7 @@
 set -e
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1m+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1q+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -79,8 +79,8 @@ set -x
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout 7c0006ccf891c20cd0b1e9e6a436f9d1f3153b7b
-./config --prefix=${OPENSSL_PREFIX}
+git checkout f105ac0bfdae1ce009b8fd86bc6d9f65e5576352
+./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j $(nproc)
 ${MAKE} install_sw
 
@@ -93,7 +93,7 @@ cd ..
 echo "Building nghttp3..."
 [ ! -d nghttp3 ] && git clone https://github.com/ngtcp2/nghttp3.git
 cd nghttp3
-git checkout b9e565cb48e92ded110162a65511f78681fb13c3
+git checkout 635a532c8ff98cdbd6c141f85583632919102912
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
@@ -110,7 +110,7 @@ cd ..
 echo "Building ngtcp2..."
 [ ! -d ngtcp2 ] && git clone https://github.com/ngtcp2/ngtcp2.git
 cd ngtcp2
-git checkout 982502f9ac594a45bc13804416a443522d906f29
+git checkout ee8efbe9aa7f209f483e2fe1e78183e62cd166cb
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
@@ -131,12 +131,15 @@ cd nghttp2
 # This commit will be removed whenever the nghttp2 author rebases origin/quic.
 # For reference, this commit is currently described as:
 #
-# commit 25f29e7634a2c8c5ba5c63432e5d94217a6535ef
-# Author: Tatsuhiro Tsujikawa <tatsuhiro.t@gmail.com>
-# Date:   Mon Aug 16 16:58:11 2021 +0900
+# commit 1340b296dde152fb0771f1eb4e4c221047d37ab7 (HEAD -> master, origin/master, origin/HEAD)
+# Merge: f919cf1a fc5a020b
+# Author: Tatsuhiro Tsujikawa <404610+tatsuhiro-t@users.noreply.github.com>
+# Date:   Mon Aug 29 21:22:56 2022 +0900
 #
-#     Compile with the latest ngtcp2
-git checkout 25f29e7634a2c8c5ba5c63432e5d94217a6535ef
+#     Merge pull request #1787 from heitbaum/patch-1
+#
+#     Fix typographic error
+git checkout 1340b296dde152fb0771f1eb4e4c221047d37ab7
 
 autoreconf -if
 ./configure \
@@ -154,7 +157,7 @@ cd ..
 echo "Building curl ..."
 [ ! -d curl ] && git clone https://github.com/curl/curl.git
 cd curl
-git checkout 2bfa57bff184437028025933d26fecb215355173
+git checkout 2fc031d834d488854ffc58bf7dbcef7fa7c1fc28
 autoreconf -i
 ./configure \
   --prefix=${BASE} \
