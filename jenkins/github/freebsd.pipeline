@@ -21,7 +21,6 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    sh('head -1 README')
                     sh('autoreconf -fiv')
                     sh('./configure --enable-experimental-plugins')
                     sh('gmake -j3')
