@@ -27,7 +27,6 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    sh('head -1 README')
                     sh('autoreconf -fiv')
                     sh('CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins')
                     sh('make -j3')
