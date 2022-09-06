@@ -54,10 +54,8 @@ pipeline {
 
 				echo 'Starting build'
 				dir('src') {
-					// For Jenkins debugging. We comit to the top of README in our debug PRs.
 					sh '''
-                                        set -x
-					head README
+					set -x
 					source ../ci/jenkins/bin/environment.sh
 					bash -x ../ci/jenkins/bin/docs.sh
 					'''

@@ -4,10 +4,10 @@ pipeline {
 		stage('Clone') {
 			steps {
 				dir('src') {
-				  script {
+					script {
 						String branch = env.SHA1
 						if (! branch) {
-					  	branch = '*/' + env.GITHUB_BRANCH
+							branch = '*/' + env.GITHUB_BRANCH
 						}
 
 						checkout([$class: 'GitSCM',
@@ -24,8 +24,7 @@ pipeline {
 			steps {
 				echo 'Starting build'
 				dir('src') {
-				  sh '''
-						head -1 README
+					sh '''
 						autoreconf -fiv
 						CC="clang" \
 							CXX="clang++" \
