@@ -4,10 +4,10 @@ pipeline {
 		stage('Clone') {
 			steps {
 				dir('src') {
-				  script {
+					script {
 						String branch = env.SHA1
 						if (! branch) {
-					  	branch = '*/' + env.GITHUB_BRANCH
+							branch = '*/' + env.GITHUB_BRANCH
 						}
 
 						checkout([$class: 'GitSCM',
@@ -15,7 +15,7 @@ pipeline {
 							userRemoteConfigs: [[url: env.GITHUB_URL]],
 							extensions: [[$class: 'CloneOption', timeout: 10]],
 						])
-				  }
+					}
 				}
 				echo 'Finished Clone'
 			}
@@ -25,7 +25,6 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''
-						head -1 README
 						autoreconf -fiv
 						./configure --enable-experimental-plugins
 						gmake -j3
