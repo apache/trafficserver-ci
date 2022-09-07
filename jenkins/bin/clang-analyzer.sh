@@ -20,7 +20,6 @@ set -x
 
 test -z "${WORKSPACE}" && WORKSPACE=".."
 mkdir -p ${WORKSPACE}/output/${GITHUB_BRANCH}
-head -1 README
 
 grep -q 80010 configure.ac && echo "8.1.x branch detected, stop here!" && exit 0
 
