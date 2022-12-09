@@ -121,7 +121,7 @@ pipeline {
 							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
 							shardbeg=$((${shardsize} * ${SHARD}))
 							sliced=${testsall[@]:${shardbeg}:${shardsize}}
-							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f ${sliced[@]}
+							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f ${sliced[@]} || true
 
 							exit
 						fi
