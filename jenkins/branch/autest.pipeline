@@ -122,8 +122,6 @@ pipeline {
 							shardbeg=$((${shardsize} * ${SHARD}))
 							sliced=${testsall[@]:${shardbeg}:${shardsize}}
 							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f ${sliced[@]} || true
-
-							exit
 						fi
 
 						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
