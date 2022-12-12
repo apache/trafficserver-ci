@@ -43,7 +43,7 @@ def doParallelBuilds() {
 		}
 	}
 
-	String jobstr = "osx freebsd"
+	String jobstr = "osx freebsd osx-m1"
 	def extrajobs = jobstr.split(" ")
 
 	for (job in extrajobs) {
