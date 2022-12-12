@@ -32,8 +32,8 @@ pipeline {
 							WITH_LIBCPLUSPLUS="yes" \
 							./configure \
 							--enable-experimental-plugins \
-							--with-openssl=/usr/local/opt/openssl
-						make -j3
+							--with-openssl=/opt/homebrew/opt/openssl
+						make -j8
 					'''
 				}
 			}
