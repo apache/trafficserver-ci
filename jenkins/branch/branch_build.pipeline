@@ -43,21 +43,23 @@ def doParallelBuilds() {
 		}
 	}
 
-	String jobstr = "osx freebsd osx-m1"
-	def extrajobs = jobstr.split(" ")
+	if (env.OTHER_BUILDS) {
+		//String jobstr = "osx freebsd osx-m1"
+		def extrajobs = env.OTHER_BUILDS.split(" ")
 
-	for (job in extrajobs) {
-		def name = job
-		def jobpath = prefix + name
-		echo "Adding ${jobpath} as ${name}"
-		if (isBuildable(jobpath)) {
-			builders[name] = {
-				stage(name) {
-					echo jobpath
-					script {
-						result = buildJob(jobpath, name)
-						if (result == 'FAILURE') {
-							error("${name} build failed")
+		for (job in extrajobs) {
+			def name = job
+			def jobpath = prefix + name
+			echo "Adding ${jobpath} as ${name}"
+			if (isBuildable(jobpath)) {
+				builders[name] = {
+					stage(name) {
+						echo jobpath
+						script {
+							result = buildJob(jobpath, name)
+							if (result == 'FAILURE') {
+								error("${name} build failed")
+							}
 						}
 					}
 				}
