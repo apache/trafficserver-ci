@@ -79,8 +79,7 @@ pipeline {
                                                 --with-quiche=/opt/quiche \
 						--prefix=/tmp/ats \
 						--enable-werror \
-						--enable-debug \
-						--enable-coverage
+						--enable-debug
 					make -j4 V=1 Q=
 					make install
 					'''
@@ -95,7 +94,7 @@ pipeline {
 					sh '''#!/bin/bash
 						set -x
 						source /opt/rh/gcc-toolset-11/enable
-						make -j4 check
+						make -j4 V=1 Q= check
 						/tmp/ats/bin/traffic_server -K -k -R 3
 						'''
 				}
