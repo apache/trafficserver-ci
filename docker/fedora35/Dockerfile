@@ -2,7 +2,6 @@ FROM fedora:35
 
 RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabled powertools; yum repolist; \
 
-    yum -y update; \
     # Compilers
     yum -y install ccache make pkgconfig bison flex gcc-c++ clang \
     # Autoconf
