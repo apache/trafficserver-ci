@@ -1,6 +1,5 @@
 FROM fedora:30
-RUN  \
-    # Compilers
+RUN # Compilers \
     yum -y install ccache make pkgconfig bison flex gcc-c++ clang git sudo; \
     # Various other tools
     git rpm-build distcc-server file wget openssl hwloc; \
