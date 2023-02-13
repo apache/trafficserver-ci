@@ -49,7 +49,7 @@ pipeline {
                         set -e
                         source /opt/rh/gcc-toolset-11/enable
                         autoreconf -fiv
-                        ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-luajit --enable-ccache
+                        ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-ccache
                         make -j4 V=1 Q=
                         make -j 2 check VERBOSE=Y V=1
                         make install
