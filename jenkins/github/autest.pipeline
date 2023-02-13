@@ -81,7 +81,7 @@ pipeline {
 						# (default user umask may change and make these unreadable)
 						sudo chmod -R o+r .
 						autoreconf -fiv
-						./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
+						./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-ccache
 						make -j4
 						make install
 						'''
