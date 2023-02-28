@@ -115,3 +115,7 @@ RUN \
   cp src/quiche/target/release/libquiche.so /opt/quiche/lib && \
   cp src/quiche/quiche/include/quiche.h /opt/quiche/include && \
   cp src/quiche/target/release/quiche.pc /opt/quiche/lib/pkgconfig
+
+# Install go-httpbin
+RUN go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.5.6
+RUN cp --force go/bin/go-httpbin /usr/local/bin/go-httpbin
