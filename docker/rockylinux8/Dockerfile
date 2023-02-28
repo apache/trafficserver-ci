@@ -40,13 +40,6 @@ WORKDIR /root
 RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/curl_http3.sh
 
 RUN update-crypto-policies --set LEGACY
-RUN echo 'export GOROOT=/usr/local/go' | tee -a /etc/profile
-RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile
-RUN source /etc/profile
-RUN wget https://github.com/summerwind/h2spec/releases/download/v2.6.0/h2spec_linux_amd64.tar.gz
-RUN tar xf h2spec_linux_amd64.tar.gz
-RUN cp --force h2spec /usr/local/bin/h2spec
-RUN yum clean all
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
@@ -116,6 +109,18 @@ RUN \
   cp src/quiche/quiche/include/quiche.h /opt/quiche/include && \
   cp src/quiche/target/release/quiche.pc /opt/quiche/lib/pkgconfig
 
-# Install go-httpbin
-RUN go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.5.6
-RUN cp --force go/bin/go-httpbin /usr/local/bin/go-httpbin
+# Install go and some of our needed go applications.
+WORKDIR /root
+RUN yum remove -y golang
+RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile.d/go.sh
+RUN echo 'export GOBIN=/usr/local/go/bin' | tee -a /etc/profile.d/go.sh
+RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
+RUN rm -rf /usr/local/go && sudo tar -C /usr/local -xf go1.20.1.linux-amd64.tar.gz
+
+RUN \
+  /usr/local/go/bin/go install github.com/summerwind/h2spec/cmd/h2spec@latest; \
+  cp /root/go/bin/h2spec /usr/local/go/bin/
+
+RUN \
+  /usr/local/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.5.6; \
+  cp /root/go/bin/go-httpbin /usr/local/go/bin/
