@@ -124,3 +124,17 @@ RUN \
 RUN \
   /usr/local/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.5.6; \
   cp /root/go/bin/go-httpbin /usr/local/go/bin/
+
+# BoringSSL has no releases or tags. For Docker image reproducibilty, we pin to
+# a particular commit. This should be updated regularly.
+RUN \
+  cd /root/src; \
+  git clone https://github.com/google/boringssl.git; \
+  cd boringssl/; \
+  git checkout b6a50fd62d1ae44ad211ebe26f803c66db444302; \
+  mkdir build; \
+  cd build; \
+  source /opt/rh/gcc-toolset-11/enable; \
+  cmake -DGO_EXECUTABLE=/usr/local/go/bin/go -DCMAKE_INSTALL_PREFIX=/opt/boringssl -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 ../; \
+  make -j4; \
+  make install
