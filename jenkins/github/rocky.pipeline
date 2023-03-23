@@ -51,6 +51,7 @@ pipeline {
                         autoreconf -fiv
                         ./configure \
                           --with-quiche=/opt/quiche \
+                          --with-openssl=/opt/boringssl \
                           --enable-experimental-plugins \
                           --enable-example-plugins \
                           --prefix=/tmp/ats/ \
