@@ -21,7 +21,7 @@ pipeline {
                 echo 'Starting build'
                 dir('src') {
                     sh('autoreconf -fiv')
-                    sh('CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins --with-openssl=/usr/local/opt/openssl')
+                    sh('CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins --with-openssl=/usr/local/opt/openssl --enable-werror')
                     sh('make -j3')
                 }
             }
