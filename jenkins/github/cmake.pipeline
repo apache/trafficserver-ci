@@ -1,0 +1,67 @@
+pipeline {
+    agent {
+        docker {
+            image 'ci.trafficserver.apache.org/ats/rockylinux:8'
+            registryUrl 'https://ci.trafficserver.apache.org/'
+            label 'docker'
+            args '-v ${HOME}/ccache:/tmp/ccache:rw'
+        }
+    }
+    environment {
+        CCACHE_DIR = "/tmp/ccache"
+        CCACHE_BASEDIR = "${WORKSPACE}"
+    }
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    echo "${sha1}"
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build: cmake') {
+            steps {
+                echo 'Starting cmake build'
+                dir('src') {
+                    sh '''#!/bin/bash
+                        set -x
+                        set -e
+                        source /opt/rh/gcc-toolset-11/enable
+                        mkdir cmake-build-release
+                        cd cmake-build-release
+                        cmake -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic ..
+                        make -j4
+                        '''
+                }
+                echo 'Finished cmake build'
+            }
+        }
+    }
+    
+    post { 
+        cleanup { 
+            cleanWs()
+        }
+    }
+}
