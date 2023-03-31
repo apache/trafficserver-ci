@@ -165,6 +165,23 @@ pipeline {
 					}
 				}
 				
+				stage('CMake Build') {
+					when {
+						anyOf {
+							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*cmake.*/ }
+						}
+					}                    
+					steps {
+						script {
+							result = buildJob('CMake', 'Github_Builds/cmake')
+							if (result == 'FAILURE') {
+								error('CMake build failed')
+							}
+						}
+					}
+				}
+				
 				stage('OSX Build') {
 					when {
 						anyOf {
