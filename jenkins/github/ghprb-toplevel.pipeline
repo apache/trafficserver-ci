@@ -167,6 +167,23 @@ pipeline {
                         }
                     }
                 }
+                
+                stage('CMake Build') {
+                    when {
+                        anyOf {
+                            environment name: 'ghprbCommentBody', value: '[approve ci]'
+                            expression { ghprbCommentBody ==~ /.*cmake.*/ }
+                        }
+                    }                    
+                    steps {
+                        script {
+                            result = buildJob('CMake', 'Github_Builds/cmake')
+                            if (result == 'FAILURE') {
+                                error('CMake build failed')
+                            }
+                        }
+                    }
+                }
 
                 //stage('FreeBSD Build') {
                 //    when {
