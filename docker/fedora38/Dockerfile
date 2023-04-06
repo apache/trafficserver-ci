@@ -18,7 +18,9 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     yum -y install python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang;
 
-RUN pip3 install --upgrade pip
+# This currently fails with latest fedora:38. Presumably the stock pip is
+# recent enough, so this shouldn't be a big dea.
+# RUN pip3 install --upgrade pip
 RUN pip3 install pipenv httpbin
 
 # Install openssl-quic
