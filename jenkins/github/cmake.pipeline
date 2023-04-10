@@ -47,6 +47,18 @@ pipeline {
                     sh '''#!/bin/bash
                         set -x
                         set -e
+
+                        # We do not support CMake builds for the 9.x branch.
+                        if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                        then
+                            echo "CMake builds are not supported for the 9.x branch."
+                            echo "No need to test it to show that it fails."
+                            exit 0
+                        fi
+
+
                         source /opt/rh/gcc-toolset-11/enable
                         mkdir cmake-build-release
                         cd cmake-build-release
@@ -58,9 +70,9 @@ pipeline {
             }
         }
     }
-    
-    post { 
-        cleanup { 
+
+    post {
+        cleanup {
             cleanWs()
         }
     }
