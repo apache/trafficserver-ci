@@ -76,7 +76,8 @@ pipeline {
 					./configure \
 						--enable-experimental-plugins \
 						--enable-example-plugins \
-                                                --with-quiche=/opt/quiche \
+						--with-quiche=/opt/quiche \
+						--with-openssl=/opt/boringssl \
 						--prefix=/tmp/ats \
 						--enable-werror \
 						--enable-debug
