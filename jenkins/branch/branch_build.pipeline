@@ -174,7 +174,7 @@ pipeline {
 						script {
 							echo "cmake"
 							def jobpath = env.JOB_DIR + '/' + "cmake"
-							if (isBuildable(jobpath) {
+							if (isBuildable(jobpath)) {
 								buildJob(env.JOB_DIR + '/cmake', 'cmake')
 							}
 						}
