@@ -101,9 +101,43 @@ pipeline {
 				}
 			}
 		}
+
+		stage('AuTests') {
+			steps {
+				echo 'Starting Unit (Catch) and Regression Tests'
+				dir('src/tests') {
+					sh '''#!/bin/bash
+						set -x
+						set +e
+
+						export PATH=/opt/bin:${PATH}
+
+						export_dir="${WORKSPACE}/output/${GITHUB_PR_BRANCH}"
+						mkdir -p ${export_dir}
+
+						./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
+
+						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
+							cp -rf /tmp/sandbox/ ${export_dir}/
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 1
+						else
+							sudo touch ${export_dir}/No_autest_failures
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 0
+						fi
+						'''
+				}
+			}
+		}
 	}
 
 	post {
+		always {
+			// We exclude socket files because archiveArtifacts doesn't deal well with
+			// their file type.
+			archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
+		}
 		cleanup {
 			cleanWs()
 		}
