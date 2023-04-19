@@ -122,7 +122,7 @@ RUN \
   cp /root/go/bin/h2spec /usr/local/go/bin/
 
 RUN \
-  /usr/local/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.5.6; \
+  /usr/local/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.6.0; \
   cp /root/go/bin/go-httpbin /usr/local/go/bin/
 
 # BoringSSL has no releases or tags. For Docker image reproducibilty, we pin to
