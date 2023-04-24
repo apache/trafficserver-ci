@@ -137,6 +137,7 @@ pipeline {
 						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
 						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
+						export PATH=/usr/local/go/bin:${PATH}
 
 						./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox
 						'''

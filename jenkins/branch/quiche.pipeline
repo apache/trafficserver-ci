@@ -111,6 +111,7 @@ pipeline {
 						set +e
 
 						export PATH=/opt/bin:${PATH}
+						export PATH=/usr/local/go/bin:${PATH}
 
 						export_dir="${WORKSPACE}/output/${GITHUB_PR_BRANCH}"
 						mkdir -p ${export_dir}
