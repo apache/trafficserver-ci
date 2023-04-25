@@ -19,7 +19,7 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang;
 
 # This currently fails with latest fedora:38. Presumably the stock pip is
-# recent enough, so this shouldn't be a big dea.
+# recent enough, so this shouldn't be a big deal.
 # RUN pip3 install --upgrade pip
 RUN pip3 install pipenv httpbin
 
@@ -38,12 +38,6 @@ WORKDIR /root
 
 # Make sure we pick up this built version of curl, which is in /opt/bin.
 RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/curl_http3.sh
-
-RUN echo 'export GOROOT=/usr/local/go' | tee -a /etc/profile
-RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile
-RUN source /etc/profile
-RUN go install github.com/summerwind/h2spec/cmd/h2spec@latest
-RUN cp /root/go/bin/h2spec /usr/local/bin
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
@@ -73,3 +67,66 @@ RUN git clone https://github.com/linux-test-project/lcov.git; \
 WORKDIR /root
 RUN rm -rf ${lcov_build_dir}
 RUN yum clean all
+
+#-----------------------------
+# Install quiche dependencies.
+#-----------------------------
+
+RUN yum install -y cmake
+
+# Retrieve quiche
+RUN \
+  mkdir -p src && \
+  cd src && \
+  git clone --recursive https://github.com/cloudflare/quiche
+
+# Install rust/cargo.
+RUN \
+  mkdir -p src && \
+  wget https://sh.rustup.rs -O src/rustup.sh && \
+  bash src/rustup.sh -y
+
+# Build quiche.
+RUN \
+  source "/root/.cargo/env" && \
+  cd src/quiche && \
+  cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
+
+# Manually install quiche because, unfortunately, the cargo install command
+# doesn't work for quiche.
+RUN \
+  mkdir -p /opt/quiche/lib/pkgconfig && \
+  mkdir -p /opt/quiche/include && \
+  cp src/quiche/target/release/libquiche.a /opt/quiche/lib && \
+  cp src/quiche/target/release/libquiche.so /opt/quiche/lib && \
+  cp src/quiche/quiche/include/quiche.h /opt/quiche/include && \
+  cp src/quiche/target/release/quiche.pc /opt/quiche/lib/pkgconfig
+
+# Install go and some of our needed go applications.
+WORKDIR /root
+RUN yum remove -y golang
+RUN echo 'export PATH=$PATH:/usr/local/go/bin' | tee -a /etc/profile.d/go.sh
+RUN echo 'export GOBIN=/usr/local/go/bin' | tee -a /etc/profile.d/go.sh
+RUN wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz
+RUN rm -rf /usr/local/go && sudo tar -C /usr/local -xf go1.20.1.linux-amd64.tar.gz
+
+RUN \
+  /usr/local/go/bin/go install github.com/summerwind/h2spec/cmd/h2spec@latest; \
+  cp /root/go/bin/h2spec /usr/local/go/bin/
+
+RUN \
+  /usr/local/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.6.0; \
+  cp /root/go/bin/go-httpbin /usr/local/go/bin/
+
+# BoringSSL has no releases or tags. For Docker image reproducibilty, we pin to
+# a particular commit. This should be updated regularly.
+RUN \
+  cd /root/src; \
+  git clone https://github.com/google/boringssl.git; \
+  cd boringssl/; \
+  git checkout b6a50fd62d1ae44ad211ebe26f803c66db444302; \
+  mkdir build; \
+  cd build; \
+  cmake -DGO_EXECUTABLE=/usr/local/go/bin/go -DCMAKE_INSTALL_PREFIX=/opt/boringssl -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 ../; \
+  make -j4; \
+  make install
