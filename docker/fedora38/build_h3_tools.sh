@@ -36,7 +36,7 @@
 set -e
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1q+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1t+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -48,7 +48,7 @@ MAKE="make"
 # These are for Linux like systems, specially the LDFLAGS, also depends on dirs above
 CFLAGS=${CFLAGS:-"-O3 -g"}
 CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
-LDFLAGS=${LDFLAGS:-"-Wl,-rpath=${OPENSSL_PREFIX}/lib"}
+LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_PREFIX}/lib"}
 
 if [ -e /etc/redhat-release ]; then
     MAKE="gmake"
@@ -57,7 +57,9 @@ if [ -e /etc/redhat-release ]; then
     echo "|                                                                         |"
     echo "|   sudo yum -y install libev-devel jemalloc-devel python2-devel          |"
     echo "|   sudo yum -y install libxml2-devel c-ares-devel libevent-devel         |"
-    echo "|   sudo yum -y install jansson-devel zlib-devel systemd-devel            |"
+    echo "|   sudo yum -y install jansson-devel zlib-devel systemd-devel cargo      |"
+    echo "|                                                                         |"
+    echo "| Rust may be needed too, see https://rustup.rs for the details           |"
     echo "+-------------------------------------------------------------------------+"
     echo
     echo
@@ -67,22 +69,89 @@ elif [ -e /etc/debian_version ]; then
     echo "|                                                                         |"
     echo "|   sudo apt -y install libev-dev libjemalloc-dev python2-dev libxml2-dev |"
     echo "|   sudo apt -y install libpython2-dev libc-ares-dev libsystemd-dev       |"
-    echo "|   sudo apt -y install libevent-dev libjansson-dev zlib1g-dev            |"
+    echo "|   sudo apt -y install libevent-dev libjansson-dev zlib1g-dev cargo      |"
+    echo "|                                                                         |"
+    echo "| Rust may be needed too, see https://rustup.rs for the details           |"
     echo "+-------------------------------------------------------------------------+"
     echo
     echo
 fi
 
 set -x
+if [ `uname -s` = "Linux" ]
+then
+  num_threads=$(nproc)
+else
+  # MacOS.
+  num_threads=$(sysctl -n hw.logicalcpu)
+fi
+
+# boringssl
+echo "Building boringssl..."
+
+# We need this go version.
+mkdir -p ${BASE}/go
+
+if [ `uname -m` = "arm64" ]; then
+    ARCH="arm64"
+else
+    ARCH="amd64"
+fi
+
+if [ `uname -s` = "Darwin" ]; then
+    OS="darwin"
+else
+    OS="linux"
+fi
+
+wget https://go.dev/dl/go1.20.1.${OS}-${ARCH}.tar.gz
+rm -rf ${BASE}/go && tar -C ${BASE} -xf go1.20.1.${OS}-${ARCH}.tar.gz
+rm go1.20.1.${OS}-${ARCH}.tar.gz
+
+GO_BINARY_PATH=${BASE}/go/bin/go
+if [ ! -d boringssl ]; then
+  git clone https://boringssl.googlesource.com/boringssl
+  cd boringssl
+  git checkout 31bad2514d21f6207f3925ba56754611c462a873
+  cd ..
+fi
+cd boringssl
+mkdir -p build
+cd build
+cmake \
+  -DGO_EXECUTABLE=${GO_BINARY_PATH} \
+  -DCMAKE_INSTALL_PREFIX=${BASE}/boringssl \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=1 ../
+
+${MAKE} -j ${num_threads}
+${MAKE} install
+cd ..
+
+# Build quiche
+# Steps borrowed from: https://github.com/apache/trafficserver-ci/blob/main/docker/rockylinux8/Dockerfile
+echo "Building quiche"
+QUICHE_BASE="${BASE:-/opt}/quiche"
+[ ! -d quiche ] && git clone --recursive https://github.com/cloudflare/quiche.git
+cd quiche
+git checkout 0b37da1cc564e40749ba650febd40586a4355be4
+QUICHE_BSSL_PATH=${BASE}/boringssl QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
+mkdir -p ${QUICHE_BASE}/lib/pkgconfig
+mkdir -p ${QUICHE_BASE}/include
+cp target/release/libquiche.a ${QUICHE_BASE}/lib/
+[ -f target/release/libquiche.so ] && cp target/release/libquiche.so ${QUICHE_BASE}/lib/
+cp quiche/include/quiche.h ${QUICHE_BASE}/include/
+cp target/release/quiche.pc ${QUICHE_BASE}/lib/pkgconfig
+cd ..
 
 # OpenSSL needs special hackery ... Only grabbing the branch we need here... Bryan has shit for network.
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout f105ac0bfdae1ce009b8fd86bc6d9f65e5576352
+git checkout c3f5f36f5dadfa334119e940b7576a4abfa428c8
 ./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
-${MAKE} -j $(nproc)
-${MAKE} install_sw
+${MAKE} -j ${num_threads}
+${MAKE} -j install
 
 # The symlink target provides a more convenient path for the user while also
 # providing, in the symlink source, the precise branch of the OpenSSL build.
@@ -91,9 +160,13 @@ cd ..
 
 # Then nghttp3
 echo "Building nghttp3..."
-[ ! -d nghttp3 ] && git clone https://github.com/ngtcp2/nghttp3.git
+if [ ! -d nghttp3 ]; then
+  git clone https://github.com/ngtcp2/nghttp3.git
+  cd nghttp3
+  git checkout -b v0.9.0 v0.9.0
+  cd ..
+fi
 cd nghttp3
-git checkout 635a532c8ff98cdbd6c141f85583632919102912
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
@@ -102,15 +175,19 @@ autoreconf -if
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
   --enable-lib-only
-${MAKE} -j $(nproc)
+${MAKE} -j ${num_threads}
 ${MAKE} install
 cd ..
 
 # Now ngtcp2
 echo "Building ngtcp2..."
-[ ! -d ngtcp2 ] && git clone https://github.com/ngtcp2/ngtcp2.git
+if [ ! -d ngtcp2 ]; then
+  git clone https://github.com/ngtcp2/ngtcp2.git
+  cd ngtcp2
+  git checkout -b v0.13.1 v0.13.1
+  cd ..
+fi
 cd ngtcp2
-git checkout ee8efbe9aa7f209f483e2fe1e78183e62cd166cb
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
@@ -119,46 +196,46 @@ autoreconf -if
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
   --enable-lib-only
-${MAKE} -j $(nproc)
+${MAKE} -j ${num_threads}
 ${MAKE} install
 cd ..
 
 # Then nghttp2, with support for H3
 echo "Building nghttp2 ..."
-[ ! -d nghttp2 ] && git clone https://github.com/tatsuhiro-t/nghttp2.git
+if [ ! -d nghttp2 ]; then
+  git clone https://github.com/tatsuhiro-t/nghttp2.git
+  cd nghttp2
+  git checkout -b v1.52.0 v1.52.0
+  cd ..
+fi
 cd nghttp2
-
-# This commit will be removed whenever the nghttp2 author rebases origin/quic.
-# For reference, this commit is currently described as:
-#
-# commit 1340b296dde152fb0771f1eb4e4c221047d37ab7 (HEAD -> master, origin/master, origin/HEAD)
-# Merge: f919cf1a fc5a020b
-# Author: Tatsuhiro Tsujikawa <404610+tatsuhiro-t@users.noreply.github.com>
-# Date:   Mon Aug 29 21:22:56 2022 +0900
-#
-#     Merge pull request #1787 from heitbaum/patch-1
-#
-#     Fix typographic error
-git checkout 1340b296dde152fb0771f1eb4e4c221047d37ab7
-
 autoreconf -if
+if [ `uname -s` = "Darwin" ]
+then
+  # --enable-app requires systemd which is not available on Mac.
+  ENABLE_APP=""
+else
+  ENABLE_APP="--enable-app"
+fi
 ./configure \
   --prefix=${BASE} \
   PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
-  --enable-lib-only
-${MAKE} -j $(nproc)
+  --enable-http3 \
+  ${ENABLE_APP}
+${MAKE} -j ${num_threads}
 ${MAKE} install
 cd ..
 
-# And finally curl
+# Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone https://github.com/curl/curl.git
+[ ! -d curl ] && git clone --depth=1 --branch curl-7_88_1 https://github.com/curl/curl.git
 cd curl
-git checkout 2fc031d834d488854ffc58bf7dbcef7fa7c1fc28
-autoreconf -i
+# On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
+# The second runs fine.
+autoreconf -fi || autoreconf -fi
 ./configure \
   --prefix=${BASE} \
   --with-ssl=${OPENSSL_PREFIX} \
@@ -168,5 +245,6 @@ autoreconf -i
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}"
-${MAKE} -j $(nproc)
+${MAKE} -j ${num_threads}
 ${MAKE} install
+cd ..
