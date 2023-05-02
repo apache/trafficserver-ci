@@ -55,7 +55,7 @@ pipeline {
                         make -j4 V=1 Q= || exit 1
                         make -j 2 check VERBOSE=Y V=1 || exit 1
                         make install || exit 1
-                        /tmp/ats/bin/traffic_server -K -k -R 1 || exit 1
+                        /tmp/ats/bin/traffic_server -K -k -R 3 || exit 1
                     '''
                 }
             }
