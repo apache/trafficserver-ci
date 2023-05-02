@@ -125,7 +125,7 @@ pipeline {
 					sh '''#!/bin/bash
 						set -x
 						[ "${RUN_REGRESSION_TESTS}" == "true" ] || exit 0
-						/tmp/ats/bin/traffic_server -K -k -R 3
+						/tmp/ats/bin/traffic_server -K -k -R 1
 						 '''
 				}
 				echo 'Starting AuTest'
