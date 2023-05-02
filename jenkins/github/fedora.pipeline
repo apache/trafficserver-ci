@@ -48,29 +48,7 @@ pipeline {
                         set -x
                         set -e
 
-                        export PATH=/bin:${PATH}
-                        echo "PATH: $PATH"
-                        export M4=/bin/m4
-                        export CONFIG_SHELL=/bin/bash
-
-                        autoreconf_succeeded=0
-                        for i in {1..5}
-                        do
-                          if autoreconf -fiv
-                          then
-                            autoreconf_succeeded=1
-                            break
-                          fi
-                          sleep 2
-                          echo "autoreconf failed attempt ${i}/5"
-                        done
-
-                        if [ ${autoreconf_succeeded} -eq 0 ]
-                        then
-                          echo "Failed to run autoreconf. Exiting with an error."
-                          exit 1
-                        fi
-
+                        autoreconf -fiv
                         # Remove the --with-openssl argument when we support OpenSSL 3.x.
                         ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-ccache
                         make -j4 V=1 Q=
