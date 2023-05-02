@@ -96,7 +96,7 @@ pipeline {
 						set -x
 						source /opt/rh/gcc-toolset-11/enable
 						make -j4 V=1 Q= check
-						/tmp/ats/bin/traffic_server -K -k -R 1
+						/tmp/ats/bin/traffic_server -K -k -R 3
 						'''
 				}
 			}
