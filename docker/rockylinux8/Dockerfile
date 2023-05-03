@@ -22,8 +22,19 @@ RUN pip3 install --upgrade pip
 RUN pip3 install pipenv httpbin
 RUN yum -y install gcc-toolset-11 gcc-toolset-11-libasan-devel
 
+# We put our custom packages in /opt.
+RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
+ARG PATH=/opt/bin:$PATH
+
+# Install a recent cmake.
+RUN yum remove -y cmake
+RUN \
+  wget https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3-linux-x86_64.sh; \
+  chmod +x cmake-3.26.3-linux-x86_64.sh; \
+  bash ./cmake-3.26.3-linux-x86_64.sh --skip-license --prefix=/opt
+
 # Install openssl-quic
-RUN yum install -y python38-devel cmake cargo
+RUN yum install -y python38-devel cargo
 
 RUN alternatives --set python /usr/bin/python3.8
 RUN yum -y install libev-devel jemalloc-devel libxml2-devel \
@@ -38,9 +49,6 @@ COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
 # This will install OpenSSL QUIC and related tools in /opt.
 RUN bash ${h3_tools_dir}/build_h3_tools.sh
 WORKDIR /root
-
-# Make sure we pick up this built version of curl, which is in /opt/bin.
-RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/curl_http3.sh
 
 # Install some of our needed go applications.
 RUN echo 'export PATH=$PATH:/opt/go/bin' | tee -a /etc/profile.d/go.sh
