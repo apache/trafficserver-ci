@@ -18,6 +18,8 @@
 
 set -x
 
+[[ ":$PATH:" != *":/opt/bin:"* ]] && export PATH="/opt/bin:${PATH}"
+
 # Show which platform we're actually building on
 
 # Deduct if this build is on a docker instance
