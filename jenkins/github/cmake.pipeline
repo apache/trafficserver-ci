@@ -60,6 +60,8 @@ pipeline {
 
 
                         source /opt/rh/gcc-toolset-11/enable
+                        export PATH=/opt/bin:${PATH}
+
                         mkdir cmake-build-release
                         cd cmake-build-release
                         cmake -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic ..
