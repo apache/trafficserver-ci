@@ -117,6 +117,10 @@ pipeline {
 						export PATH=/opt/bin:${PATH}
 						export PATH=/opt/go/bin:${PATH}
 
+						# We'll need this until Damian's quiche patch lands which updates rpath:
+						# https://github.com/cloudflare/quiche/pull/1508
+						export LD_LIBRARY_PATH=/opt/boringssl/lib64:${LD_LIBRARY_PATH}
+
 						export_dir="${WORKSPACE}/output/${GITHUB_PR_BRANCH}"
 						mkdir -p ${export_dir}
 
