@@ -52,6 +52,7 @@ LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_PREFIX}/lib"}
 
 if [ -e /etc/redhat-release ]; then
     MAKE="gmake"
+    TMP_QUICHE_BSSL_PATH="${BASE}/boringssl/lib64"
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
@@ -64,6 +65,7 @@ if [ -e /etc/redhat-release ]; then
     echo
     echo
 elif [ -e /etc/debian_version ]; then
+    TMP_QUICHE_BSSL_PATH="${BASE}/boringssl/lib"
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
@@ -75,6 +77,10 @@ elif [ -e /etc/debian_version ]; then
     echo "+-------------------------------------------------------------------------+"
     echo
     echo
+fi
+
+if [ -z ${QUICHE_BSSL_PATH+x} ]; then
+   QUICHE_BSSL_PATH=${TMP_QUICHE_BSSL_PATH:-"${BASE}/boringssl/lib"}
 fi
 
 set -x
@@ -135,7 +141,7 @@ QUICHE_BASE="${BASE:-/opt}/quiche"
 [ ! -d quiche ] && git clone --recursive https://github.com/cloudflare/quiche.git
 cd quiche
 git checkout 0b37da1cc564e40749ba650febd40586a4355be4
-QUICHE_BSSL_PATH=${BASE}/boringssl QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
+QUICHE_BSSL_PATH=${QUICHE_BSSL_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
 mkdir -p ${QUICHE_BASE}/lib/pkgconfig
 mkdir -p ${QUICHE_BASE}/include
 cp target/release/libquiche.a ${QUICHE_BASE}/lib/
@@ -146,7 +152,7 @@ cd ..
 
 # OpenSSL needs special hackery ... Only grabbing the branch we need here... Bryan has shit for network.
 echo "Building OpenSSL with QUIC support"
-[ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} https://github.com/quictls/openssl.git openssl-quic
+[ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
 git checkout c3f5f36f5dadfa334119e940b7576a4abfa428c8
 ./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
@@ -231,7 +237,7 @@ cd ..
 
 # Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone --depth=1 --branch curl-7_88_1 https://github.com/curl/curl.git
+[ ! -d curl ] && git clone --branch curl-7_88_1 https://github.com/curl/curl.git
 cd curl
 # On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
 # The second runs fine.
