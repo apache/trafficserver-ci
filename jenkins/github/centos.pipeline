@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'ci.trafficserver.apache.org/ats/centos:8'
+            image 'ci.trafficserver.apache.org/ats/centos:7'
             registryUrl 'https://ci.trafficserver.apache.org/'
             label 'docker'
             args '-v ${HOME}/ccache:/tmp/ccache:rw'
@@ -47,7 +47,7 @@ pipeline {
                     sh '''#!/bin/bash
                         set -x
                         set -e
-                        source /opt/rh/gcc-toolset-9/enable
+                        source /opt/rh/devtoolset-8/enable
                         autoreconf -fiv
                         ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-ccache
                         make -j4 V=1 Q=
