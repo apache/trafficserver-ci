@@ -105,7 +105,11 @@ else
     # Default is gcc / g++
     export CC=gcc
     export CXX=g++
-    if test -f "/opt/rh/devtoolset-9/enable"; then
+    if test -f "/opt/rh/devtoolset-8/enable"; then
+        # This changes the path such that gcc / g++ is the right version. This is for CentOS 6 / 7.
+        source /opt/rh/devtoolset-8/enable
+        echo "Enabling devtoolset-8"
+    elif test -f "/opt/rh/devtoolset-9/enable"; then
         # This changes the path such that gcc / g++ is the right version. This is for CentOS 6 / 7.
         source /opt/rh/devtoolset-9/enable
         echo "Enabling devtoolset-9"
