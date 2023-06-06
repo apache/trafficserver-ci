@@ -25,6 +25,7 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''
+						set -e
 						autoreconf -fiv
 						CC="clang" \
 							CXX="clang++" \

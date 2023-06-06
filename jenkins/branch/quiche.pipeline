@@ -66,6 +66,7 @@ pipeline {
 				dir('src') {
 					sh '''#!/bin/bash
 					set -x
+					set -e
 
 					source /opt/rh/gcc-toolset-11/enable
 
@@ -98,6 +99,7 @@ pipeline {
 				dir('src') {
 					sh '''#!/bin/bash
 						set -x
+						set -e
 						source /opt/rh/gcc-toolset-11/enable
 						make -j4 V=1 Q= check
 						/tmp/ats/bin/traffic_server -K -k -R 1
