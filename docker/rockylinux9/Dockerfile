@@ -40,7 +40,7 @@ RUN dnf -y install libev-devel jemalloc-devel libxml2-devel \
 #WORKDIR ${h3_tools_dir}
 #COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
 # This will install OpenSSL QUIC and related tools in /opt.
-#RUN bash ${h3_tools_dir}/build_h3_tools.sh
+#RUN bash ${h3_tools_dir}/build_h3_tools.sh; rm -rf ${h3_tools_dir} /root/.rustup
 WORKDIR /root
 
 # Make sure we pick up this built version of curl, which is in /opt/bin.

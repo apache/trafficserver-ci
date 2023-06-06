@@ -57,7 +57,8 @@ RUN \
   source /opt/rh/devtoolset-11/enable; \
   source /opt/rh/rh-python38/enable; \
   export PATH=/opt/bin:${PATH}; \
-  bash ${h3_tools_dir}/build_h3_tools.sh
+  bash ${h3_tools_dir}/build_h3_tools.sh; \
+  rm -rf ${h3_tools_dir} /root/.rustup
 
 WORKDIR /root
 
