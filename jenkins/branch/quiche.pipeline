@@ -101,6 +101,7 @@ pipeline {
 						set -x
 						set -e
 						source /opt/rh/gcc-toolset-11/enable
+						export LD_LIBRARY_PATH=/opt/boringssl/lib64:${LD_LIBRARY_PATH}
 						make -j4 V=1 Q= check
 						/tmp/ats/bin/traffic_server -K -k -R 1
 						'''
