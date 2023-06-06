@@ -25,6 +25,7 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''
+						set -e
 						autoreconf -fiv
 						./configure --enable-experimental-plugins
 						gmake -j3

@@ -65,6 +65,7 @@ pipeline {
 					echo "Building"
 					sh '''
                                         set -x
+                                        set -e
 					source ../ci/jenkins/bin/environment.sh && ../ci/jenkins/bin/out_of_tree.sh
 					'''
 				}

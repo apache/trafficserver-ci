@@ -57,6 +57,7 @@ pipeline {
 				dir('src') {
 					sh '''
 					set -x
+					set -e
 					source ../ci/jenkins/bin/environment.sh
 					autoreconf -if
 					source ../ci/jenkins/bin/build.sh
@@ -71,6 +72,7 @@ pipeline {
 				dir('src') {
 					sh '''
 					set -x
+					set -e
 					source ../ci/jenkins/bin/environment.sh
 					source ../ci/jenkins/bin/regression.sh
 					'''

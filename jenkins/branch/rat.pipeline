@@ -62,6 +62,7 @@ pipeline {
 				dir('src') {
 					sh '''
                                         set -x
+                                        set -e
 					source ../ci/jenkins/bin/environment.sh && ../ci/jenkins/bin/rat.sh
 					'''
 				}

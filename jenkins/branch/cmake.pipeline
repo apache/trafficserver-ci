@@ -65,6 +65,7 @@ pipeline {
 					echo "Building"
 					sh '''
 					set -x
+					set -e
 					export PATH=/opt/bin:${PATH}
 					source ../ci/jenkins/bin/environment.sh
 					../ci/jenkins/bin/cmake.sh

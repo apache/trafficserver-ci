@@ -74,6 +74,7 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''
+					set -e
 					source /opt/rh/gcc-toolset-11/enable
 					sudo update-crypto-policies --set LEGACY
 
