@@ -25,7 +25,5 @@ cd "${WORKSPACE}/src"
 mkdir cmake-build-release
 cd cmake-build-release
 cmake -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic ..
-
-${ATS_MAKE} ${ATS_MAKE_FLAGS} V=1
-#${ATS_MAKE} check VERBOSE=Y
-${ATS_MAKE} clean
+cmake --build . -j4 -v
+ctest -j4 --output-on-failure --no-compress-output -T Test

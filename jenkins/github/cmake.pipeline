@@ -65,7 +65,8 @@ pipeline {
                         mkdir cmake-build-release
                         cd cmake-build-release
                         cmake -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic ..
-                        make -j4
+                        cmake --build . -j4 -v
+                        ctest -j4 --output-on-failure --no-compress-output -T Test
                         '''
                 }
                 echo 'Finished cmake build'
