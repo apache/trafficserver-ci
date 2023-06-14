@@ -1,16 +1,16 @@
 pipeline {
     agent {
         docker {
-            image 'ci.trafficserver.apache.org/ats/ubuntu:20.04'
+            image 'ci.trafficserver.apache.org/ats/ubuntu:23.04'
             registryUrl 'https://ci.trafficserver.apache.org/'
             label 'docker'
-            args '-v ${HOME}/ccache:/tmp/ccache:rw'            
+            args '-v ${HOME}/ccache:/tmp/ccache:rw'
         }
     }
     environment {
         CCACHE_DIR = "/tmp/ccache"
         CCACHE_BASEDIR = "${WORKSPACE}"
-    }    
+    }
     stages {
         stage('Clone') {
             steps {
@@ -45,25 +45,30 @@ pipeline {
                 echo 'Starting build'
                 dir('src') {
                     sh '''#!/bin/bash
-                        
+
                         set -x
                         set -e
+
+                        # We don't use c++20 features yet, but we want to make
+                        # sure we can build with the flag set.
+                        export CXXSTD=20
+
                         autoreconf -fiv
                         mkdir out_of_source_build_dir
                         cd out_of_source_build_dir
-                        CC="clang" CXX="clang++" ../configure --enable-experimental-plugins --enable-example-plugins --enable-expensive-tests --prefix=/tmp/ats/ --enable-werror --enable-ccache || exit 1
-                        make -j4 V=1 Q= || exit 1
-                        make -j 2 check VERBOSE=Y V=1 || exit 1
-                        make install || exit 1
-                        /tmp/ats/bin/traffic_server -K -k -R 1 || exit 1
+                        CC="clang" CXX="clang++" ../configure --enable-experimental-plugins --enable-example-plugins --enable-expensive-tests --prefix=/tmp/ats/ --enable-werror --enable-ccache
+                        make -j4 V=1 Q=
+                        make -j4 check VERBOSE=Y V=1
+                        make install
+                        /tmp/ats/bin/traffic_server -K -k -R 1
                     '''
                 }
             }
         }
     }
-    
-    post { 
-        cleanup { 
+
+    post {
+        cleanup {
             cleanWs()
         }
     }
