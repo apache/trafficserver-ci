@@ -127,6 +127,7 @@ RUN update-crypto-policies --set LEGACY
 ARG username=jenkins
 ARG uid=1200
 RUN <<EOS
+  set -e
   useradd \
     --home-dir /home/${username} \
     --groups users,wheel \
@@ -142,17 +143,17 @@ EOS
 RUN yum install -y perl-IO-Compress
 ARG lcov_build_dir=/var/tmp/lcov_build_dir
 RUN mkdir -p ${lcov_build_dir}
-WORKDIR ${lcov_build_dir}
 RUN <<EOS
   set -e
+  cd ${lcov_build_dir}
   git clone https://github.com/linux-test-project/lcov.git
   cd lcov
   # v1.15 is required for g++ version 9 compiled files.
   git checkout v1.15
   make install
+  cd /root
+  rm -rf ${lcov_build_dir}
 EOS
-WORKDIR /root
-RUN rm -rf ${lcov_build_dir}
 
 # Install ABI checking tools.
 RUN yum install -y ctags elfutils-libelf-devel wdiff
