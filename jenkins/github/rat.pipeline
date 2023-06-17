@@ -51,7 +51,7 @@ pipeline {
                         make rat | tee RAT.txt
 
                         # Mark as failed if there are any unknown licenses
-                        grep '0 Unknown Licenses' RAT.txt > /dev/null || exit -1
+                        grep '^0 Unknown Licenses' RAT.txt > /dev/null || exit -1
                         exit 0
                     '''
                 }
