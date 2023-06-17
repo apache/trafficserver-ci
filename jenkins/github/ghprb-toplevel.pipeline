@@ -67,7 +67,7 @@ pipeline {
                     when {
                         anyOf {
                             environment name: 'ghprbCommentBody', value: '[approve ci]'
-                            expression { ghprbCommentBody ==~ /.*RAT.*/ }
+                            expression { ghprbCommentBody ==~ /.*rat.*/ }
                         }
                     }
                     steps {
