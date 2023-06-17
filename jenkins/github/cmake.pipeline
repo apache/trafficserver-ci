@@ -64,9 +64,11 @@ pipeline {
 
                         mkdir cmake-build-release
                         cd cmake-build-release
-                        cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic ..
+                        cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DCMAKE_INSTALL_PREFIX=/tmp/ats ..
                         cmake --build . -j4 -v
+                        cmake --install .
                         ctest -j4 --output-on-failure --no-compress-output -T Test
+                        /tmp/ats/bin/traffic_server -K -k -R 1
                         '''
                 }
                 echo 'Finished cmake build'
