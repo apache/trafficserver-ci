@@ -65,7 +65,7 @@ pipeline {
 					when {
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
-							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*RAT.*/ }
+							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*rat.*/ }
 						}
 					}
 					steps {
