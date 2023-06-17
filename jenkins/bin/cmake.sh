@@ -24,6 +24,6 @@ cd "${WORKSPACE}/src"
 
 mkdir cmake-build-release
 cd cmake-build-release
-cmake -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic ..
+cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic ..
 cmake --build . -j4 -v
 ctest -j4 --output-on-failure --no-compress-output -T Test
