@@ -98,7 +98,7 @@ echo "Building boringssl..."
 # We need this go version.
 mkdir -p ${BASE}/go
 
-if [ `uname -m` = "arm64" ]; then
+if [ `uname -m` = "arm64" -o `uname -m` = "aarch64" ]; then
     ARCH="arm64"
 else
     ARCH="amd64"
