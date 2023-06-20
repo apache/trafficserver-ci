@@ -41,12 +41,12 @@ EOF
 WORKDIR /root
 
 # We put our custom packages in /opt.
-RUN <<EOS
+RUN <<EOF
   set -e
   mkdir -p /opt/bin
   chmod 755 /opt/bin
   echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
-EOS
+EOF
 ARG PATH=/opt/bin:$PATH
 
 # This currently fails with latest fedora:38. Presumably the stock pip is
@@ -67,12 +67,12 @@ ARG h3_tools_dir=/root/build_h3_tools
 RUN mkdir -p ${h3_tools_dir}
 COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
 # This will install OpenSSL QUIC and related tools in /opt.
-RUN <<EOS
+RUN <<EOF
   set -e
   cd ${h3_tools_dir}
   bash ${h3_tools_dir}/build_h3_tools.sh; \
   rm -rf ${h3_tools_dir} /root/.rustup
-EOS
+EOF
 
 
 #-------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ EOS
 #-------------------------------------------------------------------------------
 
 # Autests require some go applications.
-RUN <<EOS
+RUN <<EOF
   set -e
   echo 'export PATH=$PATH:/opt/go/bin' | tee -a /etc/profile.d/go.sh
   echo 'export GOBIN=/opt/go/bin' | tee -a /etc/profile.d/go.sh
@@ -90,14 +90,14 @@ RUN <<EOS
 
   /opt/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.6.0
   cp /root/go/bin/go-httpbin /opt/go/bin/
-EOS
+EOF
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
 # issues.
 ARG username=jenkins
 ARG uid=1200
-RUN <<EOS
+RUN <<EOF
   set -e
   useradd \
     --home-dir /home/${username} \
@@ -108,7 +108,7 @@ RUN <<EOS
     ${username}
   echo "${username} ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
   chown -R ${username} /home/${username}
-EOS
+EOF
 
 # Install lcov
 RUN yum install -y lcov
