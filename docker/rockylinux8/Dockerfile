@@ -42,12 +42,12 @@ EOF
 WORKDIR /root
 
 # We put our custom packages in /opt.
-RUN <<EOS
+RUN <<EOF
   set -e
   mkdir -p /opt/bin
   chmod 755 /opt/bin
   echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
-EOS
+EOF
 ARG PATH=/opt/bin:$PATH
 
 # Install a recent cmake.
@@ -77,14 +77,14 @@ RUN pip3 install pipenv httpbin
 #-------------------------------------------------------------------------------
 # Install the HTTP/3 build tools, including openssl-quic.
 #-------------------------------------------------------------------------------
-RUN <<EOS
+RUN <<EOF
   set -e
   yum install -y python38-devel cargo
   alternatives --set python /usr/bin/python3.8
   yum -y install \
     libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel jansson-devel zlib-devel systemd-devel
-EOS
+EOF
 
 # go and rust will be installed by build_h3_tools.
 RUN yum remove -y golang rust
@@ -92,7 +92,7 @@ ARG h3_tools_dir=/root/build_h3_tools
 RUN mkdir -p ${h3_tools_dir}
 COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
 # This will install OpenSSL QUIC and related tools in /opt.
-RUN <<EOS
+RUN <<EOF
   set -e
   cd ${h3_tools_dir}
   bash ${h3_tools_dir}/build_h3_tools.sh
@@ -100,14 +100,14 @@ RUN <<EOS
   # Removing the build dir is crucial to keeping the Docker image size
   # reasonable.
   rm -rf ${h3_tools_dir} /root/.rustup
-EOS
+EOF
 
 #-------------------------------------------------------------------------------
 # Various CI Job and Test Requirements.
 #-------------------------------------------------------------------------------
 
 # Autests require some go applications.
-RUN <<EOS
+RUN <<EOF
   set -e
   echo 'export PATH=$PATH:/opt/go/bin' | tee -a /etc/profile.d/go.sh
   echo 'export GOBIN=/opt/go/bin' | tee -a /etc/profile.d/go.sh
@@ -117,7 +117,7 @@ RUN <<EOS
 
   /opt/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.6.0
   cp /root/go/bin/go-httpbin /opt/go/bin/
-EOS
+EOF
 
 RUN update-crypto-policies --set LEGACY
 
@@ -126,7 +126,7 @@ RUN update-crypto-policies --set LEGACY
 # be used. Otherwise there will be permissions issues.
 ARG username=jenkins
 ARG uid=1200
-RUN <<EOS
+RUN <<EOF
   set -e
   useradd \
     --home-dir /home/${username} \
@@ -137,13 +137,13 @@ RUN <<EOS
     ${username}
   echo "${username} ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
   chown -R ${username} /home/${username}
-EOS
+EOF
 
 # Install lcov.
 RUN yum install -y perl-IO-Compress
 ARG lcov_build_dir=/var/tmp/lcov_build_dir
 RUN mkdir -p ${lcov_build_dir}
-RUN <<EOS
+RUN <<EOF
   set -e
   cd ${lcov_build_dir}
   git clone https://github.com/linux-test-project/lcov.git
@@ -153,7 +153,7 @@ RUN <<EOS
   make install
   cd /root
   rm -rf ${lcov_build_dir}
-EOS
+EOF
 
 # Install ABI checking tools.
 RUN yum install -y ctags elfutils-libelf-devel wdiff
