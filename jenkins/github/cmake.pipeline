@@ -62,13 +62,20 @@ pipeline {
                         source /opt/rh/gcc-toolset-11/enable
                         export PATH=/opt/bin:${PATH}
 
-                        mkdir cmake-build-release
+                        cmake -B cmake-build-release -GNinja -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DCMAKE_INSTALL_PREFIX=/tmp/ats
+                        cmake --build cmake-build-release -j4 -v
+                        cmake --install cmake-build-release
                         cd cmake-build-release
-                        cmake -GNinja -DCMAKE_BUILD_TYPE:STRING=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DCMAKE_INSTALL_PREFIX=/tmp/ats ..
-                        cmake --build . -j4 -v
-                        cmake --install .
                         ctest -j4 --output-on-failure --no-compress-output -T Test
                         /tmp/ats/bin/traffic_server -K -k -R 1
+
+                        cmake -B cmake-build-quiche -GNinja -DENABLE_QUICHE=ON -DCMAKE_BUILD_TYPE=Release -Dquiche_ROOT=/opt/quiche -DOPENSSL_ROOT_DIR=/opt/boringssl -DCMAKE_INSTALL_PREFIX=/tmp/ats_quiche
+                        cmake --build cmake-build-quiche -j4 -v
+                        cmake --install cmake-build-quiche
+                        cd cmake-build-quiche
+                        ctest -j4 --output-on-failure --no-compress-output -T Test
+                        /tmp/ats_quiche/bin/traffic_server -K -k -R 1
+
                         '''
                 }
                 echo 'Finished cmake build'
