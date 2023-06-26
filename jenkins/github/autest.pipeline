@@ -1,7 +1,7 @@
 pipeline {
 	agent {
 		docker {
-			image 'ci.trafficserver.apache.org/ats/rockylinux:8'
+			image 'ci.trafficserver.apache.org/ats/fedora:38'
 			registryUrl 'https://ci.trafficserver.apache.org/'
 			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
 			label 'docker'
@@ -10,7 +10,7 @@ pipeline {
 	environment {
 		CCACHE_DIR = "/tmp/ccache"
 		CCACHE_BASEDIR = "${WORKSPACE}"
-	}    
+	}
 	stages {
 		stage('Initialization') {
 			steps {
@@ -67,12 +67,9 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''#!/bin/bash
-					
+
 						set -x
 						set -e
-						source /opt/rh/gcc-toolset-11/enable
-						sudo update-crypto-policies --set LEGACY
-
 						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
 						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
@@ -98,7 +95,7 @@ pipeline {
 						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
 						export PATH=/opt/go/bin:${PATH}
-						
+
 						export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
 						mkdir -p ${export_dir}
 
@@ -136,15 +133,15 @@ pipeline {
 			}
 		}
 	}
-	
-	post { 
+
+	post {
 		always {
 			// We exclude socket files because archiveArtifacts doesn't deal well with
 			// their file type.
 			archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
 			echo "See the build job description for a link to the sandbox."
 		}
-		cleanup { 
+		cleanup {
 			cleanWs()
 		}
 	}
