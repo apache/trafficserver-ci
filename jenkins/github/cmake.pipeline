@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'ci.trafficserver.apache.org/ats/rockylinux:8'
+            image 'ci.trafficserver.apache.org/ats/fedora:38'
             registryUrl 'https://ci.trafficserver.apache.org/'
             label 'docker'
             args '-v ${HOME}/ccache:/tmp/ccache:rw'
@@ -59,10 +59,9 @@ pipeline {
                         fi
 
 
-                        source /opt/rh/gcc-toolset-11/enable
                         export PATH=/opt/bin:${PATH}
 
-                        cmake -B cmake-build-release -GNinja -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DCMAKE_INSTALL_PREFIX=/tmp/ats
+                        cmake -B cmake-build-release -GNinja -DCMAKE_BUILD_TYPE=Debug -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DCMAKE_INSTALL_PREFIX=/tmp/ats
                         cmake --build cmake-build-release -j4 -v
                         cmake --install cmake-build-release
                         pushd cmake-build-release
