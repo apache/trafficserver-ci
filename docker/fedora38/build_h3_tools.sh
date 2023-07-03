@@ -160,7 +160,7 @@ cd ..
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout 636c615c139061b125a25461708f4afc79284f83
+git checkout d2cc208d34cfe2b56d4ef8bcd8e3983a4d00d6bd
 ./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j ${num_threads}
 ${MAKE} install_sw
