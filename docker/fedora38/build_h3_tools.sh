@@ -242,7 +242,7 @@ fi
 # Note for FreeBSD: This will not build h2load. h2load can be run on a remote machine.
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
