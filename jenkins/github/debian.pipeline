@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'ci.trafficserver.apache.org/ats/debian:10'
+            image 'ci.trafficserver.apache.org/ats/debian:12'
             registryUrl 'https://ci.trafficserver.apache.org/'
             label 'docker'
             args '-v ${HOME}/ccache:/tmp/ccache:rw'
