@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'ci.trafficserver.apache.org/ats/ubuntu:20.04'
+            image 'ci.trafficserver.apache.org/ats/ubuntu:22.04'
             registryUrl 'https://ci.trafficserver.apache.org/'
             args '-v /home/rooter/clang-analyzer:/tmp/clang-analyzer:rw'
             label 'docker'
@@ -44,9 +44,9 @@ pipeline {
                         set -x
                         set -e
                         autoreconf -fiv
-                        scan-build-10 --keep-cc ./configure --enable-experimental-plugins --with-luajit
+                        scan-build-14 --keep-cc ./configure --enable-experimental-plugins --with-luajit
                         make -j4 -C lib all-local V=1 Q=
-                        scan-build-10 --keep-cc -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker \
+                        scan-build-14 --keep-cc -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker \
                             alpha.core.BoolAssignment -enable-checker alpha.core.CastSize -enable-checker alpha.core.SizeofPtr \
                             --status-bugs --keep-empty \
                             -o ${WORKSPACE}/output/${GITHUB_PR_NUMBER} --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}" \
