@@ -19,6 +19,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+set -e
 
 
 # This is a slightly modified version of:
@@ -31,12 +32,12 @@
 #   versions of these over time.
 #
 # * It also doesn't run sudo since the Dockerfile will run this as root.
-
-
-set -e
+#
+# * It also doesn't use a mktemp since the caller sets up a temporary directory
+#   that it later removes.
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1t+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.0.9+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -45,10 +46,8 @@ OPENSSL_BASE=${OPENSSL_BASE:-"${BASE}/openssl-quic"}
 OPENSSL_PREFIX=${OPENSSL_PREFIX:-"${OPENSSL_BASE}-${OPENSSL_BRANCH}"}
 MAKE="make"
 
-# These are for Linux like systems, specially the LDFLAGS, also depends on dirs above
 CFLAGS=${CFLAGS:-"-O3 -g"}
 CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
-LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_PREFIX}/lib"}
 
 if [ -e /etc/redhat-release ]; then
     MAKE="gmake"
@@ -87,6 +86,9 @@ set -x
 if [ `uname -s` = "Linux" ]
 then
   num_threads=$(nproc)
+elif [ `uname -s` = "FreeBSD" ]
+then
+  num_threads=$(sysctl -n hw.ncpu)
 else
   # MacOS.
   num_threads=$(sysctl -n hw.logicalcpu)
@@ -106,6 +108,8 @@ fi
 
 if [ `uname -s` = "Darwin" ]; then
     OS="darwin"
+elif [ `uname -s` = "FreeBSD" ]; then
+    OS="freebsd"
 else
     OS="linux"
 fi
@@ -132,7 +136,7 @@ cmake \
 
 ${MAKE} -j ${num_threads}
 ${MAKE} install
-cd ..
+cd ../..
 
 # Build quiche
 # Steps borrowed from: https://github.com/apache/trafficserver-ci/blob/main/docker/rockylinux8/Dockerfile
@@ -145,7 +149,11 @@ source /root/.cargo/env
 QUICHE_BASE="${BASE:-/opt}/quiche"
 [ ! -d quiche ] && git clone --recursive https://github.com/cloudflare/quiche.git
 cd quiche
-git checkout 0b37da1cc564e40749ba650febd40586a4355be4
+# Latest quiche commits breaks our code so we build from the last commit
+# we know it works, in this case this commit includes the rpath fix commit
+# for quiche. https://github.com/cloudflare/quiche/pull/1508
+# Why does the latest break our code? -> https://github.com/cloudflare/quiche/pull/1537
+git checkout a1b212761c6cc0b77b9121cdc313e507daf6deb3
 QUICHE_BSSL_PATH=${QUICHE_BSSL_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
 mkdir -p ${QUICHE_BASE}/lib/pkgconfig
 mkdir -p ${QUICHE_BASE}/include
@@ -159,29 +167,39 @@ cd ..
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout c3f5f36f5dadfa334119e940b7576a4abfa428c8
+git checkout d2cc208d34cfe2b56d4ef8bcd8e3983a4d00d6bd
 ./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j ${num_threads}
-${MAKE} -j install
+${MAKE} install_sw
 
 # The symlink target provides a more convenient path for the user while also
 # providing, in the symlink source, the precise branch of the OpenSSL build.
 ln -sf ${OPENSSL_PREFIX} ${OPENSSL_BASE}
 cd ..
 
+# OpenSSL will install in /lib or lib64 depending upon the architecture.
+if [ -f "${OPENSSL_PREFIX}/lib/libssl.so" ]; then
+  OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
+elif [ -f "${OPENSSL_PREFIX}/lib64/libssl.so" ]; then
+  OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
+else
+  echo "Could not find the OpenSSL install library directory."
+  exit 1
+fi
+LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_LIB}"}
+
 # Then nghttp3
 echo "Building nghttp3..."
 if [ ! -d nghttp3 ]; then
-  git clone https://github.com/ngtcp2/nghttp3.git
+  git clone --depth 1 -b v0.12.0 https://github.com/ngtcp2/nghttp3.git
   cd nghttp3
-  git checkout -b v0.9.0 v0.9.0
   cd ..
 fi
 cd nghttp3
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
@@ -193,16 +211,15 @@ cd ..
 # Now ngtcp2
 echo "Building ngtcp2..."
 if [ ! -d ngtcp2 ]; then
-  git clone https://github.com/ngtcp2/ngtcp2.git
+  git clone --depth 1 -b v0.16.0 https://github.com/ngtcp2/ngtcp2.git
   cd ngtcp2
-  git checkout -b v0.13.1 v0.13.1
   cd ..
 fi
 cd ngtcp2
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
@@ -216,21 +233,25 @@ echo "Building nghttp2 ..."
 if [ ! -d nghttp2 ]; then
   git clone https://github.com/tatsuhiro-t/nghttp2.git
   cd nghttp2
-  git checkout -b v1.52.0 v1.52.0
+  # The following has a fix for builds on systems, like Mac, which do not have
+  # libev. There isn't currently a release with this fix yet.
+  git checkout 2c955ab76b42dfce58e812da6bbe8a526a125fea
   cd ..
 fi
 cd nghttp2
 autoreconf -if
-if [ `uname -s` = "Darwin" ]
+if [ `uname -s` = "Darwin" ] || [ `uname -s` = "FreeBSD" ]
 then
-  # --enable-app requires systemd which is not available on Mac.
+  # --enable-app requires systemd which is not available on Mac/FreeBSD.
   ENABLE_APP=""
 else
   ENABLE_APP="--enable-app"
 fi
+
+# Note for FreeBSD: This will not build h2load. h2load can be run on a remote machine.
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
@@ -242,8 +263,11 @@ cd ..
 
 # Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone --branch curl-7_88_1 https://github.com/curl/curl.git
+[ ! -d curl ] && git clone https://github.com/curl/curl.git
 cd curl
+# There isn't currently a released curl yet which has the updates for the above
+# ngtcp2 and nghttp3 library versions.
+git checkout 891e25edb8527bb8de79cdca6d943216c230e905
 # On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
 # The second runs fine.
 autoreconf -fi || autoreconf -fi
