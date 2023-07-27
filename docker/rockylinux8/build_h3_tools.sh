@@ -37,7 +37,7 @@ set -e
 #   that it later removes.
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.0.9+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.1.0+quic+locks"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -167,7 +167,7 @@ cd ..
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout d2cc208d34cfe2b56d4ef8bcd8e3983a4d00d6bd
+git checkout 6c41837e9234a8c250f02ae8aa30f44e91342ef6
 ./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j ${num_threads}
 ${MAKE} install_sw
