@@ -37,7 +37,7 @@ set -e
 #   that it later removes.
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.0.9+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.1.0+quic+locks"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -144,7 +144,11 @@ echo "Building quiche"
 QUICHE_BASE="${BASE:-/opt}/quiche"
 [ ! -d quiche ] && git clone --recursive https://github.com/cloudflare/quiche.git
 cd quiche
-git checkout 0b37da1cc564e40749ba650febd40586a4355be4
+# Latest quiche commits breaks our code so we build from the last commit
+# we know it works, in this case this commit includes the rpath fix commit
+# for quiche. https://github.com/cloudflare/quiche/pull/1508
+# Why does the latest break our code? -> https://github.com/cloudflare/quiche/pull/1537
+git checkout a1b212761c6cc0b77b9121cdc313e507daf6deb3
 QUICHE_BSSL_PATH=${QUICHE_BSSL_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
 mkdir -p ${QUICHE_BASE}/lib/pkgconfig
 mkdir -p ${QUICHE_BASE}/include
@@ -158,7 +162,7 @@ cd ..
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout d2cc208d34cfe2b56d4ef8bcd8e3983a4d00d6bd
+git checkout 6c41837e9234a8c250f02ae8aa30f44e91342ef6
 ./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j ${num_threads}
 ${MAKE} install_sw
