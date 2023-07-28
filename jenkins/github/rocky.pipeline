@@ -48,11 +48,6 @@ pipeline {
                         set -x
                         set -e
                         source /opt/rh/gcc-toolset-11/enable
-
-                        # We'll need this until Damian's quiche patch lands which updates rpath:
-                        # https://github.com/cloudflare/quiche/pull/1508
-                        export LD_LIBRARY_PATH=/opt/boringssl/lib64:${LD_LIBRARY_PATH}
-
                         autoreconf -fiv
                         ./configure \
                           --with-quiche=/opt/quiche \
