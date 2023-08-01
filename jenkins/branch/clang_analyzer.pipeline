@@ -61,9 +61,6 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					script {
-						if (! env.CA_VERSION) {
-							env.CA_VERSION = "14"
-						}
 						sh 'source ../ci/jenkins/bin/clang-analyzer.sh'
 					}
 				}
