@@ -1,8 +1,30 @@
+def getDistroName() {
+  if (! env.DISTRO) {
+		return "ubuntu:22.04"
+	} else {
+		return env.DISTRO
+	}
+}
+
+def getCaVersion() {
+	if (! env.CA_VERSION) {
+		return "14"
+	} else {
+		return env.CA_VERSION
+	}
+}
+
 pipeline {
+
+  environment {
+	  CA_DISTRO = getDistroName()
+		CA_VERSION = getCaVersion()
+	}
+
 	agent {
 		docker {
 			registryUrl 'https://ci.trafficserver.apache.org/'
-			image 'ci.trafficserver.apache.org/ats/ubuntu:22.04'
+			image 'ci.trafficserver.apache.org/ats/' + env.CA_DISTRO
 			args '-v /home/jenkins/clang-analyzer:/tmp/clang-analyzer:rw --network=host'
 			label 'branch'
 		}
@@ -59,6 +81,7 @@ pipeline {
 			steps {
 				echo 'Starting build'
 				dir('src') {
+					// Script reads CA_VER environment ariable
 					sh 'source ../ci/jenkins/bin/clang-analyzer.sh'
 				}
 			}
