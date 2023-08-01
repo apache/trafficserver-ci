@@ -18,20 +18,23 @@
 
 set -x
 
-test -z "${WORKSPACE}" && WORKSPACE=".."
-mkdir -p ${WORKSPACE}/output/${GITHUB_BRANCH}
-
 grep -q 80010 configure.ac && echo "8.1.x branch detected, stop here!" && exit 0
 
+WORKSPACE=${WORKSPACE:-..}
+GITHUB_BRANCH=${GITHUB_BRANCH:-master}
+SCAN_BUILD=$(ls /usr/bin/scan-build* | grep -v py | tail -n 1)
+
+mkdir -p ${WORKSPACE}/output/${GITHUB_BRANCH}
+
 autoreconf -fiv
-scan-build-14 --keep-cc \
+${SCAN_BUILD} --keep-cc \
   ./configure --enable-experimental-plugins --with-luajit
 
 # build things like yamlcpp without the analyzer 
 make -j4 -C lib all-local V=1 Q=
 rptdir="${WORKSPACE}/output/${GITHUB_BRANCH}"
 
-scan-build-14 --keep-cc \
+${SCAN_BUILD} --keep-cc \
   -enable-checker alpha.unix.cstring.BufferOverlap \
   -enable-checker alpha.core.BoolAssignment \
   -enable-checker alpha.core.CastSize \

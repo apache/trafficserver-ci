@@ -1,8 +1,9 @@
 pipeline {
+
 	agent {
 		docker {
 			registryUrl 'https://ci.trafficserver.apache.org/'
-			image 'ci.trafficserver.apache.org/ats/ubuntu:22.04'
+			image 'ci.trafficserver.apache.org/ats/' + (env.DISTRO ? env.DISTRO : "ubuntu:22.04")
 			args '-v /home/jenkins/clang-analyzer:/tmp/clang-analyzer:rw --network=host'
 			label 'branch'
 		}
@@ -59,7 +60,9 @@ pipeline {
 			steps {
 				echo 'Starting build'
 				dir('src') {
-					sh 'source ../ci/jenkins/bin/clang-analyzer.sh'
+					script {
+						sh 'source ../ci/jenkins/bin/clang-analyzer.sh'
+					}
 				}
 			}
 		}
