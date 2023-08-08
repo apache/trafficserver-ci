@@ -1,0 +1,75 @@
+pipeline {
+    agent {
+        docker {
+            image 'ci.trafficserver.apache.org/ats/ubuntu:23.04'
+            registryUrl 'https://ci.trafficserver.apache.org/'
+            label 'docker'
+            args '-v ${HOME}/ccache:/tmp/ccache:rw'
+        }
+    }
+    environment {
+        CCACHE_DIR = "/tmp/ccache"
+        CCACHE_BASEDIR = "${WORKSPACE}"
+    }
+    stages {
+        stage('Clone') {
+            steps {
+                dir('src') {
+                    echo "${sha1}"
+                    checkout([$class: 'GitSCM',
+                        branches: [[name: sha1]],
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
+                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
+                }
+                echo 'Finished Cloning'
+            }
+        }
+        stage('Build') {
+            steps {
+                echo 'Starting build'
+                dir('src') {
+                    sh '''#!/bin/bash
+
+                        set -x
+                        set -e
+
+                        # We don't use c++20 features yet, but we want to make
+                        # sure we can build with the flag set.
+                        export CXXSTD=20
+
+                        autoreconf -fiv
+                        mkdir out_of_source_build_dir
+                        cd out_of_source_build_dir
+                        CC="clang" CXX="clang++" ../configure --enable-experimental-plugins --enable-example-plugins --enable-expensive-tests --prefix=/tmp/ats/ --enable-werror --enable-ccache --enable-asan
+                        make -j4 V=1 Q=
+                        make -j4 check VERBOSE=Y V=1
+                        make install
+                        /tmp/ats/bin/traffic_server -K -k -R 1
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        cleanup {
+            cleanWs()
+        }
+    }
+}
