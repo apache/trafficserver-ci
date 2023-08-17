@@ -13,7 +13,7 @@ RUN <<EOF
 
   # Build tools.
   yum -y install \
-    ccache make pkgconfig bison flex gcc-c++ clang \
+    ccache make pkgconfig bison flex gcc-c++ clang cmake \
     autoconf automake libtool \
     gcc-toolset-11 gcc-toolset-11-libasan-devel
 
@@ -50,16 +50,6 @@ RUN <<EOF
   echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
 EOF
 ARG PATH=/opt/bin:$PATH
-
-# Install a recent cmake.
-RUN yum remove -y cmake
-RUN <<EOF
-  set -e
-  wget https://github.com/Kitware/CMake/releases/download/v3.26.3/cmake-3.26.3-linux-x86_64.sh
-  chmod +x cmake-3.26.3-linux-x86_64.sh
-  bash ./cmake-3.26.3-linux-x86_64.sh --skip-license --prefix=/opt
-  rm -f cmake-3.26.3-linux-x86_64.sh
-EOF
 
 # Install the latest ninja, which has some performance improvements over the
 # older system version.
