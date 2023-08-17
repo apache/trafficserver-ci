@@ -70,6 +70,27 @@ pipeline {
                             make -j 2 check VERBOSE=Y V=1
                             make install
                             /tmp/ats/bin/traffic_server -K -k -R 1
+                        elif [ true ]
+                        then
+                            #-------------------------------------------------------------------------
+                            # Remove this elif condition when #10232 is fixed so we test cmake 3.20.
+                            #-------------------------------------------------------------------------
+                            echo "CMake is broken for 3.20. See https://github.com/apache/trafficserver/issues/10232."
+                            echo "Falling back to automake until that is fixed."
+                            autoreconf -fiv
+                            ./configure \
+                                --with-quiche=/opt/quiche \
+                                --with-openssl=/opt/boringssl \
+                                --enable-experimental-plugins \
+                                --enable-example-plugins \
+                                --prefix=/tmp/ats/ \
+                                --enable-werror \
+                                --enable-debug \
+                                --enable-ccache
+                            make -j4 V=1 Q=
+                            make -j 2 check VERBOSE=Y V=1
+                            make install
+                            /tmp/ats/bin/traffic_server -K -k -R 1
                         else
                             cmake -B cmake-build-quiche -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DENABLE_QUICHE=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_EXPERIMENTAL_PLUGINS=ON -Dquiche_ROOT=/opt/quiche -DOPENSSL_ROOT_DIR=/opt/boringssl -DCMAKE_INSTALL_PREFIX=/tmp/ats_quiche
                             cmake --build cmake-build-quiche -j4 -v
