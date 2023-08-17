@@ -6,9 +6,10 @@ FROM fedora:39
 RUN <<EOF
   set -e
 
-  dnf -y install dnf-plugins-core
-  dnf repolist
-  dnf -y update
+  # TODO: Add these back in when fedora:39 hacks aren't needed anymore.
+  #dnf -y install dnf-plugins-core
+  #dnf repolist
+  #dnf -y update
 
   # Build tools.
   dnf -y install \
@@ -49,11 +50,6 @@ RUN <<EOF
   echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
 EOF
 ARG PATH=/opt/bin:$PATH
-
-# This currently fails with latest fedora:38. Presumably the stock pip is
-# recent enough, so this shouldn't be a big deal.
-# RUN pip3 install --upgrade pip
-RUN pip3 install pipenv httpbin
 
 #-------------------------------------------------------------------------------
 # Install the HTTP/3 build tools, including openssl-quic.

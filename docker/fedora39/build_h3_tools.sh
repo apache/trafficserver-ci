@@ -128,10 +128,14 @@ fi
 cd boringssl
 mkdir -p build
 cd build
+
+# TODO: Remove -Wno-error=ignored-attributes when the following is fixed:
+# https://bugs.chromium.org/p/boringssl/issues/detail?id=642
 cmake \
   -DGO_EXECUTABLE=${GO_BINARY_PATH} \
   -DCMAKE_INSTALL_PREFIX=${BASE}/boringssl \
   -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS='-Wno-error=ignored-attributes' \
   -DBUILD_SHARED_LIBS=1 ../
 
 ${MAKE} -j ${num_threads}
