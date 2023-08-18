@@ -43,7 +43,7 @@ pipeline {
                 dir('src') {
                     sh '''#!/bin/bash
                             set -x
-                            git grep -IE ' +$' | fgrep -v '.gold:' | fgrep -v '.test_input'
+                            git grep -IE ' +$' | fgrep -v 'lib/yamlcpp' | fgrep -v '.gold:' | fgrep -v '.test_input'
                             if [ "1" != "$?" ]; then
                                 echo "Error: Trailing whitespaces are not allowed!"
                                 echo "Error: Please run: git grep -IE ' +$'"
@@ -73,15 +73,15 @@ pipeline {
                             [ "0" != "$?" ] && exit 1
 
                             # Normal exit
-                            exit 0                            
+                            exit 0
                         '''
                 }
             }
         }
     }
-    
-    post { 
-        cleanup { 
+
+    post {
+        cleanup {
             cleanWs()
         }
     }
