@@ -21,6 +21,7 @@ cd "${WORKSPACE}/src"
 
 # First, make sure there are no trailing WS!!!
 git grep -IE ' +$' | \
+    fgrep -v 'lib/yamlcpp' | \
     fgrep -v '.gold:' | \
     fgrep -v '.test_input'
 if [ "1" != "$?" ]; then
