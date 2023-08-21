@@ -20,7 +20,7 @@ RUN <<EOF
   # Various other tools
   yum -y install \
     sudo git rpm-build distcc-server file wget openssl hwloc \
-    nghttp2 libnghttp2-devel
+    nghttp2 libnghttp2-devel fmt fmt-devel
 
   # Devel packages that ATS needs
   yum -y install \
