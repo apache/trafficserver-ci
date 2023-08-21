@@ -6,23 +6,23 @@ FROM fedora:38
 RUN <<EOF
   set -e
 
-  yum -y install dnf-plugins-core
-  yum repolist
-  yum -y update
+  dnf -y install dnf-plugins-core
+  dnf repolist
+  dnf -y update
 
   # Build tools.
-  yum -y install \
+  dnf -y install \
     ccache make pkgconfig bison flex gcc-c++ clang \
     autoconf automake libtool \
     cmake ninja-build
 
   # Various other tools
-  yum -y install \
+  dnf -y install \
     sudo git rpm-build distcc-server file wget openssl hwloc \
-    nghttp2 libnghttp2-devel
+    nghttp2 libnghttp2-devel fmt fmt-devel
 
   # Devel packages that ATS needs
-  yum -y install \
+  dnf -y install \
     openssl-devel expat-devel pcre-devel libcap-devel hwloc-devel libunwind-devel \
     xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
@@ -30,7 +30,7 @@ RUN <<EOF
     curl tcl-devel java
 
   # autest stuff
-  yum -y install \
+  dnf -y install \
     python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet
 EOF
@@ -58,12 +58,12 @@ RUN pip3 install pipenv httpbin
 #-------------------------------------------------------------------------------
 # Install the HTTP/3 build tools, including openssl-quic.
 #-------------------------------------------------------------------------------
-RUN yum -y install libev-devel jemalloc-devel libxml2-devel \
+RUN dnf -y install libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel jansson-devel zlib-devel systemd-devel \
     perl-FindBin cargo
 
 # go will be installed by build_h3_tools.
-RUN yum remove -y golang
+RUN dnf remove -y golang
 ARG h3_tools_dir=/root/build_h3_tools
 RUN mkdir -p ${h3_tools_dir}
 COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
@@ -112,7 +112,7 @@ RUN <<EOF
 EOF
 
 # Install lcov
-RUN yum install -y lcov
+RUN dnf install -y lcov
 
-# Keep this at the end to clean up the yum cache.
-RUN yum clean all
+# Keep this at the end to clean up the dnf cache.
+RUN dnf clean all
