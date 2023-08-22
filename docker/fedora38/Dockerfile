@@ -19,7 +19,7 @@ RUN <<EOF
   # Various other tools
   dnf -y install \
     sudo git rpm-build distcc-server file wget openssl hwloc \
-    nghttp2 libnghttp2-devel fmt fmt-devel
+    nghttp2 libnghttp2-devel fmt fmt-devel pcre2-devel
 
   # Devel packages that ATS needs
   dnf -y install \
