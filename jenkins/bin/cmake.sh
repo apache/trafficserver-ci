@@ -24,7 +24,13 @@ cd "${WORKSPACE}/src"
 
 mkdir cmake-build-release
 cd cmake-build-release
-cmake -GNinja -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DCMAKE_BUILD_TYPE:STRING=Release -DBUILD_EXPERIMENTAL_PLUGINS=ON -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DCMAKE_INSTALL_PREFIX=/tmp/ats ..
+cmake -GNinja \
+  -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
+	-DCMAKE_BUILD_TYPE:STRING=Release \
+	-DBUILD_EXPERIMENTAL_PLUGINS=ON \
+	-DOPENSSL_ROOT_DIR=/opt/openssl-quic \
+	-DENABLE_CRIPTS=on \
+	-DCMAKE_INSTALL_PREFIX=/tmp/ats ..
 cmake --build . -j4 -v
 cmake --install .
 ctest -j4 --output-on-failure --no-compress-output -T Test
