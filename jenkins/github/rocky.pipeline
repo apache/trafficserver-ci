@@ -71,7 +71,15 @@ pipeline {
                             make install
                             /tmp/ats/bin/traffic_server -K -k -R 1
                         else
-                            cmake -B cmake-build-quiche -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DENABLE_QUICHE=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_EXPERIMENTAL_PLUGINS=ON -Dquiche_ROOT=/opt/quiche -DOPENSSL_ROOT_DIR=/opt/boringssl -DCMAKE_INSTALL_PREFIX=/tmp/ats_quiche
+                            cmake -B cmake-build-quiche \
+														  -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
+															-DENABLE_QUICHE=ON \
+															-DCMAKE_BUILD_TYPE=Debug \
+															-DBUILD_EXPERIMENTAL_PLUGINS=ON \
+															-Dquiche_ROOT=/opt/quiche \
+															-DOPENSSL_ROOT_DIR=/opt/boringssl \
+															-DENABLE_CRIPTS=on \
+															-DCMAKE_INSTALL_PREFIX=/tmp/ats_quiche
                             cmake --build cmake-build-quiche -j4 -v
                             cmake --install cmake-build-quiche
                             pushd cmake-build-quiche
