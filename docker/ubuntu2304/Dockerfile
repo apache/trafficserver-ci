@@ -3,7 +3,7 @@ FROM ubuntu:23.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update; \
-    apt-get -y install build-essential llvm ccache \
+    apt-get -y install build-essential llvm lld ccache \
     make pkgconf bison flex g++ clang gettext libc++-dev autoconf automake \
     libtool autotools-dev git distcc file wget openssl hwloc intltool-debian \
     clang-tools-14 clang-14 ; \
