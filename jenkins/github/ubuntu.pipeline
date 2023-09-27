@@ -56,7 +56,7 @@ pipeline {
                         autoreconf -fiv
                         mkdir out_of_source_build_dir
                         cd out_of_source_build_dir
-                        CC="clang" CXX="clang++" ../configure --enable-experimental-plugins --enable-example-plugins --enable-expensive-tests --prefix=/tmp/ats/ --enable-werror --enable-ccache
+                        CC="clang" CXX="clang++" LD="lld" AR="llvm-ar" NM="llvm-nm" ../configure --enable-experimental-plugins --enable-example-plugins --enable-expensive-tests --prefix=/tmp/ats/ --enable-werror --enable-ccache
                         make -j4 V=1 Q=
                         make -j4 check VERBOSE=Y V=1
                         make install
