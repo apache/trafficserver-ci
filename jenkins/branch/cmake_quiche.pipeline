@@ -68,7 +68,7 @@ pipeline {
 					set -e
 					export PATH=/opt/bin:${PATH}
 					source ../ci/jenkins/bin/environment.sh
-					../ci/jenkins/bin/cmake.sh
+					../ci/jenkins/bin/cmake_quiche.sh
 					'''
 				}
 			}

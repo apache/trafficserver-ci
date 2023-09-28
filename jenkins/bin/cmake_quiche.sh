@@ -31,17 +31,19 @@ fi
 
 cd "${WORKSPACE}/src"
 
-cmake -B cmake-build-release\
+cmake -B cmake-build-quiche \
   -GNinja \
   -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
+  -DENABLE_QUICHE=ON \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_EXPERIMENTAL_PLUGINS=ON \
-  -DOPENSSL_ROOT_DIR=/opt/openssl-quic \
-  -DCMAKE_INSTALL_PREFIX=/tmp/ats
-cmake --build cmake-build-release -j4 -v
-cmake --install cmake-build-release
+  -Dquiche_ROOT=/opt/quiche \
+  -DOPENSSL_ROOT_DIR=/opt/boringssl \
+  -DCMAKE_INSTALL_PREFIX=/tmp/ats_quiche
+cmake --build cmake-build-quiche -j4 -v
+cmake --install cmake-build-quiche
 
-pushd cmake-build-release
+pushd cmake-build-quiche
 ctest -j4 --output-on-failure --no-compress-output -T Test
-/tmp/ats/bin/traffic_server -K -k -R 1
+/tmp/ats_quiche/bin/traffic_server -K -k -R 1
 popd
