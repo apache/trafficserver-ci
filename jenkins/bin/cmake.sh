@@ -36,8 +36,8 @@ cmake -B cmake-build-release\
   -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_EXPERIMENTAL_PLUGINS=ON \
-  -DOPENSSL_ROOT_DIR=/opt/openssl-quic \
   -DCMAKE_INSTALL_PREFIX=/tmp/ats
+#  -DOPENSSL_ROOT_DIR=/opt/openssl-quic
 cmake --build cmake-build-release -j4 -v
 cmake --install cmake-build-release
 
