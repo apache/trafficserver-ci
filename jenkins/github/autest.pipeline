@@ -70,17 +70,32 @@ pipeline {
 
 						set -x
 						set -e
+
 						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
 						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
 
-						# Change permissions so that all files are readable
-						# (default user umask may change and make these unreadable)
-						sudo chmod -R o+r .
-						autoreconf -fiv
-						./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-ccache
-						make -j4
-						make install
+						# We do not support CMake builds for the 9.x branch.
+						if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
+						     "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
+						     "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+						then
+							echo "CMake builds are not supported for the 9.x branch."
+							echo "Building with autotools instead."
+
+							# Change permissions so that all files are readable
+							# (default user umask may change and make these unreadable)
+							sudo chmod -R o+r .
+							autoreconf -fiv
+							./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-ccache
+							make -j4
+							make install
+						else
+							echo "Building with CMake."
+							cmake -B build --preset ci-fedora-autest
+							cmake --build build -v
+							cmake --install build
+						fi
 						'''
 				}
 			}
@@ -99,8 +114,19 @@ pipeline {
 						export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
 						mkdir -p ${export_dir}
 
+						autest_args=""
+						if [ -d ../build ]; then
+							# CMake: Enter into the build's test directory.
+							cd ../build/tests
+							pipenv install
+							autest_args="--sandbox /tmp/sandbox"
+						else
+							# Autoconf.
+							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+						fi
+
 						if [ ${SHARDCNT} -le 0 ]; then
-							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
+							./autest.sh ${autest_args} || true
 						else
 							testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
 							testsall=( $(
@@ -113,7 +139,7 @@ pipeline {
 							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
 							shardbeg=$((${shardsize} * ${SHARD}))
 							sliced=${testsall[@]:${shardbeg}:${shardsize}}
-							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f ${sliced[@]} || true
+							./autest.sh ${autest_args} -f ${sliced[@]} || true
 
 						fi
 
