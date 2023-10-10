@@ -115,6 +115,7 @@ pipeline {
 						mkdir -p ${export_dir}
 
 						autest_args=""
+						testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
 						if [ -d ../build ]; then
 							# CMake: Enter into the build's test directory.
 							cd ../build/tests
@@ -128,14 +129,13 @@ pipeline {
 						if [ ${SHARDCNT} -le 0 ]; then
 							./autest.sh ${autest_args} || true
 						else
-							testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
 							testsall=( $(
 							  for el in  "${testsall[@]}" ; do
 							    echo $el
 							  done | sort) )
 							ntests=${#testsall[@]}
 
-													  shardsize=$((${ntests} / ${SHARDCNT}))
+							shardsize=$((${ntests} / ${SHARDCNT}))
 							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
 							shardbeg=$((${shardsize} * ${SHARD}))
 							sliced=${testsall[@]:${shardbeg}:${shardsize}}
