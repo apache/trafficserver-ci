@@ -48,16 +48,31 @@ pipeline {
                         set -x
                         set -e
 
-                        # We don't use c++20 features yet, but we want to make
-                        # sure we can build with the flag set.
-                        export CXXSTD=20
+                        # We do not support CMake builds for the 9.x branch.
+                        if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                        then
+                            # We don't use c++20 features yet, but we want to make
+                            # sure we can build with the flag set.
+                            export CXXSTD=20
 
-                        autoreconf -fiv
-                        ./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-ccache
-                        make -j4 V=1 Q=
-                        make -j4 check VERBOSE=Y V=1
-                        make install
-                        /tmp/ats/bin/traffic_server -K -k -R 1
+                            autoreconf -fiv
+                            ./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-wccp --enable-ccache
+                            make -j4 V=1 Q=
+                            make -j4 check VERBOSE=Y V=1
+                            make install
+                            /tmp/ats/bin/traffic_server -K -k -R 1
+                        else
+                            sed -i 's/CMAKE_CXX_STANDARD 17/CMAKE_CXX_STANDARD 20/g' CMakeLists.txt
+                            cmake -B build --preset ci
+                            cmake --build build -v
+                            cmake --install build
+                            pushd build
+                            ctest -j4 --output-on-failure --no-compress-output -T Test
+                            /tmp/ats/bin/traffic_server -K -k -R 1
+                            popd
+                        fi
                     '''
                 }
             }

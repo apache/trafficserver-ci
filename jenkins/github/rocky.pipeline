@@ -71,10 +71,10 @@ pipeline {
                             make install
                             /tmp/ats/bin/traffic_server -K -k -R 1
                         else
-                            cmake -B cmake-build-quiche -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DENABLE_QUICHE=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_EXPERIMENTAL_PLUGINS=ON -Dquiche_ROOT=/opt/quiche -DOPENSSL_ROOT_DIR=/opt/boringssl -DCMAKE_INSTALL_PREFIX=/tmp/ats_quiche
-                            cmake --build cmake-build-quiche -j4 -v
-                            cmake --install cmake-build-quiche
-                            pushd cmake-build-quiche
+                            cmake -B build --preset ci-rocky
+                            cmake --build build -v
+                            cmake --install build
+                            pushd build
                             ctest -j4 --output-on-failure --no-compress-output -T Test
                             /tmp/ats_quiche/bin/traffic_server -K -k -R 1
                             popd

@@ -43,6 +43,7 @@ pipeline {
                 dir('src') {
                     sh '''#!/bin/bash
                     set -x
+                    set -e
                     # Skip if nothing in doc has changed
                     INCLUDE_FILES=$(for i in $(git grep literalinclude doc/ | awk '{print $3}'); do basename $i; done | sort -u | paste -sd\\|)
                     echo $INCLUDE_FILES
@@ -55,12 +56,17 @@ pipeline {
                     fi
 
                     sudo chmod -R 777 . || exit 1
-                    cd doc
-                    pipenv install || exit 1
 
-                    tmpfile=/tmp/build_the_docs.$$
+                    # We do not support CMake builds for the 9.x branch.
+                    if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
+                         "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
+                         "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                    then
+                        cd doc
+                        pipenv install || exit 1
 
-                    cat << _END_OF_DOC_ > ${tmpfile}
+                        tmpfile=/tmp/build_the_docs.$$
+                        cat << _END_OF_DOC_ > ${tmpfile}
 #!/bin/bash
 set -e
 set -x
@@ -76,11 +82,20 @@ fi
 make -j4 -e SPHINXOPTS="${sphinxopts}" html
 _END_OF_DOC_
 
-                    chmod 755 ${tmpfile}
-                    echo "Running:"
-                    cat ${tmpfile}
-                    pipenv run ${tmpfile} || exit 1
-                    rm ${tmpfile}
+                        chmod 755 ${tmpfile}
+                        echo "Running:"
+                        cat ${tmpfile}
+                        pipenv run ${tmpfile} || exit 1
+                        rm ${tmpfile}
+
+                    else
+                        # cmake. Much easier.
+                        cmake -B docs-build -DENABLE_DOCS=ON
+                        cmake --build docs-build --target generate_docs -v
+
+                        # The rest of the script expects to be just above the html output directory.
+                        cd docs-build/doc
+                    fi
 
                     # If we made it here, the doc build ran and succeeded. Let's copy out the
                     # docbuild contents so it can be published.

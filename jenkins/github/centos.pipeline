@@ -47,21 +47,37 @@ pipeline {
                     sh '''#!/bin/bash
                         set -x
                         set -e
+
                         source /opt/rh/devtoolset-8/enable
-                        autoreconf -fiv
-                        ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-ccache
-                        make -j4 V=1 Q=
-                        make -j 2 check VERBOSE=Y V=1
-                        make install
-                        /tmp/ats/bin/traffic_server -K -k -R 1
+
+                        # We do not support CMake builds for the 9.x branch.
+                        if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                        then
+                            autoreconf -fiv
+                            ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-ccache
+                            make -j4 V=1 Q=
+                            make -j 2 check VERBOSE=Y V=1
+                            make install
+                            /tmp/ats/bin/traffic_server -K -k -R 1
+                        else
+                            cmake -B cmake-build-release --preset ci -G "Unix Makefiles" -DOPENSSL_ROOT_DIR=/opt/openssl-quic
+                            cmake --build cmake-build-release -v
+                            cmake --install cmake-build-release
+                            pushd cmake-build-release
+                            ctest -j4 --output-on-failure --no-compress-output -T Test
+                            /tmp/ats/bin/traffic_server -K -k -R 1
+                            popd
+                        fi
                         '''
                 }
             }
         }
     }
-    
-    post { 
-        cleanup { 
+
+    post {
+        cleanup {
             cleanWs()
         }
     }
