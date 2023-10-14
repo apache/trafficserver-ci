@@ -58,7 +58,7 @@ pipeline {
                             # sure we can build with the flag set.
                             sed -i 's/CMAKE_CXX_STANDARD 17/CMAKE_CXX_STANDARD 20/g' CMakeLists.txt
 
-                            cmake -B build --preset ci -G "Unix Makefiles"
+                            cmake -B build --preset ci
                             cmake --build build -v
                             cmake --install build
                             pushd build
