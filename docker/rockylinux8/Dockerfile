@@ -13,7 +13,7 @@ RUN <<EOF
 
   # Build tools.
   yum -y install \
-    ccache make pkgconfig bison flex gcc-c++ clang cmake \
+    ccache make pkgconfig bison flex gcc-c++ clang cmake ninja-build \
     autoconf automake libtool \
     gcc-toolset-11 gcc-toolset-11-libasan-devel
 

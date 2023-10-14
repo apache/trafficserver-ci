@@ -50,7 +50,7 @@ pipeline {
                         # `false -a`: Always run autotools until -DENABLE_HARDENING=ON is implemented.
                         if [ false -a -d cmake ]
                         then
-                            cmake -B cmake-build-release --preset ci -G "Unix Makefiles" -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DENABLE_HARDENING=ON
+                            cmake -B cmake-build-release --preset ci -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DENABLE_HARDENING=ON
                             cmake --build cmake-build-release -v
                             cmake --install cmake-build-release
                             pushd cmake-build-release

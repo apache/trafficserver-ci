@@ -6,7 +6,7 @@ RUN apt-get update; \
     apt-get -y install build-essential llvm lld ccache \
     make pkgconf bison flex g++ clang gettext libc++-dev autoconf automake \
     libtool autotools-dev git distcc file wget openssl hwloc intltool-debian \
-    clang-tools-14 clang-14 ; \
+    clang-tools-14 clang-14 cmake ninja-build; \
 
     apt-get -y install libssl-dev libexpat1-dev \
     libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
