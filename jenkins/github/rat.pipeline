@@ -45,8 +45,8 @@ pipeline {
                         set -x
                         set -e
 
-                        # `false -a` because we currently don't support RAT in cmake.
-                        if [ false a -d cmake ]
+                        # `1 -eq 0 -a` because we currently don't support RAT in cmake.
+                        if [ 1 -eq 0 a -d cmake ]
                         then
                             cmake -B build
                             cmake --build build --target rat
