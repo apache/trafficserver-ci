@@ -47,20 +47,9 @@ pipeline {
                     sh '''#!/bin/bash
                         set -x
                         set -e
-                        # We do not support CMake builds for the 9.x branch.
-                        # Always run autotools until -DENABLE_HARDENING=ON is implemented.
-                        if [ true -o \
-                            "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
-                             "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
-                             "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                        # `false -a`: Always run autotools until -DENABLE_HARDENING=ON is implemented.
+                        if [ false -a -d cmake ]
                         then
-                            autoreconf -fiv
-                            ./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-debug --enable-werror --enable-ccache --enable-hardening
-                            make -j4 V=1 Q=
-                            make -j 2 check VERBOSE=Y V=1
-                            make install
-                            /tmp/ats/bin/traffic_server -K -k -R 1
-                        else
                             cmake -B cmake-build-release --preset ci -G "Unix Makefiles" -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DENABLE_HARDENING=ON
                             cmake --build cmake-build-release -v
                             cmake --install cmake-build-release
@@ -68,6 +57,14 @@ pipeline {
                             ctest -j4 --output-on-failure --no-compress-output -T Test
                             /tmp/ats/bin/traffic_server -K -k -R 1
                             popd
+                        else
+                            # Pre 10.x branches only supported autotools.
+                            autoreconf -fiv
+                            ./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-debug --enable-werror --enable-ccache --enable-hardening
+                            make -j4 V=1 Q=
+                            make -j 2 check VERBOSE=Y V=1
+                            make install
+                            /tmp/ats/bin/traffic_server -K -k -R 1
                         fi
                     '''
                 }
