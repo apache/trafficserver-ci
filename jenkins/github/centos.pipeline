@@ -52,6 +52,9 @@ pipeline {
 
                         if [ -d cmake ]
                         then
+                            # cmake for the centos image is installed in /opt/bin.
+                            export PATH=/opt/bin:${PATH}
+
                             cmake -B cmake-build-release --preset ci -G "Unix Makefiles" -DOPENSSL_ROOT_DIR=/opt/openssl-quic
                             cmake --build cmake-build-release -v
                             cmake --install cmake-build-release
