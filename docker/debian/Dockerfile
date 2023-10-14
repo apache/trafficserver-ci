@@ -13,7 +13,7 @@ RUN <<EOT /bin/bash
 
   apt-get -y install libssl-dev libexpat1-dev \
     libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
-    libjemalloc-dev libluajit-5.1-dev liblzma-dev \
+    libmaxminddb-dev libjemalloc-dev libluajit-5.1-dev liblzma-dev \
     libhiredis-dev libncurses-dev libgeoip-dev libmagick++-dev
 
   apt-get -y autoremove
