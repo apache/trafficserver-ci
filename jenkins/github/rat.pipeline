@@ -44,14 +44,23 @@ pipeline {
                     sh '''#!/bin/bash
                         set -x
                         set -e
-                        autoreconf -if && ./configure
-                        rm -f lib/ts/stamp-h1
 
-                        # Run RAT
-                        make rat | tee RAT.txt
+                        # `false -a` because we currently don't support RAT in cmake.
+                        if [ false a -d cmake ]
+                        then
+                            cmake -B build
+                            cmake --build build --target rat
+                        else
+                            # Pre 10.x branches only support autotools.
+                            autoreconf -if && ./configure
+                            rm -f lib/ts/stamp-h1
 
-                        # Mark as failed if there are any unknown licenses
-                        grep '^0 Unknown Licenses' RAT.txt > /dev/null || exit -1
+                            # Run RAT
+                            make rat | tee RAT.txt
+
+                            # Mark as failed if there are any unknown licenses
+                            grep '^0 Unknown Licenses' RAT.txt > /dev/null || exit -1
+                        fi
                         exit 0
                     '''
                 }

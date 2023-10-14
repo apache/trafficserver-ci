@@ -48,12 +48,9 @@ pipeline {
                         set -x
                         set -e
 
-                        # We do not support CMake builds for the 9.x branch.
-                        if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
-                             "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
-                             "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                        if [ ! -d cmake ]
                         then
-                            echo "CMake builds are not supported for the 9.x branch."
+                            echo "CMake builds are not supported for this branch."
                             echo "No need to test it to show that it fails."
                             exit 0
                         fi

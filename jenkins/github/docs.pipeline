@@ -43,7 +43,6 @@ pipeline {
                 dir('src') {
                     sh '''#!/bin/bash
                     set -x
-                    set -e
                     # Skip if nothing in doc has changed
                     INCLUDE_FILES=$(for i in $(git grep literalinclude doc/ | awk '{print $3}'); do basename $i; done | sort -u | paste -sd\\|)
                     echo $INCLUDE_FILES
@@ -57,11 +56,15 @@ pipeline {
 
                     sudo chmod -R 777 . || exit 1
 
-                    # We do not support CMake builds for the 9.x branch.
-                    if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
-                         "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
-                         "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                    if [ -d cmake ]
                     then
+                        cmake -B docs-build -DENABLE_DOCS=ON
+                        cmake --build docs-build --target generate_docs -v || exit 1
+                    else
+                        # Pre 10.x branches only supported autotools.
+
+                        # The rest of the script expects to be just above the html output directory.
+                        cd docs-build/doc
                         cd doc
                         pipenv install || exit 1
 
@@ -88,13 +91,6 @@ _END_OF_DOC_
                         pipenv run ${tmpfile} || exit 1
                         rm ${tmpfile}
 
-                    else
-                        # cmake. Much easier.
-                        cmake -B docs-build -DENABLE_DOCS=ON
-                        cmake --build docs-build --target generate_docs -v
-
-                        # The rest of the script expects to be just above the html output directory.
-                        cd docs-build/doc
                     fi
 
                     # If we made it here, the doc build ran and succeeded. Let's copy out the

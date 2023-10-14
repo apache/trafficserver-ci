@@ -48,11 +48,19 @@ pipeline {
                         set -x
                         set -e
 
-                        # We do not support CMake builds for the 9.x branch.
-                        if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
-                             "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
-                             "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                        if [ -d cmake ]
                         then
+                            sed -i 's/CMAKE_CXX_STANDARD 17/CMAKE_CXX_STANDARD 20/g' CMakeLists.txt
+                            cmake -B build --preset ci
+                            cmake --build build -v
+                            cmake --install build
+                            pushd build
+                            ctest -j4 --output-on-failure --no-compress-output -T Test
+                            /tmp/ats/bin/traffic_server -K -k -R 1
+                            popd
+                        else
+                            # Pre 10.x branches only support autotools.
+
                             # We don't use c++20 features yet, but we want to make
                             # sure we can build with the flag set.
                             export CXXSTD=20
@@ -63,15 +71,6 @@ pipeline {
                             make -j4 check VERBOSE=Y V=1
                             make install
                             /tmp/ats/bin/traffic_server -K -k -R 1
-                        else
-                            sed -i 's/CMAKE_CXX_STANDARD 17/CMAKE_CXX_STANDARD 20/g' CMakeLists.txt
-                            cmake -B build --preset ci
-                            cmake --build build -v
-                            cmake --install build
-                            pushd build
-                            ctest -j4 --output-on-failure --no-compress-output -T Test
-                            /tmp/ats/bin/traffic_server -K -k -R 1
-                            popd
                         fi
                     '''
                 }
