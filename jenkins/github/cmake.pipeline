@@ -62,7 +62,7 @@ pipeline {
                         export PATH=/opt/bin:${PATH}
 
                         cmake -B cmake-build-release -GNinja -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_EXPERIMENTAL_PLUGINS=ON -DOPENSSL_ROOT_DIR=/opt/openssl-quic -DCMAKE_INSTALL_PREFIX=/tmp/ats
-                        cmake --build cmake-build-release -j4 -v
+                        cmake --build cmake-build-release -v
                         cmake --install cmake-build-release
                         pushd cmake-build-release
                         ctest -j4 --output-on-failure --no-compress-output -T Test
@@ -70,7 +70,7 @@ pipeline {
                         popd
 
                         cmake -B cmake-build-quiche -GNinja -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DENABLE_QUICHE=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_EXPERIMENTAL_PLUGINS=ON -Dquiche_ROOT=/opt/quiche -DOPENSSL_ROOT_DIR=/opt/boringssl -DCMAKE_INSTALL_PREFIX=/tmp/ats_quiche
-                        cmake --build cmake-build-quiche -j4 -v
+                        cmake --build cmake-build-quiche -v
                         cmake --install cmake-build-quiche
                         pushd cmake-build-quiche
                         ctest -j4 --output-on-failure --no-compress-output -T Test

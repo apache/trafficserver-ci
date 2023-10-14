@@ -20,16 +20,31 @@ pipeline {
             steps {
                 echo 'Starting build'
                 dir('src') {
-                    sh('autoreconf -fiv')
-                    sh('./configure --enable-experimental-plugins')
-                    sh('gmake -j3')
+                    sh '''#!/bin/bash
+
+                        set -x
+                        set -e
+
+                        # We do not support CMake builds for the 9.x branch.
+                        if [ "${GITHUB_PR_TARGET_BRANCH}" == "9.0.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.1.x" -o \
+                             "${GITHUB_PR_TARGET_BRANCH}" == "9.2.x" ]
+                        then
+                            autoreconf -fiv
+                            ./configure --enable-experimental-plugins
+                            gmake -j3
+                        else
+                            cmake -B cmake-build-release -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_INSTALL_PREFIX=/tmp/ats
+                            cmake --build cmake-build-release -v
+                        fi
+                        '''
                 }
             }
         }
     }
-    
-    post { 
-        cleanup { 
+
+    post {
+        cleanup {
             cleanWs()
         }
     }
