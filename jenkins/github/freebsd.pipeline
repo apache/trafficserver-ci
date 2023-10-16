@@ -7,11 +7,24 @@ pipeline {
                     echo "${sha1}"
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
-                        extensions: [],
-                        //+refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin-pull/pull/${GITHUB_PR_NUMBER}/merge
+                        extensions: [
+                            // We have to set an idenity for the merge step because Git requires
+                            // the user.name and user.email to be set to do a merge.
+                            [$class: "UserIdentity",
+                                name: "ATS CI User",
+                                email: "noreply@trafficserver.apache.org"
+                            ],
+                            [$class: "PreBuildMerge",
+                                options: [
+                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                    fastForwardMode: "NO_FF",
+                                    mergeRemote: "origin",
+                                    mergeStrategy: "DEFAULT"
+                                ]
+                            ],
+                        ],
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                        //userRemoteConfigs: [[url: 'https://github.com/ezelkow1/trafficserver', refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                        //userRemoteConfigs: [[url: 'https://github.com/ezelkow1/trafficserver', refspec: '+refs/pull/${sha1}/merge:refs/remotes/origin/pull/${sha1}/merge']]])
+                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
                 }
                 echo 'Finished Cloning'
             }
