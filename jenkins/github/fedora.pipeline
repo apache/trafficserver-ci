@@ -50,8 +50,9 @@ pipeline {
 
                         if [ -d cmake ]
                         then
-                            sed -i 's/CMAKE_CXX_STANDARD 17/CMAKE_CXX_STANDARD 20/g' CMakeLists.txt
-                            cmake -B build --preset ci
+                            # We don't use c++20 features yet, but we want to make
+                            # sure we can build with the flag set.
+                            cmake -B build --preset ci -DCMAKE_CXX_STANDARD=20
                             cmake --build build -v
                             cmake --install build
                             pushd build
