@@ -38,8 +38,7 @@ pipeline {
                         set -x
                         set -e
 
-                        # `1 -eq 0`: Avoid doing cmake builds for freebsd until we install cmake on the CI boxes.
-                        if [ 1 -eq 0 -a -d cmake ]
+                        if [ -d cmake ]
                         then
                             cmake -B cmake-build-release -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_INSTALL_PREFIX=/tmp/ats
                             cmake --build cmake-build-release -v
