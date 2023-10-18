@@ -20,3 +20,21 @@ RUN <<EOF
 
     apt-get -y autoremove; apt-get -y clean
 EOF
+
+# Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
+# configured with, so that has to be used. Otherwise there will be permissions
+# issues.
+ARG username=jenkins
+ARG uid=1200
+RUN <<EOF
+  set -e
+  useradd \
+    --home-dir /home/${username} \
+    --groups users,sudo \
+    --uid ${uid} \
+    --shell /bin/bash \
+    --create-home \
+    ${username}
+  echo "${username} ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
+  chown -R ${username} /home/${username}
+EOF
