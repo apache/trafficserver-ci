@@ -44,7 +44,7 @@ pipeline {
                         set -x
                         set -e
 
-                        if [ ! -d cmake ]
+                        if [ -d cmake ]
                         then
                             # Build ATS to generate a compile_commands.json file for clang-analyzer.
                             cmake -B build -G Ninja -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=OFF
