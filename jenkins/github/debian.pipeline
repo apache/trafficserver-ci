@@ -49,10 +49,10 @@ pipeline {
                         set -e
                         if [ -d cmake ]
                         then
-                            cmake -B cmake-build-release --preset ci-debian -DOPENSSL_ROOT_DIR=/opt/openssl-quic
-                            cmake --build cmake-build-release -v
-                            cmake --install cmake-build-release
-                            pushd cmake-build-release
+                            cmake -B build --preset ci-debian -DOPENSSL_ROOT_DIR=/opt/openssl-quic
+                            cmake --build build -v
+                            cmake --install build
+                            pushd build
                             ctest -j4 --output-on-failure --no-compress-output -T Test
                             /tmp/ats/bin/traffic_server -K -k -R 1
                             popd
