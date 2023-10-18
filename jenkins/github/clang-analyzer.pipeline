@@ -43,29 +43,52 @@ pipeline {
                     sh '''#!/bin/bash
                         set -x
                         set -e
-                        autoreconf -fiv
-                        scan-build-14 --keep-cc ./configure --enable-experimental-plugins --with-luajit
-                        make -j4 -C lib all-local V=1 Q=
-                        scan-build-14 --keep-cc -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker \
-                            alpha.core.BoolAssignment -enable-checker alpha.core.CastSize -enable-checker alpha.core.SizeofPtr \
-                            --status-bugs --keep-empty \
-                            -o ${WORKSPACE}/output/${GITHUB_PR_NUMBER} --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}" \
-                            make -j3 V=1 Q=
-                        #CC="clang" CXX="clang++" CXXFLAGS="-Qunused-arguments" WITH_LIBCPLUSPLUS="yes" ./configure --enable-experimental-plugins
-                        make -j4
-                   
-                        [ ! -f ${WORKSPACE}/output/${GITHUB_PR_NUMBER}/index.html ] && touch ${WORKSPACE}/output/No\\ Errors\\ Reported; exit 0 || exit 1
+
+                        if [ ! -d cmake ]
+                        then
+                            # Build ATS to generate a compile_commands.json file for clang-analyzer.
+                            cmake -B build -G Ninja -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=OFF
+                            cmake --build build -v
+
+                            analyze-build-14 \
+                                --cdb build/compile_commands.json \
+                                -v \
+                                --status-bugs \
+                                --keep-empty \
+                                -enable-checker alpha.unix.cstring.BufferOverlap \
+                                -enable-checker alpha.core.BoolAssignment \
+                                -enable-checker alpha.core.CastSize \
+                                -enable-checker alpha.core.SizeofPtr \
+                                -o ${WORKSPACE}/output/${GITHUB_PR_NUMBER} \
+                                --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}"
+                        else
+                            echo "CMake builds are not supported for the this branch."
+                            echo "Falling back to autotools."
+                            autoreconf -fiv
+                            scan-build-14 --keep-cc ./configure --enable-experimental-plugins --with-luajit
+                            make -j4 -C lib all-local V=1 Q=
+                            scan-build-14 --keep-cc -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker \
+                                alpha.core.BoolAssignment -enable-checker alpha.core.CastSize -enable-checker alpha.core.SizeofPtr \
+                                --status-bugs --keep-empty \
+                                -o ${WORKSPACE}/output/${GITHUB_PR_NUMBER} --html-title="clang-analyzer: ${GITHUB_PR_NUMBER}" \
+                                make -j3 V=1 Q=
+                            make -j4
+                        fi
+
+                        # The above will have a non-zero exit if it finds problems. Thus,
+                        # because of `set -e`, if we get here the report was clean.
+                        touch "${WORKSPACE}/output/No Errors Reported"
                     '''
                 }
             }
         }
     }
-    
-    post { 
+
+    post {
         always {
             archiveArtifacts artifacts: 'output/**/*', fingerprint: true, allowEmptyArchive: true
         }
-        cleanup { 
+        cleanup {
             cleanWs()
         }
     }
