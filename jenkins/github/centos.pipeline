@@ -56,7 +56,7 @@ pipeline {
                             export PATH=/opt/bin:${PATH}
 
                             cmake -B cmake-build-release --preset ci -G "Unix Makefiles" -DOPENSSL_ROOT_DIR=/opt/openssl-quic
-                            cmake --build cmake-build-release -v
+                            cmake --build cmake-build-release -j4 -v
                             cmake --install cmake-build-release
                             pushd cmake-build-release
                             ctest -j4 --output-on-failure --no-compress-output -T Test
