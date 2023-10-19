@@ -46,9 +46,7 @@ pipeline {
 
                         if [ -d cmake ]
                         then
-                            # Build ATS to generate a compile_commands.json file for clang-analyzer.
-                            # Disable ccache because supposedly it can confuse clang-analyzer.
-                            cmake -B build -G Ninja -DENABLE_CCACHE=OFF -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=OFF
+                            cmake -B build --preset ci-clang-analyzer
                             cmake --build build -v
 
                             analyze-build-14 \
