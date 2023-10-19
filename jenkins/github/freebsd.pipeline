@@ -40,8 +40,8 @@ pipeline {
 
                         if [ -d cmake ]
                         then
-                            cmake -B cmake-build-release -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_INSTALL_PREFIX=/tmp/ats
-                            cmake --build cmake-build-release -v
+                            cmake -B build -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_INSTALL_PREFIX=/tmp/ats
+                            cmake --build build -v
                         else
                             # Pre 10.x branches only support autotools.
                             autoreconf -fiv
