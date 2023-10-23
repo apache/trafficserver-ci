@@ -101,9 +101,9 @@ _END_OF_DOC_
                     if [ -d docbuild ]
                     then
                       docbuild_dir="docbuild"
-                    elif [ -d docs-build/docbuild ]
+                    elif [ -d docs-build/doc/docbuild ]
                     then
-                      docbuild_dir="docs-build/docbuild"
+                      docbuild_dir="docs-build/doc/docbuild"
                     else
                       echo "Could not find build docs."
                       exit 1
