@@ -27,9 +27,10 @@ autoreconf -fi
     --with-user=jenkins \
     --enable-ccache \
     --enable-werror \
-    --enable-experimental-plugins \
-    --enable-example-plugins \
     --enable-wccp
+
+#    --enable-experimental-plugins \
+#    --enable-example-plugins \
 
 ${ATS_MAKE} ${ATS_MAKE_FLAGS} V=1
 #${ATS_MAKE} check VERBOSE=Y

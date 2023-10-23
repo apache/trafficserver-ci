@@ -87,7 +87,7 @@ pipeline {
 					sudo chmod -R o+r .
 					autoreconf -fiv
 					./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
-					make -j4
+					make -j`nproc`
 					make install
 					'''
 				}

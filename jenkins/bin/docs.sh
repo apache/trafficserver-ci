@@ -18,20 +18,22 @@
 
 set -x
 
+NPROC=$(nproc)
+
 # These shenanigans are here to allow it to run both manually, and via Jenkins
 test -z "${ATS_MAKE}" && ATS_MAKE="make"
 
 # Skip if nothing in doc has changed
 #if [ -z "${GITHUB_BRANCH}" ]; then
-#	INCLUDE_FILES=$(for i in $(git grep literalinclude doc/ | awk '{print $3}'); do basename $i; done | sort -u | paste -sd\|)
-#	echo $INCLUDE_FILES
-#	if [ ! -z "$ghprbActualCommit" ]; then
-#		git diff ${ghprbActualCommit}^...${ghprbActualCommit} --name-only | egrep -E "(^doc/|$INCLUDE_FILES)" > /dev/null
-#		if [ $? = 1 ]; then
-#			echo "No relevant files changed, skipping run"
-#			exit 0
-#		fi
-#	fi
+#  INCLUDE_FILES=$(for i in $(git grep literalinclude doc/ | awk '{print $3}'); do basename $i; done | sort -u | paste -sd\|)
+#  echo $INCLUDE_FILES
+#  if [ ! -z "$ghprbActualCommit" ]; then
+#    git diff ${ghprbActualCommit}^...${ghprbActualCommit} --name-only | egrep -E "(^doc/|$INCLUDE_FILES)" > /dev/null
+#    if [ $? = 1 ]; then
+#      echo "No relevant files changed, skipping run"
+#      exit 0
+#    fi
+#  fi
 #fi
 
 vername=${GITHUB_PR_NUMBER}
@@ -41,12 +43,20 @@ outputdir="${PWD}/output"
 enoutdir="${outputdir}/en/${vername}"
 jaoutdir="${outputdir}/ja/${vername}"
 
-sudo chmod -R 777 . || exit 1
+sudo chmod -R ugo+w . || exit 1
 
-cd doc
-pipenv install || exit 1
+if [ -d cmake ]
+then
 
-tmpfile=/tmp/build_the_docs.$$
+  cmake -B docbuild -DENABLE_DOCS=ON
+  cmake --build docbuild --target generate_docs -v || exit 1
+
+else
+
+  cd doc
+  pipenv install || exit 1
+
+  tmpfile=/tmp/build_the_docs.$$
 
 cat << _END_OF_DOC_ > ${tmpfile}
 #!/bin/bash
@@ -62,24 +72,26 @@ sphinxopts="-W -D language='en'"
 if [ "${GITHUB_BRANCH}" = "8.1.x" ]; then
   sphinxopts="-D language='en'"
 fi
-make -j4 -e SPHINXOPTS="${sphinxopts}" html
+make -j${NPROC} -e SPHINXOPTS="${sphinxopts}" html
 
 mkdir -p "${enoutdir}"
 cp -rf docbuild/html/* "${enoutdir}"
 
 echo "Building JA Docs"
 rm -rf docbuild/html
-make -j4 -e SPHINXOPTS="-D language='ja'" html
+make -j${NPROC} -e SPHINXOPTS="-D language='ja'" html
 
 mkdir -p "${jaoutdir}"
 cp -rf docbuild/html/* "${jaoutdir}"
 _END_OF_DOC_
 
-chmod 755 ${tmpfile}
-echo "Running:"
-cat ${tmpfile}
-pipenv run ${tmpfile} || exit 1
-rm ${tmpfile}
+  chmod 755 ${tmpfile}
+  echo "Running:"
+  cat ${tmpfile}
+  pipenv run ${tmpfile} || exit 1
+  rm ${tmpfile}
+
+fi
 
 # If we made it here, the doc build ran and succeeded. Let's copy out the
 # docbuild contents so it can be published.
@@ -89,9 +101,9 @@ cd "${outputdir}"
 sudo chmod -R u=rwX,g=rX,o=rX . || exit 1
 
 #if [ "${PUBLISH_DOCS}" == "true" ]; then
-#	sudo cp -avx ja /home/docs
-#	sudo cp -avx en /home/docs
-#	/home/docs/docs_purge.sh ${vername}
+#  sudo cp -avx ja /home/docs
+#  sudo cp -avx en /home/docs
+#  /home/docs/docs_purge.sh ${vername}
 #fi
 
 exit 0

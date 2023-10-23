@@ -19,7 +19,9 @@
 set +x
 
 cd src
-sleep 30
+#sleep 30
+
+NPROC=$(nproc)
 
 git branch --contains ${ghprbActualCommit} > /dev/null
 if [ $? = 0 -a ! -z "$ghprbActualCommit" ]; then
@@ -104,7 +106,7 @@ autoreconf -if
     ${CURL}
 
 # Build and run regressions
-${ATS_MAKE} -j4 && ${ATS_MAKE} install
+${ATS_MAKE} -j${NPROC} && ${ATS_MAKE} install
 [ -x ${INSTALL}/bin/traffic_server ] || exit -1
 
 # Now run autest

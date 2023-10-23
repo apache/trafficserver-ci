@@ -146,7 +146,6 @@ pipeline {
 					currentBuild.description = env.SHA1
 
 					sh 'printenv'
-
 				}
 			}
 		}

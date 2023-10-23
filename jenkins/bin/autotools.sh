@@ -18,6 +18,8 @@
 
 set +x
 
+autoreconf -if
+
 printenv
 
 # Check if it's a debug or release build

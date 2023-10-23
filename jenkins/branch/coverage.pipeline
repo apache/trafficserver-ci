@@ -89,7 +89,7 @@ pipeline {
 						--enable-luajit \
 						--enable-ccache \
 						--enable-coverage
-					make -j4 V=1 Q=
+					make -j`nproc` V=1 Q=
 					make install
 					'''
 				}

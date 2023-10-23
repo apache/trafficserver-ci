@@ -24,16 +24,32 @@ pipeline {
 			steps {
 				echo 'Starting build'
 				dir('src') {
-					sh '''
-						autoreconf -fiv
-						CC="clang" \
-							CXX="clang++" \
-							CXXFLAGS="-Qunused-arguments" \
-							WITH_LIBCPLUSPLUS="yes" \
-							./configure \
-							--enable-experimental-plugins \
-							--with-openssl=/usr/local/opt/openssl
-						make -j3
+					sh '''#!/bin/bash
+						set -x
+						set -e
+
+						if [ -d cmake ]
+						then
+							CC="clang" \
+              	CXX="clang++" \
+              	CXXFLAGS="-Qunused-arguments" \
+              	WITH_LIBCPLUSPLUS="yes" \
+              	cmake -B build \
+									--preset ci \
+									-G "Unix Makefiles" \
+									-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
+              cmake --build build -j3 -v
+						else
+							autoreconf -fiv
+							CC="clang" \
+								CXX="clang++" \
+								CXXFLAGS="-Qunused-arguments" \
+								WITH_LIBCPLUSPLUS="yes" \
+								./configure \
+								--enable-experimental-plugins \
+								--with-openssl=/usr/local/opt/openssl
+							make -j3
+						fi
 					'''
 				}
 			}

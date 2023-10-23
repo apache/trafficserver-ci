@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -20,28 +20,75 @@
 
 set -x
 
-if [ "${ATS_BRANCH}" == "9.0.x" -o \
-     "${ATS_BRANCH}" == "9.1.x" -o \
-     "${ATS_BRANCH}" == "9.2.x" ]
+# join function
+join() {
+  local separator="$1"
+  shift
+  local first="$1"
+  shift
+  printf "%s" "$first" "${@/#/$separator}"
+}
+
+NPROC=$(nproc)
+
+if [ ! -d cmake ]
 then
-  echo "CMake builds are not supported for the 9.x branch."
-  echo "No need to test it to show that it fails."
+  echo "CMake builds are not supported for the pre 10.x branches."
   exit 0
 fi
 
-cd "${WORKSPACE}/src"
+# copy in CMakePresets.json
+presetpath="../ci/jenkins/branch/CMakePresets.json"
+[ -f "${presetpath}" ] && cp -f "${presetpath}" .
 
-cmake -B cmake-build-release\
-  -GNinja \
-  -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_EXPERIMENTAL_PLUGINS=ON \
-  -DCMAKE_INSTALL_PREFIX=/tmp/ats
+# debug/release become a feature
+btype="release"
+if [ "${TYPE#*debug}" != "${TYPE}" ]
+then
+  btype="debug"
+fi
+
+FEATURES="${FEATURES:=""}"
+[ -n "${FEATURES}" ] && FEATURES="${FEATURES} ${btype}"
+[ -z "${FEATURES}" ] && FEATURES="${btype}"
+
+# build CMakeUserPresets.json
+
+# split
+IFS=' ' read -ra farray <<< "$FEATURES"
+
+# join
+inherits=\"$(join '", "' "${farray[@]}")\"
+
+read -d '' contents << EOF
+{
+  "version": 2,
+  "configurePresets": [
+    { 
+      "name": "ci-preset", 
+      "inherits": [${inherits}]
+    } 
+  ] 
+}
+EOF
+
+echo "${contents}" > CMakeUserPresets.json
+
+#cmake -B cmake-build-release\
+#  -GNinja \
+#  -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
+#  -DCMAKE_BUILD_TYPE=Release \
+#  -DBUILD_EXPERIMENTAL_PLUGINS=ON \
+#  -DCMAKE_INSTALL_PREFIX=/tmp/ats
 #  -DOPENSSL_ROOT_DIR=/opt/openssl-quic
-cmake --build cmake-build-release -j4 -v
-cmake --install cmake-build-release
 
-pushd cmake-build-release
-ctest -j4 --output-on-failure --no-compress-output -T Test
-/tmp/ats/bin/traffic_server -K -k -R 1
+cmake -B builddir --preset ci-preset
+cmake --build builddir -j${NPROC} -v
+cmake --install builddir
+
+pushd builddir
+ctest -B builddir -j${NPROC} --output-on-failure --no-compress-output -T Test
 popd
+
+chmod -R go+w /tmp/ats/
+/tmp/ats/bin/traffic_server -K -k -R 1
