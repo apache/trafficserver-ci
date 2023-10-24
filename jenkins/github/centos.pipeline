@@ -48,7 +48,7 @@ pipeline {
                         set -x
                         set -e
 
-                        source /opt/rh/devtoolset-8/enable
+                        source /opt/rh/devtoolset-10/enable
 
                         if [ -d cmake ]
                         then
