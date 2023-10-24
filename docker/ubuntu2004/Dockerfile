@@ -10,7 +10,7 @@ RUN <<EOF
     apt-get -y install build-essential llvm lld ccache \
     make pkgconf bison flex g++ clang gettext libc++-dev autoconf automake \
     libtool autotools-dev git distcc file wget openssl hwloc intltool-debian \
-    clang-tools-10 clang-10 cmake ninja-build
+    clang-tools-12 clang-12 ninja-build
 
     apt-get -y install libssl-dev libexpat1-dev \
     libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
@@ -20,6 +20,15 @@ RUN <<EOF
 
     apt-get -y autoremove
     apt-get -y clean
+EOF
+
+RUN <<EOF
+    set -e
+    cd /root
+    wget https://github.com/Kitware/CMake/releases/download/v3.27.7/cmake-3.27.7-linux-x86_64.sh
+    chmod +x cmake-3.27.7-linux-x86_64.sh
+    bash ./cmake-3.27.7-linux-x86_64.sh --skip-license --prefix=/opt
+    rm cmake-3.27.7-linux-x86_64.sh
 EOF
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
@@ -39,3 +48,12 @@ RUN <<EOF
   echo "${username} ALL=(ALL:ALL) NOPASSWD:ALL" >> /etc/sudoers
   chown -R ${username} /home/${username}
 EOF
+
+# We put our custom packages in /opt and we want to use the llvm clang-12.
+RUN <<EOF
+  set -e
+  mkdir -p /opt/bin
+  chmod 755 /opt/bin
+  echo 'PATH=/opt/bin:/usr/lib/llvm-12/bin:$PATH' | tee -a /etc/bash.bashrc
+EOF
+ARG PATH=/opt/bin:/usr/lib/llvm-12/bin:$PATH
