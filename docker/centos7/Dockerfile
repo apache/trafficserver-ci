@@ -28,7 +28,7 @@ RUN pip3 install --upgrade pip
 RUN pip3 install pipenv httpbin
 RUN \
   yum install -y centos-release-scl; \
-  yum -y install devtoolset-8 devtoolset-11 devtoolset-9-libasan-devel
+  yum -y install devtoolset-8 devtoolset-10 devtoolset-11 devtoolset-9-libasan-devel
 
 # We put our custom packages in /opt.
 RUN echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
