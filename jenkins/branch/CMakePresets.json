@@ -10,7 +10,7 @@
       "name": "ci",
       "displayName": "CI defaults",
       "description": "Defaults for CI Pipeline builds",
-      "generator": "Ninja",
+      "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/builddir",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
