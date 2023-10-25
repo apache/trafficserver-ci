@@ -75,14 +75,14 @@ fi
 make -j${NPROC} -e SPHINXOPTS="${sphinxopts}" html
 
 mkdir -p "${enoutdir}"
-cp -rf docbuild/html/* "${enoutdir}"
+/usr/bin/cp -rf docbuild/html/* "${enoutdir}"
 
 echo "Building JA Docs"
 rm -rf docbuild/html
 make -j${NPROC} -e SPHINXOPTS="-D language='ja'" html
 
 mkdir -p "${jaoutdir}"
-cp -rf docbuild/html/* "${jaoutdir}"
+/usr/bin/cp -rf docbuild/html/* "${jaoutdir}"
 _END_OF_DOC_
 
   chmod 755 ${tmpfile}
