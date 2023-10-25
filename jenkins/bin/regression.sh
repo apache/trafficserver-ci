@@ -22,17 +22,28 @@ NPROC=$(nproc)
 
 #cd "${ATS_BUILD_BASEDIR}/build"
 #cd "${ATS_BUILD_BASEDIR}"
-[ -d BUILDS ] && cd BUILDS
+#[ -d BUILDS ] && cd BUILDS
+
+#chmod -R go+w /tmp/ats
+#/tmp/ats/bin/traffic_server -K -k -R 1
 
 echo
 echo -n "Unit tests started at " && date
-${ATS_MAKE} -j${NPROC} check VERBOSE=Y V=1 || exit 1
+
+if [ -d cmake ]
+then
+  pushd build
+  ctest -B build -j${NPROC} --output-on-failure --no-compress-output -T Test
+  popd
+else
+  ${ATS_MAKE} -j${NPROC} check VERBOSE=Y V=1 || exit 1
+fi
+
 echo -n "Unit tests finished at " && date
-${ATS_MAKE} install || exit 1
 
 echo
 echo -n "Regression tests started at " && date
-"${ATS_BUILD_BASEDIR}/install/bin/traffic_server" -k -K -R 1
+/tmp/ats/bin/traffic_server -k -K -R 1
 rval=$?
 echo -n "Regression tests finished at " && date
 exit $rval

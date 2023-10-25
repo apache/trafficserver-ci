@@ -76,11 +76,11 @@ echo "${contents}" > CMakeUserPresets.json
 
 cmake -B build --preset ci-preset
 cmake --build build -j${NPROC} -v
-
-pushd build
-ctest -B build -j${NPROC} --output-on-failure --no-compress-output -T Test
-popd
-
 cmake --install build
-chmod -R go+w /tmp/ats
-/tmp/ats/bin/traffic_server -K -k -R 1
+
+#pushd build
+#ctest -B build -j${NPROC} --output-on-failure --no-compress-output -T Test
+#popd
+
+#chmod -R go+w /tmp/ats
+#/tmp/ats/bin/traffic_server -K -k -R 1

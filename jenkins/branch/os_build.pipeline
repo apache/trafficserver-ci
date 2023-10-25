@@ -81,7 +81,7 @@ pipeline {
 					set -x
 					set -e
 					source ../ci/jenkins/bin/environment.sh
-					source ../ci/jenkins/bin/regression.sh
+					../ci/jenkins/bin/regression.sh
 					'''
 				}
 				echo 'Finished Tests'
