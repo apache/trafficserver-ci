@@ -99,7 +99,6 @@ pipeline {
 							cmake --install build -v
 
 						else
-
 							echo "Building with autotools"
 
 							# Change permissions so that all files are readable
