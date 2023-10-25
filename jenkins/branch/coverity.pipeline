@@ -66,8 +66,8 @@ pipeline {
 						set -x
 
 						if [ -d cmake ]
-							rm -rf build
 						then
+							rm -rf build
 						else
 							make distclean
 						fi
