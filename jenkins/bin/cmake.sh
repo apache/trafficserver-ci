@@ -84,11 +84,11 @@ echo "${contents}" > CMakeUserPresets.json
 
 cmake -B builddir --preset ci-preset
 cmake --build builddir -j${NPROC} -v
-cmake --install builddir
 
 pushd builddir
 ctest -B builddir -j${NPROC} --output-on-failure --no-compress-output -T Test
 popd
 
-chmod -R go+w /tmp/ats/
-/tmp/ats/bin/traffic_server -K -k -R 1
+cmake --install builddir
+chmod -R go+w installdir
+installdir/bin/traffic_server -K -k -R 1
