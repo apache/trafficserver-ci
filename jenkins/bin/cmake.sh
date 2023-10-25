@@ -74,21 +74,13 @@ EOF
 
 echo "${contents}" > CMakeUserPresets.json
 
-#cmake -B cmake-build-release\
-#  -GNinja \
-#  -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
-#  -DCMAKE_BUILD_TYPE=Release \
-#  -DBUILD_EXPERIMENTAL_PLUGINS=ON \
-#  -DCMAKE_INSTALL_PREFIX=/tmp/ats
-#  -DOPENSSL_ROOT_DIR=/opt/openssl-quic
+cmake -B build --preset ci-preset
+cmake --build build -j${NPROC} -v
 
-cmake -B builddir --preset ci-preset
-cmake --build builddir -j${NPROC} -v
-
-pushd builddir
-ctest -B builddir -j${NPROC} --output-on-failure --no-compress-output -T Test
+pushd build
+ctest -B build -j${NPROC} --output-on-failure --no-compress-output -T Test
 popd
 
-cmake --install builddir
-chmod -R go+w installdir
-installdir/bin/traffic_server -K -k -R 1
+cmake --install build
+chmod -R go+w /tmp/ats
+/tmp/ats/bin/traffic_server -K -k -R 1
