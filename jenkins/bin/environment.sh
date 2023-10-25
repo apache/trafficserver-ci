@@ -20,6 +20,8 @@ set -x
 
 [[ ":$PATH:" != *":/opt/bin:"* ]] && export PATH="/opt/bin:${PATH}"
 
+NPROC=$(nproc)
+
 # Show which platform we're actually building on
 
 # Deduct if this build is on a docker instance
@@ -140,7 +142,7 @@ if [ -x "/bin/m4" ]; then
 fi
 
 # Figure out parallelism for regular builds / bots
-export ATS_MAKE_FLAGS="-j4"
+export ATS_MAKE_FLAGS="-j${NPROC}"
 if [ "yes" == "$IS_DOCKER" ]; then
   export ATS_BUILD_BASEDIR="${WORKSPACE}"
 else

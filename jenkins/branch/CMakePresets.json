@@ -1,0 +1,118 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ci",
+      "displayName": "CI defaults",
+      "description": "Defaults for CI Pipeline builds",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/builddir",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/installdir",
+        "ENABLE_CCACHE": "ON",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON",
+        "BUILD_REGRESSION_TESTING": "ON",
+        "ENABLE_EXAMPLE": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "CI release",
+      "description": "CI release",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "CI debug",
+      "description": "CI debug",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "asan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address,undefined",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "lsan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=leak",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=leak"
+      }
+    },
+    {
+      "name": "tsan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=thread",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=thread"
+      }
+    },
+    {
+      "name": "hardened",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-D_FORTIFY_SOURCE=2 -fPIE -fstack-protector",
+        "CMAKE_EXE_LINKER_FLAGS": "-pie -Wl,-z,relro -Wl,-z,now"
+      }
+    },
+    {
+      "name": "quiche",
+      "displayName": "CI Quiche",
+      "description": "CI Pipeline quiche build",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/opt/boringssl",
+        "quiche_ROOT": "/opt/quiche",
+        "ENABLE_QUICHE": true
+      }
+    },
+    {
+      "name": "quic",
+      "displayName": "CI QUIC",
+      "description": "CI Pipeline quic build",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/opt/openssl-quic"
+      }
+    },
+    {
+      "name": "clang-analyzer",
+      "displayName": "CI Clang Analyzer",
+      "description": "CI Pipeline config for running clang-analyzer",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "BUILD_TESTING": "OFF",
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ENABLE_CCACHE": "OFF",
+        "ENABLE_EXAMPLE": "OFF"
+      }
+    },
+    {
+      "name": "autest",
+      "inherits": ["ci"],
+      "binaryDir": "${sourceDir}/build-autest",
+      "cacheVariables": {
+        "ENABLE_AUTEST": "ON",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON",
+        "ENABLE_EXAMPLE": "ON"
+      }
+    }
+  ]
+}
+

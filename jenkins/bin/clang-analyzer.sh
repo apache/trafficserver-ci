@@ -17,41 +17,70 @@
 #  limitations under the License.
 
 set -x
+set -e
 
 grep -q 80010 configure.ac && echo "8.1.x branch detected, stop here!" && exit 0
 
-WORKSPACE=${WORKSPACE:-..}
-GITHUB_BRANCH=${GITHUB_BRANCH:-master}
+NPROC=$(nproc)
+
+WORKSPACE="${WORKSPACE:-..}"
+GITHUB_BRANCH="${GITHUB_BRANCH:-master}"
+
 SCAN_BUILD=$(ls /usr/bin/scan-build* | grep -v py | tail -n 1)
+ANAL_BUILD=$(ls /usr/bin/analyze-build* | grep -v py | tail -n 1)
+RPTDIR="${WORKSPACE}/output/${GITHUB_BRANCH}"
 
-mkdir -p ${WORKSPACE}/output/${GITHUB_BRANCH}
+mkdir -p ${RPTDIR}
 
-autoreconf -fiv
-${SCAN_BUILD} --keep-cc \
-  ./configure --enable-experimental-plugins --with-luajit
+if [ -d cmake ]
+then
 
-# build things like yamlcpp without the analyzer 
-make -j4 -C lib all-local V=1 Q=
-rptdir="${WORKSPACE}/output/${GITHUB_BRANCH}"
+  # copy in CMakePresets.json
+  presetpath="${WORKSPACE}/ci/jenkins/branch/CMakePresets.json"
+  [ -f "${presetpath}" ] && cp -f "${presetpath}" .
 
-${SCAN_BUILD} --keep-cc \
-  -enable-checker alpha.unix.cstring.BufferOverlap \
-  -enable-checker alpha.core.BoolAssignment \
-  -enable-checker alpha.core.CastSize \
-  -enable-checker alpha.core.SizeofPtr \
-  --status-bugs --keep-empty \
-  -o ${rptdir} \
-  --html-title="clang-analyzer: ${GITHUB_BRANCH}" \
-  make -j4 V=1 Q=
+	cmake -B builddir --preset clang-analyzer
+	cmake --build builddir -v
 
-make -j4
+	${ANAL_BUILD} \
+		--cdb builddir/compile_commands.json \
+		-v \
+		--status-bugs \
+    --keep-empty \
+    -enable-checker alpha.unix.cstring.BufferOverlap \
+    -enable-checker alpha.core.BoolAssignment \
+    -enable-checker alpha.core.CastSize \
+    -enable-checker alpha.core.SizeofPtr \
+    -o "${RPTDIR}" \
+    --html-title="clang-analyzer: ${GITHUB_BRANCH}"
+
+else
+  autoreconf -fiv
+  ${SCAN_BUILD} --keep-cc \
+    ./configure --enable-experimental-plugins --with-luajit
+
+  # build things like yamlcpp without the analyzer 
+  make -j${NPROC} -C lib all-local V=1 Q=
+
+  ${SCAN_BUILD} --keep-cc \
+    -enable-checker alpha.unix.cstring.BufferOverlap \
+    -enable-checker alpha.core.BoolAssignment \
+    -enable-checker alpha.core.CastSize \
+    -enable-checker alpha.core.SizeofPtr \
+    --status-bugs --keep-empty \
+    -o ${RPTDIR} \
+    --html-title="clang-analyzer: ${GITHUB_BRANCH}" \
+    make -j${NPROC} V=1 Q=
+
+   make -j${NPROC}
+fi
 
 shopt -s nullglob
-rptlist=(${rptdir}/**/index.html)
+rptlist=(${RPTDIR}/**/index.html)
 
 # no index.html means no report
 if [ ${#rptlist[@]} -eq 0 ]; then
-  touch "${rptdir}/No Errors Reported"
+  touch "${RPTDIR}/No Errors Reported"
    status=0
 else
    status=1

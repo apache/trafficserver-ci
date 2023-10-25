@@ -17,15 +17,30 @@
 #  limitations under the License.
 
 set -x
+set -e
+
+WORKSPACE="${WORKSPACE:-..}"
 
 cd "${WORKSPACE}/src"
 
-autoreconf -if && ./configure
+if [ -d cmake ]
+then
 
-# WTF
-rm -f lib/ts/stamp-h1
+  cmake -B builder
+  cmake --build builder --target rat
 
-${ATS_MAKE} rat | tee RAT.txt
+else
+
+  autoreconf -if
+  ./configure
+
+  # WTF
+  rm -f lib/ts/stamp-h1
+
+  ${ATS_MAKE} rat | tee RAT.txt
+  grep '^0 Unknown Licenses' RAT.txt >/dev/null || exit 1
+
+fi
 #mv RAT.txt /CA/RAT/rat-${ATS_BRANCH}.txt.new
 #mv /CA/RAT/rat-${ATS_BRANCH}.txt.new /CA/RAT/rat-${ATS_BRANCH}.txt
 
@@ -34,7 +49,6 @@ ${ATS_MAKE} rat | tee RAT.txt
 
 # Mark as failed if there are any unknown licesnes
 #grep '0 Unknown Licenses' /CA/RAT/rat-${ATS_BRANCH}.txt >/dev/null || exit 1
-grep '0 Unknown Licenses' RAT.txt >/dev/null || exit 1
 
 # Normal exit
 exit 0

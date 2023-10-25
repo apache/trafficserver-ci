@@ -59,8 +59,13 @@ pipeline {
 					set -x
 					set -e
 					source ../ci/jenkins/bin/environment.sh
-					autoreconf -if
-					source ../ci/jenkins/bin/build.sh
+
+					if [ -d cmake ]
+					then
+						../ci/jenkins/bin/cmake.sh
+					else
+						../ci/jenkins/bin/autotools.sh
+					fi
 					'''
 				}
 				echo 'Finished Build'

@@ -65,32 +65,53 @@ pipeline {
 				echo 'Starting build'
 				dir('src') {
 					sh '''#!/bin/bash
-					set -x
-					set -e
+						set -x
+						set -e
 
-					source /opt/rh/gcc-toolset-11/enable
-					sudo update-crypto-policies --set LEGACY
+						source /opt/rh/gcc-toolset-11/enable
+						sudo update-crypto-policies --set LEGACY
 
-					# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-					# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-					export PATH=/opt/bin:${PATH}
+						# We want to pick up the OpenSSL-QUIC version
+						# of curl in /opt/bin. The HTTP/3 AuTests depend
+						# upon this, so update the PATH accordingly.
+						export PATH=/opt/bin:${PATH}
 
-					# Change permissions so that all files are readable
-					# (default user umask may change and make these unreadable)
-					sudo chmod -R o+r .
-					autoreconf -fiv
-					./configure \
-						--enable-experimental-plugins \
-						--enable-example-plugins \
-						--prefix=/tmp/ats \
-						--enable-werror \
-						--enable-debug \
-						--enable-wccp \
-						--enable-luajit \
-						--enable-ccache \
-						--enable-coverage
-					make -j4 V=1 Q=
-					make install
+						# Change permissions so that all files are readable
+						# (default user umask may change and make these unreadable)
+						sudo chmod -R o+r .
+
+						if [ -d cmake ]
+						then
+							echo "Building with CMake"	
+
+							presetpath="../ci/jenkins/branch/CMakePresets.json"
+              [ -f "${presetpath}" ] && cp -f "${presetpath}" .
+
+							echo "Currently skipping."
+							exit 0
+
+							cmake -B build --preset coverage -DCMAKE_INSTALL_PREFIX="/tmp/ats"
+							cmake --build build -j`nproc` -v
+							cmake --install build -v
+
+							s
+						else
+							echo "Building with autotools"
+
+							autoreconf -fiv
+							./configure \
+								--enable-experimental-plugins \
+								--enable-example-plugins \
+								--prefix=/tmp/ats \
+								--enable-werror \
+								--enable-debug \
+								--enable-wccp \
+								--enable-luajit \
+								--enable-ccache \
+								--enable-coverage
+							make -j`nproc` V=1 Q=
+							make install
+						fi
 					'''
 				}
 			}
@@ -106,8 +127,13 @@ pipeline {
 						source /opt/rh/gcc-toolset-11/enable
 
 						# Create a base tracefile before the tests are run.
-						lcov --directory . --no-external --capture --initial --output-file /tmp/lcov_tracefile_base.info
-						 '''
+						lcov \
+							--directory . \
+							--no-external \
+							--capture \
+							--initial \
+							--output-file /tmp/lcov_tracefile_base.info
+					'''
 				}
 			}
 		}
@@ -118,10 +144,22 @@ pipeline {
 					sh '''#!/bin/bash
 						set -x
 						set -e
+						NPROC=$(nproc)
 						[ "${RUN_UNIT_TESTS}" == "true" ] || exit 0
 						source /opt/rh/gcc-toolset-11/enable
-						make -j4 check
-						'''
+
+						if [ -d cmake ]
+						then
+							pushd build
+							ctest -B build -j${NRPOC} \
+								--output-on-failure \
+								--no-compress-output \
+								-T test
+							popd
+						else
+							make -j${NPROC} check
+						fi
+					'''
 				}
 				echo 'Starting the regression tests'
 				dir('src') {
@@ -130,7 +168,7 @@ pipeline {
 						set -e
 						[ "${RUN_REGRESSION_TESTS}" == "true" ] || exit 0
 						/tmp/ats/bin/traffic_server -K -k -R 1
-						 '''
+					 '''
 				}
 				echo 'Starting AuTest'
 				dir('src/tests') {
@@ -144,7 +182,16 @@ pipeline {
 						export PATH=/opt/bin:${PATH}
 						export PATH=/opt/go/bin:${PATH}
 
-						./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox
+						autest_args=""
+						if [ -d ../cmake ]
+						then
+							cd ../build/tests
+							pipenv install
+						else
+							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+						fi
+
+						./autest.sh ${autest_args}
 						'''
 				}
 			}
@@ -160,7 +207,10 @@ pipeline {
 
 						# Use `.` for --directory, not `pwd`. For some reason that seems
 						# important. It makes header files processed better.
-						lcov --directory . --capture --output-file /tmp/lcov_tracefile_test.info
+						lcov \
+							--directory . \
+							--capture \
+							--output-file /tmp/lcov_tracefile_test.info
 
 						# Combine with the base tracefile.
 						lcov \

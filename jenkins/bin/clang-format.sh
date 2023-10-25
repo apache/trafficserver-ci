@@ -43,21 +43,27 @@ echo "Success! No DOS carriage return"
 
 set -x
 
-autoreconf -if && ./configure
-[ "0" != "$?" ] && exit 1
+if [ -d cmake ]
+then
 
-${ATS_MAKE} clang-format
-[ "0" != "$?" ] && exit 1
+  cmake -B build
+	cmake --build build --target format -j`nproc` -v || exit 1
 
-# Only enforce autopep8 on branches where the pre-commit hook was updated to
-# check it. Otherwise, none of the PRs for older branches will pass this check.
-if grep -q autopep8 tools/git/pre-commit; then
-    ${ATS_MAKE} autopep8
-    [ "0" != "$?" ] && exit 1
+else
+  autoreconf -if
+  ./configure
+
+  ${ATS_MAKE} clang-format || exit 1
+
+  # Only enforce autopep8 on branches where the pre-commit
+	# hook was updated to check it. Otherwise, none of the 
+	# PRs for older branches will pass this check.
+  if grep -q autopep8 tools/git/pre-commit; then
+    ${ATS_MAKE} autopep8 || exit 1
+  fi
 fi
 
 git diff --exit-code
-[ "0" != "$?" ] && exit 1
 
 # Normal exit
 exit 0
