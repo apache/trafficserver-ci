@@ -62,8 +62,10 @@ pipeline {
 
 					if [ -d cmake ]
 					then
+						echo "Building with CMake."
 						../ci/jenkins/bin/cmake.sh
 					else
+						echo "Building with autotools."
 						../ci/jenkins/bin/autotools.sh
 					fi
 					'''

@@ -14,7 +14,7 @@
       "binaryDir": "${sourceDir}/builddir",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "${sourceDir}/installdir",
+        "CMAKE_INSTALL_PREFIX": "/tmp/ats",
         "ENABLE_CCACHE": "ON",
         "BUILD_EXPERIMENTAL_PLUGINS": "ON",
         "BUILD_REGRESSION_TESTING": "ON",
