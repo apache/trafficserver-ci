@@ -53,9 +53,20 @@ pipeline {
 
 						sh '''
 							chmod -R o+r .
-							autoreconf -fiv
-							./configure --prefix=/opt/ats --enable-ccache
-							make -j`nproc` install
+
+							if [ -d cmake ]
+							then
+								cmake -B build \
+									-DCMAKE_INSTALL_PREFIX=/tmp/ats
+								cmake --build build -j`nproc` -v
+								cmake --install build
+							else
+								autoreconf -fiv
+								./configure --prefix=/opt/ats --enable-ccache
+								make -j`nproc`
+								make install
+							fi
+
 							echo 'map / https://ci.trafficserver.apache.org/cache-tests/' >> \
 								/opt/ats/etc/trafficserver/remap.config
 						'''

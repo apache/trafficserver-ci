@@ -73,22 +73,51 @@ pipeline {
 			steps {
 				echo 'Starting build'
 				dir('src') {
-					sh '''
-					set -e
-					source /opt/rh/gcc-toolset-11/enable
-					sudo update-crypto-policies --set LEGACY
+					sh '''#!/bin/bash
+						set -x
+						set -e
+						source /opt/rh/gcc-toolset-11/enable
+						sudo update-crypto-policies --set LEGACY
 
-					# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-					# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-					export PATH=/opt/bin:${PATH}
+						unalias cp || true
+						sudo chmod -R ugo+rw .
 
-					# Change permissions so that all files are readable
-					# (default user umask may change and make these unreadable)
-					sudo chmod -R o+r .
-					autoreconf -fiv
-					./configure --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-luajit --enable-ccache
-					make -j`nproc`
-					make install
+						# We want to pick up the OpenSSL-QUIC version
+						# of curl in /opt/bin. The HTTP/3 AuTests 
+						# depend upon this, so update the PATH accordingly.
+						export PATH=/opt/bin:${PATH}
+
+						if [ -d cmake ]
+						then
+							echo "Building with CMake"
+
+							presetpath="../ci/jenkins/branch/CMakePresets.json"
+							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
+
+							cmake -B build --preset autest
+							cmake --build build -j`nproc` -v
+							cmake --install build -v
+
+						else
+
+							echo "Building with autotools"
+
+							# Change permissions so that all files are readable
+							# (default user umask may change and make these unreadable)
+							autoreconf -fiv
+							./configure \
+								--enable-experimental-plugins \
+								--enable-example-plugins \
+								--prefix=/tmp/ats \
+								--enable-werror \
+								--enable-debug \
+								--enable-wccp \
+								--enable-luajit \
+								--enable-ccache
+							make -j`nproc`
+							make install
+
+						fi
 					'''
 				}
 			}
@@ -106,13 +135,23 @@ pipeline {
 						export PATH=/opt/bin:${PATH}
 						export PATH=/opt/go/bin:${PATH}
 
-						mkdir -p ${WORKSPACE}/output/${GITHUB_BRANCH}
+						export_dir="${WORKSPACE}/output/${GITHUB_BRANCH}"
+						mkdir -p ${export_dir}
+
+						autest_args=""
+						testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
+
+						if [ -d ../cmake ]
+						then
+							cd ../build/tests
+							pipenv install
+						else
+							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+						fi
 
 						if [ ${SHARDCNT} -le 0 ]; then
-							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox || true
+							./autest.sh ${autest_args} || true
 						else
-							testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
-
 							testsall=( $(
 								for el in  "${testsall[@]}" ; do
 									echo $el
@@ -123,15 +162,17 @@ pipeline {
 							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
 							shardbeg=$((${shardsize} * ${SHARD}))
 							sliced=${testsall[@]:${shardbeg}:${shardsize}}
-							./autest.sh --ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox -f ${sliced[@]} || true
+							./autest.sh ${autest_args} -f ${sliced[@]} || true
 						fi
 
 						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
-							cp -rf /tmp/sandbox/ ${WORKSPACE}/output/${GITHUB_BRANCH}/
+							touch ${export_dir}/Autest_failures
+							cp -rf /tmp/sandbox/ "${export_dir}"
+							ls "${export_dir}"
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 1
 						else
-							sudo touch ${WORKSPACE}/output/${GITHUB_BRANCH}/No_autest_failures
+							touch ${export_dir}/No_autest_failures
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 0
 						fi

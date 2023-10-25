@@ -24,11 +24,21 @@ pipeline {
 			steps {
 				echo 'Starting build'
 				dir('src') {
-					sh '''
+					sh '''#!/bin/bash
+						set -x
 						set -e
-						autoreconf -fiv
-						./configure --enable-experimental-plugins
-						gmake -j3
+
+						if [ -d cmake ]
+						then
+							cmake -B build \
+								-DBUILD_EXPERIMENTAL_PLUGINS=ON \
+								-DCMAKE_INSTALL_PREFIX=/tmp/ats
+							cmake --build build -j`nproc` -v
+						else
+							autoreconf -fiv
+							./configure --enable-experimental-plugins
+							gmake -j3
+						fi
 					'''
 				}
 			}
