@@ -112,6 +112,18 @@
         "BUILD_EXPERIMENTAL_PLUGINS": "ON",
         "ENABLE_EXAMPLE": "ON"
       }
+    },
+    {
+      "name": "coverity",
+      "displayName": "coverity defaults",
+      "description": "Defaults for coverity builds",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON",
+        "ENABLE_EXAMPLE": "ON"
+      }
     }
   ]
 }
