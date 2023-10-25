@@ -61,7 +61,7 @@ set -x
 
 #../configure \
 ./configure \
-    --prefix="${ATS_BUILD_BASEDIR}/install" \
+    --prefix="/tmp/ats" \
     --enable-experimental-plugins \
     --enable-example-plugins \
     --with-user=jenkins \
