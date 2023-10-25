@@ -22,17 +22,19 @@ set -x
 
 cd "${WORKSPACE}/src"
 
-autoreconf -fi
-mkdir -p BUILDS && cd BUILDS
-../configure \
+if [ -d cmake ]
+then
+	echo "not supported under cmake"
+else
+	echo "autotools build"
+	autoreconf -fi
+	mkdir -p BUILDS && cd BUILDS
+	../configure \
     --with-user=jenkins \
     --enable-ccache \
     --enable-werror \
     --enable-wccp
 
-#    --enable-experimental-plugins \
-#    --enable-example-plugins \
-
-${ATS_MAKE} -j5 V=1
-#${ATS_MAKE} check VERBOSE=Y
-${ATS_MAKE} clean
+	${ATS_MAKE} -j5 V=1
+	${ATS_MAKE} clean
+fi

@@ -1,0 +1,73 @@
+pipeline {
+	agent {
+		docker {
+			registryUrl 'https://ci.trafficserver.apache.org/'
+			image 'ci.trafficserver.apache.org/ats/rockylinux:8'
+			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+			label 'branch'
+		}
+	}
+
+	environment {
+		CCACHE_DIR = "/tmp/ccache"
+	}
+	
+	stages {
+		stage('Initialization') {
+			steps {
+				dir('src') {
+					sh '''#!/bin/bash
+						set +x
+						rm -rf *
+						set -x
+					'''
+					git 'https://github.com/apache/trafficserver.git'
+					sh '''#!/bin/bash
+						set +x
+						rm -rf cov_tools
+						rm -rf cov-int
+						mkdir cov_tools
+						wget https://scan.coverity.com/download/linux64 \
+							--post-data "token=SCRUBBED&project=Apache+Traffic+Server" \
+							-O coverity_tool.tgz
+						tar -xvzf coverity_tool.tgz -C cov_tools --strip-components 1
+						set -x
+
+						if [ -d cmake ]
+						then
+							presetpath="../ci/jenkins/branch/CMakePresets.json"
+							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
+							cmake -B . --preset coverity
+						else
+							autoreconf -fiv
+							./configure \
+								--enable-experimental-plugins \
+								--enable-example-plugins
+						fi
+
+						./cov_tools/bin/cov-build --dir cov-int make -j`nproc`
+
+						tar czvf trafficserver.tgz cov-int
+
+						set +x
+						curl \
+							--form token=SCRUBBED \
+							--form email=SCRUBBED \
+							--form file=@./trafficserver.tgz \
+							--form version="master-$(date +"%Y%m%d")" \
+							--form description="master-$(date +"%Y%m%d")" \
+							https://scan.coverity.com/builds?project=Apache+Traffic+Server
+						set -x
+
+						if [ -d cmake ]
+							rm -rf build
+						then
+						else
+							make distclean
+						fi
+					'''
+				}
+			}
+		}
+	}
+}
