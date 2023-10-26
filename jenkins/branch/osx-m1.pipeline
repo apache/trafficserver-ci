@@ -30,29 +30,24 @@ pipeline {
 
 						if [ -d cmake ]
 						then
-							export CC="clang"
-              export CXX="clang++"
-              export CXXFLAGS="-Qunused-arguments"
-              export WITH_LIBCPLUSPLUS="yes"
-              cmake -B build \
+							CC="clang" \
+							CXX="clang++" \
+							CXXFLAGS="-Qunused-arguments" \
+							WITH_LIBCPLUSPLUS="yes" \
+							cmake -B build \
+								--preset ci \
 								-G "Unix Makefiles" \
-        				-DCMAKE_BUILD_TYPE=Debug \
-        				-DCMAKE_INSTALL_PREFIX=/tmp/ats" \
-        				-DENABLE_CCACHE=ON" \
-        				-DBUILD_EXPERIMENTAL_PLUGINS=ON" \
-        				-DBUILD_REGRESSION_TESTING=ON" \
-        				-DENABLE_EXAMPLE=ON \
-								-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
-              cmake --build build -j3 -v
+								-DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl
+			cmake --build build -j3 -v
 						else
 							autoreconf -fiv
-							export CC="clang"
-							export CXX="clang++"
-							export CXXFLAGS="-Qunused-arguments"
-							export WITH_LIBCPLUSPLUS="yes"
+							CC="clang" \
+							CXX="clang++" \
+							CXXFLAGS="-Qunused-arguments" \
+							WITH_LIBCPLUSPLUS="yes" \
 							./configure \
 								--enable-experimental-plugins \
-								--with-openssl=/usr/local/opt/openssl
+								--with-openssl=/opt/homebrew/opt/openssl
 							make -j3
 						fi
 					'''
