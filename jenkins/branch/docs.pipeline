@@ -58,7 +58,7 @@ pipeline {
 					set -x
 					set -e
 					source ../ci/jenkins/bin/environment.sh
-					bash -x ../ci/jenkins/bin/docs.sh
+					../ci/jenkins/bin/docs.sh
 					'''
 				}
 

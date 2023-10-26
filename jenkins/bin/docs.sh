@@ -75,14 +75,14 @@ fi
 make -j${NPROC} -e SPHINXOPTS="${sphinxopts}" html
 
 mkdir -p "${enoutdir}"
-/usr/bin/cp -rf docbuild/html/* "${enoutdir}"
+/bin/cp -rf docbuild/html/* "${enoutdir}"
 
 echo "Building JA Docs"
 rm -rf docbuild/html
 make -j${NPROC} -e SPHINXOPTS="-D language='ja'" html
 
 mkdir -p "${jaoutdir}"
-/usr/bin/cp -rf docbuild/html/* "${jaoutdir}"
+/bin/cp -rf docbuild/html/* "${jaoutdir}"
 _END_OF_DOC_
 
   chmod 755 ${tmpfile}
@@ -95,10 +95,23 @@ fi
 
 # If we made it here, the doc build ran and succeeded. Let's copy out the
 # docbuild contents so it can be published.
-ls "${outputdir}"
-cd "${outputdir}"
+mkdir -p ${output_dir}
+docbuild_dir="docbuild"
+if [ -d docbuild ]
+then
+  docbuild_dir="docbuild"
+elif [ -d docs-build/doc/docbuild ]
+then
+  docbuild_dir="docs-build/doc/docbuild"
+else
+  echo "Could not find build docs."
+  exit 1
+fi
 
-sudo chmod -R u=rwX,g=rX,o=rX . || exit 1
+cp -rf "${docbuild_dir}" "${output_dir}"
+ls "${output_dir}/docbuild"
+
+sudo chmod -R u=rwX,g=rX,o=rX "${output_dir}" || exit 1
 
 #if [ "${PUBLISH_DOCS}" == "true" ]; then
 #  sudo cp -avx ja /home/docs
