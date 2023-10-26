@@ -35,7 +35,6 @@ pipeline {
 							CXXFLAGS="-Qunused-arguments" \
 							WITH_LIBCPLUSPLUS="yes" \
 							cmake -B build \
-								--preset ci \
 								-G "Unix Makefiles" \
 								-DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl
 			cmake --build build -j3 -v
@@ -46,7 +45,6 @@ pipeline {
 							CXXFLAGS="-Qunused-arguments" \
 							WITH_LIBCPLUSPLUS="yes" \
 							./configure \
-								--enable-experimental-plugins \
 								--with-openssl=/opt/homebrew/opt/openssl
 							make -j3
 						fi
