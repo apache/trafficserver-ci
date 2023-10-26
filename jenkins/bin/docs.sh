@@ -100,9 +100,9 @@ docbuilddir="docbuild"
 if [ -d docbuild ]
 then
   docbuilddir="docbuild"
-elif [ -d docs-build/doc/docbuild ]
+elif [ -d docbuild/doc/docbuild ]
 then
-  docbuilddir="docs-build/doc/docbuild"
+  docbuilddir="docbuild/doc/docbuild"
 else
   echo "Could not find build docs."
   exit 1
