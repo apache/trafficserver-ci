@@ -37,7 +37,7 @@ then
 
   # copy in CMakePresets.json
   presetpath="${WORKSPACE}/ci/jenkins/branch/CMakePresets.json"
-  [ -f "${presetpath}" ] && /usr/bin/cp -f "${presetpath}" .
+  [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
 	cmake -B builddir --preset clang-analyzer
 	cmake --build builddir -v

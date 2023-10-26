@@ -39,7 +39,7 @@ fi
 
 # copy in CMakePresets.json
 presetpath="../ci/jenkins/branch/CMakePresets.json"
-[ -f "${presetpath}" ] && /usr/bin/cp -f "${presetpath}" .
+[ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
 # debug/release become a feature
 btype="release"

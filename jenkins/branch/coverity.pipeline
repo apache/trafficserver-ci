@@ -40,7 +40,7 @@ pipeline {
 						if [ -d cmake ]
 						then
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
-							[ -f "${presetpath}" ] && /usr/bin/cp -f "${presetpath}" .
+							[ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 							cmake -B build --preset coverity
 							pushd build
 						  ../cov_tools/bin/cov-build --dir ../cov-int make -j`nproc`
