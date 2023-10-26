@@ -95,23 +95,23 @@ fi
 
 # If we made it here, the doc build ran and succeeded. Let's copy out the
 # docbuild contents so it can be published.
-mkdir -p ${output_dir}
-docbuild_dir="docbuild"
+mkdir -p ${outputdir}
+docbuilddir="docbuild"
 if [ -d docbuild ]
 then
-  docbuild_dir="docbuild"
+  docbuilddir="docbuild"
 elif [ -d docs-build/doc/docbuild ]
 then
-  docbuild_dir="docs-build/doc/docbuild"
+  docbuilddir="docs-build/doc/docbuild"
 else
   echo "Could not find build docs."
   exit 1
 fi
 
-cp -rf "${docbuild_dir}" "${output_dir}"
-ls "${output_dir}/docbuild"
+cp -rf "${docbuilddir}" "${outputdir}"
+ls "${outputdir}/docbuild"
 
-sudo chmod -R u=rwX,g=rX,o=rX "${output_dir}" || exit 1
+sudo chmod -R u=rwX,g=rX,o=rX "${outputdir}" || exit 1
 
 #if [ "${PUBLISH_DOCS}" == "true" ]; then
 #  sudo cp -avx ja /home/docs
