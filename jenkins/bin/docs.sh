@@ -36,8 +36,8 @@ test -z "${ATS_MAKE}" && ATS_MAKE="make"
 #  fi
 #fi
 
-vername=${GITHUB_PR_NUMBER}
-test -z "${GITHUB_PR_NUMBER}" && vername=${GITHUB_BRANCH}
+vername="${GITHUB_PR_NUMBER:=""}"
+[ -z "${GITHUB_PR_NUMBER}" ] && vername="${GITHUB_BRANCH}"
 
 outputdir="${PWD}/output"
 enoutdir="${outputdir}/en/${vername}"
@@ -48,8 +48,22 @@ sudo chmod -R ugo+w . || exit 1
 if [ -d cmake ]
 then
 
-  cmake -B docbuild -DENABLE_DOCS=ON
+
+  docbuilddir="docbuild/doc/docbuild"
+
+  # english
+  rm -rf docbuild
+  cmake -B docbuild -DDOC_LANG:STRING='en' -DENABLE_DOCS=ON
   cmake --build docbuild --target generate_docs -v || exit 1
+  mkdir -p "${enoutdir}"
+  /bin/cp -rf "${docbuilddir}"/html "${enoutdir}"
+
+  # japanese
+  rm -rf docbuild
+  cmake -B docbuild -DDOC_LANG:STRING='ja' -DENABLE_DOCS=ON
+  cmake --build docbuild --target generate_docs -v || exit 1
+  mkdir -p "${jaoutdir}"
+  /bin/cp -rf "${docbuilddir}"/html "${jaoutdir}"
 
 else
 
@@ -93,22 +107,6 @@ _END_OF_DOC_
 
 fi
 
-# If we made it here, the doc build ran and succeeded. Let's copy out the
-# docbuild contents so it can be published.
-mkdir -p ${outputdir}
-docbuilddir="docbuild"
-if [ -d docbuild ]
-then
-  docbuilddir="docbuild"
-elif [ -d docbuild/doc/docbuild ]
-then
-  docbuilddir="docbuild/doc/docbuild"
-else
-  echo "Could not find build docs."
-  exit 1
-fi
-
-cp -rf "${docbuilddir}" "${outputdir}"
 ls "${outputdir}/docbuild"
 
 sudo chmod -R u=rwX,g=rX,o=rX "${outputdir}" || exit 1
