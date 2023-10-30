@@ -85,16 +85,12 @@ pipeline {
 							echo "Building with CMake"	
 
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
-              [ -f "${presetpath}" ] && cp -f "${presetpath}" .
-
-							echo "Currently skipping."
-							exit 0
+              [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
 							cmake -B build --preset coverage -DCMAKE_INSTALL_PREFIX="/tmp/ats"
 							cmake --build build -j`nproc` -v
 							cmake --install build -v
 
-							s
 						else
 							echo "Building with autotools"
 
@@ -167,6 +163,8 @@ pipeline {
 						set -x
 						set -e
 						[ "${RUN_REGRESSION_TESTS}" == "true" ] || exit 0
+						chmod -R go+w .
+						chmod -R go+w /tmp/ats/
 						/tmp/ats/bin/traffic_server -K -k -R 1
 					 '''
 				}
@@ -239,8 +237,8 @@ pipeline {
 							/tmp/lcov_tracefile_filtered.info
 
 						cp -rf /tmp/lcov-report ${WORKSPACE}/output/
-						sudo chmod -R 777 ${WORKSPACE}
-						 '''
+						chmod -R 777 ${WORKSPACE}
+					'''
 				}
 			}
 		}

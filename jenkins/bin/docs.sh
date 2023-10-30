@@ -48,7 +48,6 @@ sudo chmod -R ugo+w . || exit 1
 if [ -d cmake ]
 then
 
-
   docbuilddir="docbuild/doc/docbuild"
 
   # english
