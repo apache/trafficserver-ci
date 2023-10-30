@@ -124,6 +124,16 @@
         "BUILD_EXPERIMENTAL_PLUGINS": "ON",
         "ENABLE_EXAMPLE": "ON"
       }
+    },
+    {
+      "name": "coverage",
+      "displayName": "coverage defaults",
+      "description": "Defaults for coverage builds",
+      "inherits": ["autest"],
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "--coverage",
+        "CMAKE_C_FLAGS_DEBUG": "--coverage"
+      }
     }
   ]
 }
