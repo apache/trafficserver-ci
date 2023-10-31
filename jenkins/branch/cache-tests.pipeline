@@ -69,6 +69,8 @@ pipeline {
 
 							echo 'map / https://ci.trafficserver.apache.org/cache-tests/' >> \
 								/opt/ats/etc/trafficserver/remap.config
+
+							chmod -R go+w /opt/ats
 						'''
 					}
 				}
