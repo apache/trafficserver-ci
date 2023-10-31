@@ -52,6 +52,7 @@ pipeline {
 						}
 
 						sh '''
+							export PATH=/opt/bin:${PATH}
 							chmod -R o+r .
 
 							if [ -d cmake ]
@@ -79,6 +80,7 @@ pipeline {
 				dir('src') {
 					script {
 						sh '''
+							export PATH=/opt/bin:${PATH}
 							cd /cache-tests
 							mkdir -p ${WORKSPACE}/output
 							if [ -x /opt/ats/bin/traffic_manager ]
