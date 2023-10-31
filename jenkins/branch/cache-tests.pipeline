@@ -57,7 +57,7 @@ pipeline {
 							if [ -d cmake ]
 							then
 								cmake -B build \
-									-DCMAKE_INSTALL_PREFIX=/tmp/ats
+									-DCMAKE_INSTALL_PREFIX=/opt/ats
 								cmake --build build -j`nproc` -v
 								cmake --install build
 							else
@@ -79,7 +79,12 @@ pipeline {
 						sh '''
 							cd /cache-tests
 							mkdir -p ${WORKSPACE}/output
-							/opt/ats/bin/traffic_manager &
+							if [ -x /opt/ats/bin/traffic_manager ]
+							then
+								/opt/ats/bin/traffic_manager &
+							else
+								/opt/ats/bin/trafficserver start
+							fi
 							sleep 2
 							npm run --silent cli --base=http://localhost:8080/ > ${WORKSPACE}/output/ats-${GITHUB_BRANCH}.json
 							chmod 644 ${WORKSPACE}/output/ats-${GITHUB_BRANCH}.json
