@@ -144,6 +144,7 @@ pipeline {
 						then
 							cd ../build/tests
 							pipenv install
+							autest_args="--sandbox /tmp/sandbox"
 						else
 							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
 						fi

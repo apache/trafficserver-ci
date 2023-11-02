@@ -79,10 +79,9 @@ pipeline {
 						then
 							echo "Building with CMake."
 							cmake -B build --preset ci-fedora-autest
-							cmake --build build -v
+							cmake --build build -j4 -v
 							cmake --install build
 						else
-                                                        # Pre 10 branches only supported autotools.
 							echo "CMake builds are not supported for this branch."
 							echo "Building with autotools instead."
 
@@ -90,7 +89,15 @@ pipeline {
 							# (default user umask may change and make these unreadable)
 							sudo chmod -R o+r .
 							autoreconf -fiv
-							./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats --enable-werror --enable-debug --enable-wccp --enable-ccache
+							./configure \
+								--with-openssl=/opt/openssl-quic \
+								--enable-experimental-plugins \
+								--enable-example-plugins \
+								--prefix=/tmp/ats \
+								--enable-werror \
+								--enable-debug \
+								--enable-wccp \
+								--enable-ccache
 							make -j4
 							make install
 						fi
