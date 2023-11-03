@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -e
+set -x
+
+# Update the certs
+certbot renew -w /home/docs
+
+# Backup the existing certs
+BACKUP_DIR=backup_$(date +%Y_%m_%d-%H:%M)
+cd /opt/ats/etc/trafficserver/certs/
+echo "Backup dir: $BACKUP_DIR"
+mkdir $BACKUP_DIR
+cp -p *.pem $BACKUP_DIR
+
+# Copy over the new certs
+cp -pL /etc/letsencrypt/live/ci.trafficserver.apache.org/* .
+chown nobody:nogroup *.pem
+chmod 400 *.pem
+
+# Restart ATS
+systemctl restart trafficserver
