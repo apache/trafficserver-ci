@@ -74,7 +74,8 @@ RUN <<EOF
   alternatives --set python /usr/bin/python3.8
   yum -y install \
     libev-devel jemalloc-devel libxml2-devel \
-    c-ares-devel libevent-devel jansson-devel zlib-devel systemd-devel
+    c-ares-devel libevent-devel jansson-devel cjose-devel \
+    zlib-devel systemd-devel
 EOF
 
 # go and rust will be installed by build_h3_tools.

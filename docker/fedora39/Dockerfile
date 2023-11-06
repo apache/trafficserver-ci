@@ -56,8 +56,8 @@ RUN pip3 install pipenv httpbin
 # Install the HTTP/3 build tools, including openssl-quic.
 #-------------------------------------------------------------------------------
 RUN dnf -y install libev-devel jemalloc-devel libxml2-devel \
-    c-ares-devel libevent-devel jansson-devel zlib-devel systemd-devel \
-    perl-FindBin cargo
+    c-ares-devel libevent-devel cjose-devel jansson-devel zlib-devel \
+    systemd-devel perl-FindBin cargo
 
 # go will be installed by build_h3_tools.
 RUN dnf remove -y golang
