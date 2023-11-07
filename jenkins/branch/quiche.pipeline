@@ -126,7 +126,7 @@ pipeline {
 			// We exclude socket files because archiveArtifacts doesn't deal well with
 			// their file type.
 			archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
-
+		}
 		cleanup {
 			cleanWs()
 		}
