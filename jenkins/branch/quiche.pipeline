@@ -59,7 +59,7 @@ pipeline {
 			}
 		}
 
-		stage('Build/Test') {
+		stage('Build') {
 			steps {
 				dir('src') {
 					echo "Building"
@@ -68,14 +68,28 @@ pipeline {
 					set -e
 					export PATH=/opt/bin:${PATH}
 					source ../ci/jenkins/bin/environment.sh
-					../ci/jenkins/bin/cmake_quiche.sh
+					../ci/jenkins/bin/quiche.sh
 					'''
 				}
 			}
 		}
+		stage('Tests') {
+			steps {
+				echo 'Starting Tests'
+				dir('src') {
+					sh '''
+						set -x
+						set -e
+						source ../ci/jenkins/bin/environment.sh
+						../ci/jenkins/bin/regression.sh
+					'''
+				}
+				echo 'Finished Tests'
+			}
+		}
 	}
 	post {
-		always {
+		cleanup {
 			cleanWs()
 		}
 	}
