@@ -45,6 +45,7 @@ pipeline {
                             export WITH_LIBCPLUSPLUS="yes"
                             cmake -B build --preset ci-osx -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
                             cmake --build build -j3 -v
+                            cmake --install build
                             pushd build
                             ctest -j3 --output-on-failure --no-compress-output -T Test
                             /tmp/ats/bin/traffic_server -K -k -R 1
