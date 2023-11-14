@@ -40,7 +40,7 @@ pipeline {
 
                         if [ -d cmake ]
                         then
-                            cmake -B build -DBUILD_EXPERIMENTAL_PLUGINS=ON -DCMAKE_INSTALL_PREFIX=/tmp/ats
+                            cmake -B build --preset ci-freebsd
                             cmake --build build -v
                         else
                             # Pre 10.x branches only support autotools.
