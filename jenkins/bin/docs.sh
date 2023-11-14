@@ -55,14 +55,14 @@ then
   cmake -B docbuild -DDOC_LANG:STRING='en' -DENABLE_DOCS=ON
   cmake --build docbuild --target generate_docs -v || exit 1
   mkdir -p "${enoutdir}"
-  /bin/cp -rf "${docbuilddir}"/html "${enoutdir}"
+  /bin/cp -rf "${docbuilddir}"/html/* "${enoutdir}"
 
   # japanese
   rm -rf docbuild
   cmake -B docbuild -DDOC_LANG:STRING='ja' -DENABLE_DOCS=ON
   cmake --build docbuild --target generate_docs -v || exit 1
   mkdir -p "${jaoutdir}"
-  /bin/cp -rf "${docbuilddir}"/html "${jaoutdir}"
+  /bin/cp -rf "${docbuilddir}"/html/* "${jaoutdir}"
 
 else
 
