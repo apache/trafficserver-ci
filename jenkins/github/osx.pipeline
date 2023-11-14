@@ -43,7 +43,7 @@ pipeline {
                             export CXX="clang++"
                             export CXXFLAGS="-Qunused-arguments"
                             export WITH_LIBCPLUSPLUS="yes"
-                            cmake -B build --preset ci -G "Unix Makefiles" -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
+                            cmake -B build --preset ci-osx -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
                             cmake --build build -j3 -v
                         else
                             # Pre 10.x branches only support autotools.
