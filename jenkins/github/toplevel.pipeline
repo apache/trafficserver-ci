@@ -2,7 +2,7 @@ TOP_JOB_DESC = "Builds:\\n"
 
 String buildJob(String ghcontext, String jobName, String shard='') {
 		setGitHubPullRequestStatus(context: ghcontext, message: 'Building', state: 'PENDING')
-		
+
 	if (currentBuild.description == null) {
 		currentBuild.description = "Builds:<br>"
 	}
@@ -40,23 +40,23 @@ String buildJob(String ghcontext, String jobName, String shard='') {
 
 pipeline {
 	agent none
-	
+
 	stages {
 		stage('Quick Checks') {
 			parallel {
-				stage('Clang-Format') {
+				stage('Format') {
 					when {
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
-							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*clang-format.*/ }
+							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*format.*/ }
 						}
 					}
 					steps {
 						script {
 							echo GITHUB_PR_COMMENT_BODY_MATCH
-							result = buildJob('Clang-Format', 'Github_Builds/clang-format')
+							result = buildJob('Format', 'Github_Builds/format')
 							if (result == 'FAILURE') {
-								error('Clang-Format failed')
+								error('Format failed')
 							}
 						}
 					}
@@ -92,7 +92,7 @@ pipeline {
 							}
 						}
 					}
-				}                
+				}
 			}
 		}
 
@@ -120,7 +120,7 @@ pipeline {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*fedora.*/ }
 						}
-					}                    
+					}
 					steps {
 						script {
 							result = buildJob('Fedora', 'Github_Builds/fedora')
@@ -136,7 +136,7 @@ pipeline {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*debian.*/ }
 						}
-					}                    
+					}
 					steps {
 						script {
 							result = buildJob('Debian', 'Github_Builds/debian')
@@ -154,7 +154,7 @@ pipeline {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*rocky.*/ }
 						}
-					}                    
+					}
 					steps {
 						script {
 							result = buildJob('Rocky', 'Github_Builds/rocky')
@@ -188,7 +188,7 @@ pipeline {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*osx.*/ }
 						}
-					}                    
+					}
 					steps {
 						script {
 							result = buildJob('OSX', 'Github_Builds/osx')
@@ -205,7 +205,7 @@ pipeline {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*freebsd.*/ }
 						}
-					}                    
+					}
 					steps {
 						script {
 							result = buildJob('FreeBSD', 'Github_Builds/freebsd')
@@ -222,7 +222,7 @@ pipeline {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*clang-analyzer.*/ }
 						}
-					}                    
+					}
 					steps {
 						script {
 							result = buildJob('Clang-Analyzer', 'Github_Builds/clang-analyzer')
