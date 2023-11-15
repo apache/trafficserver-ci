@@ -169,7 +169,7 @@ pipeline {
 		always {
 			// We exclude socket files because archiveArtifacts doesn't deal well with
 			// their file type.
-			archiveArtifacts artifacts: 'output/**/*', fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
+			archiveArtifacts artifacts: "output/${GITHUB_PR_NUMBER}/**/*", fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
 			echo "See the build job description for a link to the sandbox."
 		}
 		cleanup {
