@@ -62,7 +62,7 @@ pipeline {
 						set -x
 						set -e
 						source ../ci/jenkins/bin/environment.sh
-						../ci/jenkins/bin/clang-format.sh
+						../ci/jenkins/bin/format.sh
 					'''
 				}
 			}

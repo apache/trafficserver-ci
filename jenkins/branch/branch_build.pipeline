@@ -187,11 +187,11 @@ pipeline {
 						}
 					}
 				}
-				stage('clang format') {
+				stage('format') {
 					steps {
 						script {
-							echo "clang_format"
-							buildJob(env.JOB_DIR + '/clang_format', 'clang_format')
+							echo "format"
+							buildJob(env.JOB_DIR + '/format', 'format')
 						}
 					}
 				}
