@@ -73,6 +73,35 @@ RUN \
   /opt/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.6.0; \
   cp /root/go/bin/go-httpbin /opt/go/bin/
 
+# Install nuraft for the stek_share plugin. Distros, unfortunately, do not
+# package these, so this has to be built by hand.
+RUN <<EOF
+  set -e
+
+  git clone https://github.com/eBay/NuRaft.git
+  cd NuRaft
+  ./prepare.sh
+
+  OPENSSL_PREFIX=/opt/openssl-quic
+  if [ -d "${OPENSSL_PREFIX}/lib" ]; then
+    OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
+  elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
+    OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
+  else
+    echo "Could not find the OpenSSL install library directory."
+    exit 1
+  fi
+  cmake \
+    -B build \
+    -DCMAKE_INSTALL_PREFIX=/opt/ \
+    -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
+    -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
+  cmake --build build
+  cmake --install build
+  cd ../
+  rm -rf NuRaft
+EOF
+
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
 # issues.

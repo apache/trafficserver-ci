@@ -18,7 +18,37 @@ RUN <<EOF
     libhiredis-dev libbrotli-dev libncurses-dev libgeoip-dev libmagick++-dev \
     libmaxminddb-dev libcjose-dev libcjose0 libjansson-dev
 
-    apt-get -y autoremove; apt-get -y clean
+    apt-get -y autoremove
+    apt-get -y clean
+EOF
+
+# We put our custom packages in /opt.
+RUN <<EOF
+  set -e
+  mkdir -p /opt/bin
+  chmod 755 /opt/bin
+  echo 'PATH=/opt/bin:$PATH' | tee -a /etc/bash.bashrc
+EOF
+
+ARG PATH=/opt/bin:$PATH
+
+# Install nuraft for the stek_share plugin. Distros, unfortunately, do not
+# package these, so this has to be built by hand.
+RUN <<EOF
+  set -e
+
+  git clone https://github.com/eBay/NuRaft.git
+  cd NuRaft
+  ./prepare.sh
+
+  cmake \
+    -B build \
+    -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=/opt/
+  cmake --build build
+  cmake --install build
+  cd ../
+  rm -rf NuRaft
 EOF
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is

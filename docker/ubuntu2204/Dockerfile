@@ -22,6 +22,35 @@ RUN <<EOF
     apt-get -y clean
 EOF
 
+# We put our custom packages in /opt and we want to use the llvm clang-12.
+RUN <<EOF
+  set -e
+  mkdir -p /opt/bin
+  chmod 755 /opt/bin
+  echo 'PATH=/opt/bin:/usr/lib/llvm-12/bin:$PATH' | tee -a /etc/bash.bashrc
+EOF
+
+ARG PATH=/opt/bin:/usr/lib/llvm-12/bin:$PATH
+
+# Install nuraft for the stek_share plugin. Distros, unfortunately, do not
+# package these, so this has to be built by hand.
+RUN <<EOF
+  set -e
+
+  git clone https://github.com/eBay/NuRaft.git
+  cd NuRaft
+  ./prepare.sh
+
+  cmake \
+    -B build \
+    -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=/opt/
+  cmake --build build
+  cmake --install build
+  cd ../
+  rm -rf NuRaft
+EOF
+
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
 # issues.

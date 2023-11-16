@@ -28,7 +28,7 @@ RUN <<EOF
     xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html \
-    curl tcl-devel java
+    curl tcl-devel java cjose-devel jansson-devel
 
   # autest stuff
   yum -y install \
@@ -112,6 +112,36 @@ RUN <<EOF
 EOF
 
 RUN update-crypto-policies --set LEGACY
+
+# Install nuraft for the stek_share plugin. Distros, unfortunately, do not
+# package these, so this has to be built by hand.
+RUN <<EOF
+  set -e
+
+  git clone https://github.com/eBay/NuRaft.git
+  cd NuRaft
+  ./prepare.sh
+
+  OPENSSL_PREFIX=/opt/openssl-quic
+  if [ -d "${OPENSSL_PREFIX}/lib" ]; then
+    OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
+  elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
+    OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
+  else
+    echo "Could not find the OpenSSL install library directory."
+    exit 1
+  fi
+  cmake \
+    -B build \
+    -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=/opt/ \
+    -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
+    -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
+  cmake --build build
+  cmake --install build
+  cd ../
+  rm -rf NuRaft
+EOF
 
 # Add the CI's jenkins user.
 # N.B: 1200 is the uid that our jenkins user is configured with, so that has to
