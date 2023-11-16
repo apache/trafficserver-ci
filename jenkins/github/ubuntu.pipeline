@@ -57,7 +57,7 @@ pipeline {
                             export CC="clang"
                             export CXX="clang++"
 
-                            cmake -B build --preset ci
+                            cmake -B build --preset ci-ubuntu
                             cmake --build build -v
                             cmake --install build
                             pushd build
