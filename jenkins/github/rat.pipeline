@@ -48,7 +48,7 @@ pipeline {
                         if [ -d cmake ]
                         then
                             cmake -B build
-                            cmake --build build --target rat
+                            cmake --build build --target rat | tee RAT.txt
                         else
                             # Pre 10.x branches only support autotools.
                             autoreconf -if && ./configure
@@ -56,10 +56,11 @@ pipeline {
 
                             # Run RAT
                             make rat | tee RAT.txt
-
-                            # Mark as failed if there are any unknown licenses
-                            grep '^0 Unknown Licenses' RAT.txt > /dev/null || exit -1
                         fi
+
+                        # Mark as failed if there are any unknown licenses
+                        grep '^0 Unknown Licenses' RAT.txt > /dev/null || exit -1
+
                         exit 0
                     '''
                 }
