@@ -182,5 +182,14 @@ RUN yum install -y ctags elfutils-libelf-devel wdiff
 COPY /install_abi_tools.sh /root/install_abi_tools.sh
 RUN bash /root/install_abi_tools.sh
 
+# Autest and yapf require python3.8.
+RUN <<EOF
+  set -e
+  alternatives --set python3 /usr/bin/python3.8
+  python3 -m ensurepip --upgrade
+  python3 -m pip install --upgrade pip
+  python3 -m pip install virtualenv
+EOF
+
 # Keep this at the end to clean up the yum cache.
 RUN yum clean all
