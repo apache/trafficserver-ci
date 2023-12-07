@@ -28,6 +28,7 @@ pipeline {
 					git 'https://github.com/apache/trafficserver.git'
 					sh '''#!/bin/bash
 						set +x
+						source /opt/rh/gcc-toolset-11/enable
 						rm -rf cov_tools
 						rm -rf cov-int
 						mkdir cov_tools
