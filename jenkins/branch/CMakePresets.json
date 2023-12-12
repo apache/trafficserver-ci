@@ -147,7 +147,7 @@
         "OPENSSL_ROOT_DIR": "/opt/boringssl",
         "quiche_ROOT": "/opt/quiche",
         "CMAKE_INSTALL_PREFIX": "/tmp/ats-quiche",
-	"ENABLE_QUICHE": true
+        "ENABLE_QUICHE": true
       }
     },
     {
@@ -286,10 +286,10 @@
         "CMAKE_EXE_LINKER_FLAGS": "-pie -Wl,-z,relro -Wl,-z,now"
       }
     },
-		{
+    {
       "name": "branch-quiche",
       "displayName": "CI branch Quiche",
-      "inherits": ["ci"],
+      "inherits": ["branch"],
       "cacheVariables": {
         "ENABLE_AUTEST": "ON",
         "OPENSSL_ROOT_DIR": "/opt/boringssl",
@@ -300,14 +300,15 @@
     {
       "name": "branch-quic",
       "displayName": "CI branch QUIC",
-      "inherits": ["ci"],
+      "inherits": ["branch"],
       "cacheVariables": {
         "OPENSSL_ROOT_DIR": "/opt/openssl-quic"
       }
     },
     {
       "name": "branch-autest",
-      "inherits": ["ci-branch"],
+      "displayName": "CI branch autest",
+      "inherits": ["branch"],
       "cacheVariables": {
         "ENABLE_AUTEST": "ON",
         "ENABLE_EXAMPLE": "ON"
@@ -315,10 +316,10 @@
     },
     {
       "name": "branch-coverity",
-      "displayName": "Coverity defaults",
+      "displayName": "CI Branch coverity",
       "description": "Defaults for coverity builds",
       "generator": "Unix Makefiles",
-      "inherits": ["ci-branch"],
+      "inherits": ["branch"],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_EXPERIMENTAL_PLUGINS": "ON",
@@ -327,7 +328,7 @@
     },
     {
       "name": "branch-coverage",
-      "displayName": "Branch coverage defaults",
+      "displayName": "CI Branch coverage",
       "description": "Defaults for branch coverage builds",
       "inherits": ["branch-autest"],
       "cacheVariables": {

@@ -40,7 +40,7 @@ then
 fi
 
 FEATURES="${FEATURES:=""}"
-[ -n "${FEATURES}" ] && FEATURES="${FEATURES} ${btype}"
+[ -n "${FEATURES}" ] && FEATURES="${btype} ${FEATURES}"
 [ -z "${FEATURES}" ] && FEATURES="${btype}"
 
 # build CMakeUserPresets.json
@@ -61,7 +61,7 @@ read -d '' contents << EOF
   "version": 2,
   "configurePresets": [
     { 
-      "name": "branch-preset", 
+      "name": "branch-user-preset", 
       "inherits": [${inherits}]
     } 
   ] 
@@ -70,7 +70,7 @@ EOF
 
 echo "${contents}" > CMakeUserPresets.json
 
-cmake -B build --preset branch-preset
+cmake -B build --preset branch-user-preset
 cmake --build build -j${NPROC} -v
 cmake --install build
 
