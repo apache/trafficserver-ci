@@ -231,7 +231,7 @@
       "binaryDir": "${sourceDir}/build",
       "generator": "Unix Makefiles",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_INSTALL_PREFIX": "/tmp/ats",
         "BUILD_EXPERIMENTAL_PLUGINS": "ON"
       }
