@@ -34,7 +34,7 @@ cd "${WORKSPACE}/src"
 presetpath="../ci/jenkins/branch/CMakePresets.json"
 [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-cmake -B build --preset quiche
+cmake -B build --preset branch-quiche
 cmake --build build -j${NPROC} -v
 cmake --install build
 

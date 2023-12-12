@@ -20,15 +20,6 @@
 
 set -x
 
-# join function
-join() {
-  local separator="$1"
-  shift
-  local first="$1"
-  shift
-  printf "%s" "$first" "${@/#/$separator}"
-}
-
 NPROC=$(nproc)
 
 if [ ! -d cmake ]
@@ -54,18 +45,23 @@ FEATURES="${FEATURES:=""}"
 
 # build CMakeUserPresets.json
 
-# split
-IFS=' ' read -ra farray <<< "$FEATURES"
+# split, handles extra spaces
+IFS=' ' read -ra farray <<< "${FEATURES}"
 
-# join
-inherits=\"$(join '", "' "${farray[@]}")\"
+# prepend with 'branch-' and quote
+for ((ind=0 ; ind < ${#farray[@]} ; ++ind)); do
+  farray[$ind]=\"branch-${farray[$ind]}\"
+done
+
+# comma separate
+inherits=$(sed 's/ /, /g' <<< "${farray[@]}")
 
 read -d '' contents << EOF
 {
   "version": 2,
   "configurePresets": [
     { 
-      "name": "ci-preset", 
+      "name": "branch-preset", 
       "inherits": [${inherits}]
     } 
   ] 
@@ -74,7 +70,7 @@ EOF
 
 echo "${contents}" > CMakeUserPresets.json
 
-cmake -B build --preset ci-preset
+cmake -B build --preset branch-preset
 cmake --build build -j${NPROC} -v
 cmake --install build
 

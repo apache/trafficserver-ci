@@ -7,60 +7,78 @@
   },
   "configurePresets": [
     {
-      "name": "ci",
-      "displayName": "CI defaults",
-      "description": "Defaults for CI Pipeline builds",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/builddir",
+      "name": "default",
+      "displayName": "Default build with ninja",
+      "description": "Default build using Ninja generator",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-default",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "/tmp/ats",
-        "ENABLE_CCACHE": "ON",
-        "BUILD_EXPERIMENTAL_PLUGINS": "ON",
-        "BUILD_REGRESSION_TESTING": "ON",
-        "ENABLE_EXAMPLE": "ON"
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "ON"
+      }
+    },
+    {
+      "name": "layout-defaults",
+      "displayName": "Default install layout paths template",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_INSTALL_BINDIR": "bin",
+        "CMAKE_INSTALL_SBINDIR": "bin",
+        "CMAKE_INSTALL_LIBDIR": "lib",
+        "CMAKE_INSTALL_SYSCONFDIR": "etc/trafficserver",
+        "CMAKE_INSTALL_DATADIR": "share/trafficserver",
+        "CMAKE_INSTALL_INCLUDEDIR": "include",
+        "CMAKE_INSTALL_LIBEXECDIR": "libexec/trafficserver",
+        "CMAKE_INSTALL_RUNSTATEDIR": "var/trafficserver",
+        "CMAKE_INSTALL_INFODIR": "share/info",
+        "CMAKE_INSTALL_MANDIR": "share/man",
+        "CMAKE_INSTALL_LOGDIR": "var/log/trafficserver",
+        "CMAKE_INSTALL_CACHEDIR": "var/trafficserver"
       }
     },
     {
       "name": "release",
-      "displayName": "CI release",
-      "description": "CI release",
-      "inherits": ["ci"],
+      "displayName": "Release build",
+      "description": "Release build with Ninja generator",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "OFF",
+        "CMAKE_INSTALL_PREFIX": "/opt/ats",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON"
       }
     },
     {
-      "name": "debug",
-      "displayName": "CI debug",
-      "description": "CI debug",
-      "inherits": ["ci"],
+      "name": "autest",
+      "inherits": ["default"],
+      "binaryDir": "${sourceDir}/build-autest",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "ENABLE_AUTEST": "ON",
+        "CMAKE_INSTALL_PREFIX": "/tmp/ts-autest",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON",
+        "ENABLE_EXAMPLE": "ON"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "development",
+      "description": "Development Presets",
+      "inherits": ["default"],
+      "binaryDir": "${sourceDir}/build-${presetName}",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_COLOR_DIAGNOSTICS": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_INSTALL_PREFIX": "/tmp/ats-dev"
       }
     },
     {
       "name": "asan",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address",
-        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address"
-      }
-    },
-    {
-      "name": "lsan",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=leak",
-        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=leak"
-      }
-    },
-    {
-      "name": "tsan",
-      "hidden": true,
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=thread",
-        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=thread"
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address,undefined",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address,undefined"
       }
     },
     {
@@ -72,9 +90,205 @@
       }
     },
     {
-      "name": "quiche",
-      "displayName": "CI Quiche",
-      "description": "CI Pipeline quiche build",
+      "name": "dev-asan",
+      "displayName": "dev with asan",
+      "description": "Development Presets with ASAN sanitizer",
+      "inherits": ["dev", "asan"]
+    },
+    {
+      "name": "ci",
+      "displayName": "CI defaults",
+      "description": "Defaults for CI Pipeline builds",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-ci",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
+        "ENABLE_CCACHE": "ON",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON",
+        "ENABLE_EXAMPLE": "ON",
+        "CMAKE_INSTALL_PREFIX": "/tmp/ats"
+      }
+    },
+    {
+      "name": "ci-centos",
+      "displayName": "CI CentOS",
+      "description": "CI Pipeline config for CentOS",
+      "inherits": ["ci"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "OPENSSL_ROOT_DIR": "/opt/openssl-quic"
+      }
+    },
+    {
+      "name": "ci-docs",
+      "displayName": "Docs Build",
+      "description": "Presets for CI build of ATS docs",
+      "binaryDir": "${sourceDir}/build-docs",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "ENABLE_DOCS": "ON"
+      }
+    },
+    {
+      "name": "ci-osx",
+      "displayName": "CI OSX",
+      "description": "CI Pipeline config for OSX",
+      "inherits": ["ci"],
+      "generator": "Unix Makefiles"
+    },
+    {
+      "name": "ci-rocky",
+      "displayName": "CI Rocky",
+      "description": "CI Pipeline config for Rocky Linux",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/opt/boringssl",
+        "quiche_ROOT": "/opt/quiche",
+        "CMAKE_INSTALL_PREFIX": "/tmp/ats-quiche",
+	"ENABLE_QUICHE": true
+      }
+    },
+    {
+      "name": "ci-fedora",
+      "displayName": "CI Fedora",
+      "description": "CI Pipeline config for Fedora Linux",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/opt/openssl-quic"
+      }
+    },
+    {
+      "name": "ci-fedora-cxx20",
+      "displayName": "CI Fedora c++20",
+      "description": "CI Pipeline config for Fedora Linux compiled with c++20",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20"
+      }
+    },
+    {
+      "name": "ci-fedora-quiche",
+      "displayName": "CI Fedora Quiche",
+      "description": "CI Pipeline config for Fedora Linux (quiche build)",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/opt/boringssl",
+        "quiche_ROOT": "/opt/quiche",
+        "CMAKE_INSTALL_PREFIX": "/tmp/ats-quiche",
+        "ENABLE_QUICHE": true
+      }
+    },
+    {
+      "name": "ci-fedora-autest",
+      "displayName": "CI Fedora Quiche Autest",
+      "description": "CI Pipeline config for Fedora Linux (autest build)",
+      "inherits": ["ci-fedora", "autest"]
+    },
+    {
+      "name": "ci-freebsd",
+      "displayName": "CI Fedora",
+      "description": "CI Pipeline config for Fedora Linux",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-${presetName}",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "/tmp/ats",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON"
+      }
+    },
+    {
+      "name": "ci-debian",
+      "displayName": "CI Debian Hardened Build",
+      "description": "CI Pipeline config for Debian with hardening flags",
+      "inherits": ["ci", "hardened"],
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/opt/openssl-quic"
+      }
+    },
+    {
+      "name": "ci-ubuntu",
+      "displayName": "CI Ubuntu Hardened Build",
+      "description": "CI Pipeline config for Ubuntu with hardening flags",
+      "inherits": ["ci", "hardened"]
+    },
+    {
+      "name": "ci-clang-analyzer",
+      "displayName": "CI Clang Analyzer",
+      "description": "CI Pipeline config for running clang-analyzer",
+      "inherits": ["ci"],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ENABLE_CCACHE": "OFF",
+        "ENABLE_EXAMPLE": "OFF",
+        "BUILD_TESTING": "OFF"
+      }
+    },
+    {
+      "name": "branch",
+      "displayName": "CI branch defaults",
+      "inherits": ["ci"],
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "/tmp/ats",
+        "BUILD_EXPERIMENTAL_PLUGINS": "ON"
+      }
+    },
+    {
+      "name": "branch-release",
+      "displayName": "CI branch release",
+      "inherits": ["branch"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "branch-debug",
+      "displayName": "CI branch debug",
+      "inherits": ["branch"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "branch-asan",
+      "description": "Inherit to enable asan, build feature",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address"
+      }
+    },
+    {
+      "name": "branch-lsan",
+      "description": "Inherit to enable lsan, build feature",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=leak",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=leak"
+      }
+    },
+    {
+      "name": "branch-tsan",
+      "description": "Inherit to enable tsan, build feature",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=thread",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=thread"
+      }
+    },
+    {
+      "name": "branch-hardened",
+      "description": "Inherit to enable hardening, build feature",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-D_FORTIFY_SOURCE=2 -fPIE -fstack-protector",
+        "CMAKE_EXE_LINKER_FLAGS": "-pie -Wl,-z,relro -Wl,-z,now"
+      }
+    },
+		{
+      "name": "branch-quiche",
+      "displayName": "CI branch Quiche",
       "inherits": ["ci"],
       "cacheVariables": {
         "ENABLE_AUTEST": "ON",
@@ -84,42 +298,27 @@
       }
     },
     {
-      "name": "quic",
-      "displayName": "CI QUIC",
-      "description": "CI Pipeline quic build",
+      "name": "branch-quic",
+      "displayName": "CI branch QUIC",
       "inherits": ["ci"],
       "cacheVariables": {
         "OPENSSL_ROOT_DIR": "/opt/openssl-quic"
       }
     },
     {
-      "name": "clang-analyzer",
-      "displayName": "CI Clang Analyzer",
-      "description": "CI Pipeline config for running clang-analyzer",
-      "inherits": ["ci"],
-      "cacheVariables": {
-        "BUILD_TESTING": "OFF",
-				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "ENABLE_CCACHE": "OFF",
-        "ENABLE_EXAMPLE": "OFF"
-      }
-    },
-    {
-      "name": "autest",
-      "inherits": ["ci"],
-      "binaryDir": "${sourceDir}/build-autest",
+      "name": "branch-autest",
+      "inherits": ["ci-branch"],
       "cacheVariables": {
         "ENABLE_AUTEST": "ON",
-        "BUILD_EXPERIMENTAL_PLUGINS": "ON",
         "ENABLE_EXAMPLE": "ON"
       }
     },
     {
-      "name": "coverity",
-      "displayName": "coverity defaults",
+      "name": "branch-coverity",
+      "displayName": "Coverity defaults",
       "description": "Defaults for coverity builds",
       "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build",
+      "inherits": ["ci-branch"],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_EXPERIMENTAL_PLUGINS": "ON",
@@ -127,14 +326,21 @@
       }
     },
     {
-      "name": "coverage",
-      "displayName": "coverage defaults",
-      "description": "Defaults for coverage builds",
-      "inherits": ["autest"],
+      "name": "branch-coverage",
+      "displayName": "Branch coverage defaults",
+      "description": "Defaults for branch coverage builds",
+      "inherits": ["branch-autest"],
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_DEBUG": "--coverage",
         "CMAKE_C_FLAGS_DEBUG": "--coverage"
       }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "autest",
+      "configurePreset": "autest",
+      "targets": ["autest"]
     }
   ]
 }
