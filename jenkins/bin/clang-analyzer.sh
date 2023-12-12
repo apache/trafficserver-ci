@@ -39,7 +39,7 @@ then
   presetpath="${WORKSPACE}/ci/jenkins/branch/CMakePresets.json"
   [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-	cmake -B builddir --preset clang-analyzer
+	cmake -B builddir --preset branch-clang-analyzer
 	cmake --build builddir -v
 
 	${ANAL_BUILD} \
