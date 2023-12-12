@@ -229,6 +229,7 @@
       "displayName": "CI branch defaults",
       "inherits": ["ci"],
       "binaryDir": "${sourceDir}/build",
+      "generator": "Unix Makefiles",
       "cacheVariables": {
         "CMAKE_INSTALL_PREFIX": "/tmp/ats",
         "BUILD_EXPERIMENTAL_PLUGINS": "ON"
@@ -316,9 +317,8 @@
     },
     {
       "name": "branch-coverity",
-      "displayName": "CI Branch coverity",
-      "description": "Defaults for coverity builds",
-      "generator": "Unix Makefiles",
+      "displayName": "CI branch coverity",
+      "description": "Defaults for branch coverity builds",
       "inherits": ["branch"],
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -328,7 +328,7 @@
     },
     {
       "name": "branch-coverage",
-      "displayName": "CI Branch coverage",
+      "displayName": "CI branch coverage",
       "description": "Defaults for branch coverage builds",
       "inherits": ["branch-autest"],
       "cacheVariables": {
