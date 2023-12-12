@@ -231,6 +231,7 @@
       "binaryDir": "${sourceDir}/build",
       "generator": "Unix Makefiles",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
         "CMAKE_INSTALL_PREFIX": "/tmp/ats",
         "BUILD_EXPERIMENTAL_PLUGINS": "ON"
       }
@@ -313,6 +314,18 @@
       "cacheVariables": {
         "ENABLE_AUTEST": "ON",
         "ENABLE_EXAMPLE": "ON"
+      }
+    },
+    {
+      "name": "branch-clang-analyzer",
+      "displayName": "CI branch clang analyzer",
+      "description": "Defaults for branch clang analyzer builds",
+      "inherits": ["branch"],
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ENABLE_CCACHE": "OFF",
+        "ENABLE_EXAMPLE": "OFF",
+        "BUILD_TESTING": "OFF"
       }
     },
     {
