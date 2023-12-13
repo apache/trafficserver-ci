@@ -31,13 +31,11 @@ pipeline {
 						if [ -d cmake ]
 						then
 							CC="clang" \
-							CXX="clang++" \
-							CXXFLAGS="-Qunused-arguments" \
-							WITH_LIBCPLUSPLUS="yes" \
-							cmake -B build \
-								-G "Unix Makefiles" \
-								-DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl
-			cmake --build build -j3 -v
+								CXX="clang++" \
+								CXXFLAGS="-Qunused-arguments" \
+								WITH_LIBCPLUSPLUS="yes" \
+								cmake -B build --preset=branch-osx-m1
+							cmake --build build -j3 -v
 						else
 							autoreconf -fiv
 							CC="clang" \

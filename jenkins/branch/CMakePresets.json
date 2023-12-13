@@ -229,12 +229,7 @@
       "displayName": "CI branch defaults",
       "inherits": ["ci"],
       "binaryDir": "${sourceDir}/build",
-      "generator": "Unix Makefiles",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_INSTALL_PREFIX": "/tmp/ats",
-        "BUILD_EXPERIMENTAL_PLUGINS": "ON"
-      }
+      "generator": "Unix Makefiles"
     },
     {
       "name": "branch-release",
@@ -257,8 +252,8 @@
       "description": "Inherit to enable asan, build feature",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address",
-        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address"
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address,undefined",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address,undefined"
       }
     },
     {
@@ -314,6 +309,33 @@
       "cacheVariables": {
         "ENABLE_AUTEST": "ON",
         "ENABLE_EXAMPLE": "ON"
+      }
+    },
+    {
+      "name": "branch-freebsd",
+      "displayName": "CI branch freebsd",
+      "description": "Defaults for branch freebsd builds",
+      "inherits": ["branch"],
+      "generator": "Unix Makefiles"
+    },
+    {
+      "name": "branch-osx",
+      "displayName": "CI branch OSX",
+      "description": "Defaults for branch osx builds",
+      "inherits": ["branch"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/usr/local/opt/openssl"
+      }
+    },
+    {
+      "name": "branch-osx-m1",
+      "displayName": "CI branch OSX m1",
+      "description": "Defaults for branch osx-m1 builds",
+      "inherits": ["branch"],
+      "generator": "Unix Makefiles",
+      "cacheVariables": {
+        "OPENSSL_ROOT_DIR": "/opt/homebrew/opt/openssl"
       }
     },
     {
