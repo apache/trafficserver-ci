@@ -87,7 +87,7 @@ pipeline {
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
               [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-							cmake -B build --preset coverage -DCMAKE_INSTALL_PREFIX="/tmp/ats"
+							cmake -B build --preset branch-coverage -DCMAKE_INSTALL_PREFIX="/tmp/ats"
 							cmake --build build -j`nproc` -v
 							cmake --install build -v
 
