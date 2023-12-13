@@ -94,7 +94,7 @@ pipeline {
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
 							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
 
-							cmake -B build --preset autest
+							cmake -B build --preset branch-autest
 							cmake --build build -j`nproc` -v
 							cmake --install build -v
 

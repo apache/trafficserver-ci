@@ -30,9 +30,7 @@ pipeline {
 
 						if [ -d cmake ]
 						then
-							cmake -B build \
-								-DBUILD_EXPERIMENTAL_PLUGINS=ON \
-								-DCMAKE_INSTALL_PREFIX=/tmp/ats
+							cmake -B build --preset=branch-freebsd
 							cmake --build build -j`nproc` -v
 						else
 							autoreconf -fiv
