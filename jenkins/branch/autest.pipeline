@@ -87,6 +87,8 @@ pipeline {
 						# depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
 
+						NPROC=$(nproc)
+
 						if [ -d cmake ]
 						then
 							echo "Building with CMake"
@@ -95,7 +97,7 @@ pipeline {
 							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
 
 							cmake -B build --preset branch-autest
-							cmake --build build -j`nproc` -v
+							cmake --build build -j${NPROC} -v
 							cmake --install build -v
 
 						else
@@ -113,7 +115,7 @@ pipeline {
 								--enable-wccp \
 								--enable-luajit \
 								--enable-ccache
-							make -j`nproc`
+							make -j${NPROC}
 							make install
 
 						fi

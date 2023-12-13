@@ -20,7 +20,7 @@
 
 set -x
 
-NPROC=`nproc`
+NPROC=$(nproc)
 
 if [ ! -d cmake ]
 then
@@ -30,17 +30,15 @@ fi
 
 cd "${WORKSPACE}/src"
 
-cmake -B cmake-build-release\
-  -GNinja \
-  -DCMAKE_COMPILE_WARNING_AS_ERROR=ON \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_EXPERIMENTAL_PLUGINS=ON \
-  -DCMAKE_INSTALL_PREFIX=/tmp/ats
-#  -DOPENSSL_ROOT_DIR=/opt/openssl-quic
-cmake --build cmake-build-release -j${NPROC} -v
-cmake --install cmake-build-release
+# copy in CMakePresets.json
+presetpath="${WORKSPACE}/ci/jenkins/branch/CMakePresets.json"
+[ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-pushd cmake-build-release
+cmake -B build --preset=branch-release
+cmake --build build -j${NPROC} -v
+cmake --install build
+
+pushd build
 ctest -j${NPROC} --output-on-failure --no-compress-output -T Test
 /tmp/ats/bin/traffic_server -K -k -R 1
 popd

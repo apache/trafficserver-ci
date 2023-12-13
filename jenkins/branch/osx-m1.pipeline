@@ -28,23 +28,31 @@ pipeline {
 						set -x
 						set -e
 
+						NPROC=3
+
 						if [ -d cmake ]
 						then
+							echo "Building with CMake"
+
+							presetpath="../ci/jenkins/branch/CMakePresets.json"
+							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
+
 							CC="clang" \
 								CXX="clang++" \
 								CXXFLAGS="-Qunused-arguments" \
 								WITH_LIBCPLUSPLUS="yes" \
 								cmake -B build --preset=branch-osx-m1
-							cmake --build build -j3 -v
+							cmake --build build -j${NPROC} -v
 						else
+							echo "Building with autotools"
+
 							autoreconf -fiv
 							CC="clang" \
 							CXX="clang++" \
 							CXXFLAGS="-Qunused-arguments" \
 							WITH_LIBCPLUSPLUS="yes" \
-							./configure \
-								--with-openssl=/opt/homebrew/opt/openssl
-							make -j3
+							./configure --with-openssl=/opt/homebrew/opt/openssl
+							make -j${NPROC}
 						fi
 					'''
 				}

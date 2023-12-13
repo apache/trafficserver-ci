@@ -38,20 +38,27 @@ pipeline {
 						tar -xvzf coverity_tool.tgz -C cov_tools --strip-components 1
 						set -x
 
+						NPROC=$(nproc)
+
 						if [ -d cmake ]
 						then
+							echo "Building with CMake"
+
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
 							[ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
+
 							cmake -B build --preset branch-coverity
 							pushd build
-						  ../cov_tools/bin/cov-build --dir ../cov-int make -j`nproc`
+						  ../cov_tools/bin/cov-build --dir ../cov-int make -j${NPROC}
 							popd
 						else
+							echo "Building with autotools"
+
 							autoreconf -fiv
 							./configure \
 								--enable-experimental-plugins \
 								--enable-example-plugins
-						  ./cov_tools/bin/cov-build --dir cov-int make -j`nproc`
+						  ./cov_tools/bin/cov-build --dir cov-int make -j${NPROC}
 						fi
 
 						tar czvf trafficserver.tgz cov-int

@@ -55,16 +55,17 @@ pipeline {
 							export PATH=/opt/bin:${PATH}
 							chmod -R o+r .
 
+							NPROC=$(nproc)
+
 							if [ -d cmake ]
 							then
-								cmake -B build \
-									-DCMAKE_INSTALL_PREFIX=/opt/ats
-								cmake --build build -j`nproc` -v
+								cmake -B build -DCMAKE_INSTALL_PREFIX=/opt/ats
+								cmake --build build -j${NPROC} -v
 								cmake --install build
 							else
 								autoreconf -fiv
 								./configure --prefix=/opt/ats --enable-ccache
-								make -j`nproc`
+								make -j${NPROC}
 								make install
 							fi
 

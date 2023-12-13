@@ -43,13 +43,21 @@ echo "Success! No DOS carriage return"
 
 set -x
 
+NPROC=$(nproc)
+
 if [ -d cmake ]
 then
+  echo "Building with CMake"
 
-  cmake -B build
-	cmake --build build --target format -j`nproc` -v || exit 1
+  presetpath="${WORKSPACE}/ci/jenkins/branch/CMakePresets.json"
+  [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
+
+  cmake -B build --preset=branch
+  cmake --build build --target format -j${NPROC} -v || exit 1
 
 else
+  echo "Building with autotools"
+
   autoreconf -if
   ./configure
 
