@@ -34,6 +34,7 @@ mkdir -p ${RPTDIR}
 
 if [ -d cmake ]
 then
+  echo "Building with CMake"
 
   # copy in CMakePresets.json
   presetpath="${WORKSPACE}/ci/jenkins/branch/CMakePresets.json"
@@ -55,6 +56,8 @@ then
     --html-title="clang-analyzer: ${GITHUB_BRANCH}"
 
 else
+  echo "Building with autotools"
+
   autoreconf -fiv
   ${SCAN_BUILD} --keep-cc \
     ./configure --enable-experimental-plugins --with-luajit

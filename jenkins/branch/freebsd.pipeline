@@ -28,14 +28,23 @@ pipeline {
 						set -x
 						set -e
 
+						NPROC=$(nproc)
+
 						if [ -d cmake ]
 						then
+							echo "Building with CMake"
+
+							presetpath="../ci/jenkins/branch/CMakePresets.json"
+							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
+
 							cmake -B build --preset=branch-freebsd
-							cmake --build build -j`nproc` -v
+							cmake --build build -j${NPROC} -v
 						else
+							echo "Building with autotools"
+
 							autoreconf -fiv
 							./configure --enable-experimental-plugins
-							gmake -j3
+							gmake -j${NPROC}
 						fi
 					'''
 				}

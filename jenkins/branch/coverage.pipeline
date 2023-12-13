@@ -80,15 +80,17 @@ pipeline {
 						# (default user umask may change and make these unreadable)
 						sudo chmod -R o+r .
 
+						NPROC=$(nproc)
+
 						if [ -d cmake ]
 						then
 							echo "Building with CMake"	
 
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
-              [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
+							[ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-							cmake -B build --preset branch-coverage -DCMAKE_INSTALL_PREFIX="/tmp/ats"
-							cmake --build build -j`nproc` -v
+							cmake -B build --preset branch-coverage
+							cmake --build build -j${NPROC} -v
 							cmake --install build -v
 
 						else
@@ -105,7 +107,7 @@ pipeline {
 								--enable-luajit \
 								--enable-ccache \
 								--enable-coverage
-							make -j`nproc` V=1 Q=
+							make -j${NPROC} V=1 Q=
 							make install
 						fi
 					'''
