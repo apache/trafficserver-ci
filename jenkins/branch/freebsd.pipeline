@@ -3,6 +3,11 @@ pipeline {
 	stages {
 		stage('Clone') {
 			steps {
+				echo 'Starting Clone'
+				dir('ci') {
+					git url: 'https://github.com/apache/trafficserver-ci',
+						branch: 'main'
+				}
 				dir('src') {
 					script {
 						String branch = env.SHA1
@@ -28,7 +33,7 @@ pipeline {
 						set -x
 						set -e
 
-						NPROC=$(nproc)
+						NPROC=3
 
 						if [ -d cmake ]
 						then
