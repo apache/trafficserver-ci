@@ -77,8 +77,8 @@
       "name": "asan",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address",
-        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address"
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address,undefined",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address,undefined"
       }
     },
     {
@@ -252,8 +252,8 @@
       "description": "Inherit to enable asan, build feature",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address,undefined",
-        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address,undefined"
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -fsanitize=address",
+        "CMAKE_C_FLAGS_DEBUG": "-g -fsanitize=address"
       }
     },
     {
