@@ -118,7 +118,7 @@ RUN <<EOF
 EOF
 
 # Install lcov.
-RUN yum install -y perl-IO-Compress
+RUN dnf install -y perl-IO-Compress
 ARG lcov_build_dir=/var/tmp/lcov_build_dir
 RUN mkdir -p ${lcov_build_dir}
 RUN <<EOF
@@ -134,9 +134,12 @@ RUN <<EOF
 EOF
 
 # Install ABI checking tools.
-RUN yum install -y ctags elfutils-libelf-devel wdiff
+RUN dnf install -y ctags elfutils-libelf-devel wdiff
 COPY /install_abi_tools.sh /root/install_abi_tools.sh
 RUN bash /root/install_abi_tools.sh
+
+# reinstall openssl-devel
+RUN dnf install -y openssl-devel
 
 # Keep this at the end to clean up the yum cache.
 RUN yum clean all
