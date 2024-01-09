@@ -31,7 +31,23 @@ pipeline {
                             ],
                         ],
                         userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-                    sh 'git show -n 10 --decorate --graph --oneline --no-patch'
+                    sh '''#!/bin/bash
+                            set -x
+
+                            echo
+                            echo
+                            uname -a
+                            cat /etc/*release*
+
+                            echo
+                            git show HEAD^2 --no-patch
+                            git show HEAD^1 --no-patch
+                            echo
+
+                            git show -n 10 --decorate --graph --oneline --no-patch
+                            echo
+                            echo
+                    '''
                 }
                 echo 'Finished Cloning'
             }
