@@ -13,7 +13,7 @@ RUN <<EOF
     ccache make pkgconfig bison flex gcc-c++ clang cmake ninja-build \
     autoconf automake libtool \
     sudo git rpm-build file wget openssl hwloc nghttp2 libnghttp2-devel \
-    go-toolset llvm-toolset
+    cargo go-toolset llvm-toolset
 
   # Devel packages that ATS needs.
   #
@@ -99,6 +99,36 @@ EOF
 
 RUN update-crypto-policies --set LEGACY
 
+# Install nuraft for the stek_share plugin. Distros, unfortunately, do not
+# package these, so this has to be built by hand.
+RUN <<EOF
+  set -e
+
+  git clone https://github.com/eBay/NuRaft.git
+  cd NuRaft
+  ./prepare.sh
+
+  OPENSSL_PREFIX=/opt/openssl-quic
+  if [ -d "${OPENSSL_PREFIX}/lib" ]; then
+    OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
+  elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
+    OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
+  else
+    echo "Could not find the OpenSSL install library directory."
+    exit 1
+  fi
+  cmake \
+    -B build \
+    -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=/opt/ \
+    -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
+    -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
+  cmake --build build
+  cmake --install build
+  cd ../
+  rm -rf NuRaft
+EOF
+
 # Add the CI's jenkins user.
 # N.B: 1200 is the uid that our jenkins user is configured with, so that has to
 # be used. Otherwise there will be permissions issues.
@@ -138,8 +168,11 @@ RUN dnf install -y ctags elfutils-libelf-devel wdiff
 COPY /install_abi_tools.sh /root/install_abi_tools.sh
 RUN bash /root/install_abi_tools.sh
 
-# reinstall openssl-devel
-RUN dnf install -y openssl-devel
+RUN <<EOF
+  set -e
+  # reinstall openssl-devel
+  dnf install -y openssl-devel
+  # Keep this at the end to clean up the yum cache to reduce the image file size.
+  dnf clean all
+EOF
 
-# Keep this at the end to clean up the yum cache.
-RUN yum clean all
