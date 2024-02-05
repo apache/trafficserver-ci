@@ -10,7 +10,7 @@ RUN yum -y install epel-release dnf-plugins-core; yum config-manager --set-enabl
     # Various other tools
     sudo git rpm-build distcc-server file wget openssl hwloc nghttp2 libnghttp2-devel; \
     # Devel packages that ATS needs
-    yum -y install openssl-devel expat-devel pcre-devel libcap-devel hwloc-devel libunwind-devel \
+    yum -y install openssl-devel expat-devel pcre-devel pcre2-devel libcap-devel hwloc-devel libunwind-devel \
     xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI curl tcl-devel java \
