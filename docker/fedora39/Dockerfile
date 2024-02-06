@@ -85,6 +85,7 @@ RUN <<EOF
   set -e
   cd ${h3_tools_dir}
   bash ${h3_tools_dir}/build_h3_tools.sh; \
+  cd /root
   rm -rf ${h3_tools_dir} /root/.rustup
 EOF
 
