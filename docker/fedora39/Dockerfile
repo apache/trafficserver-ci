@@ -30,7 +30,7 @@ RUN <<EOF
     xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html \
-    curl tcl-devel java cjose-devel
+    curl tcl-devel java cjose-devel protobuf-devel
 
   # autest stuff
   dnf -y install \
@@ -134,6 +134,34 @@ RUN <<EOF
   cmake --install build
   cd ../
   rm -rf NuRaft
+EOF
+
+# For Open Telemetry Tracer plugin.
+RUN <<EOF
+  set -e
+
+  cd /root
+  mkdir nlohmann-json
+  cd nlohmann-json
+  wget https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.tar.gz
+  tar zxf v3.11.3.tar.gz
+  cd json-3.11.3
+  cmake -B build -G Ninja -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_INSTALL_PREFIX=/opt -DJSON_BuildTests=OFF
+  cmake --build build
+  cmake --install build
+  cd /root
+  rm -rf nlohmann-json
+
+  mkdir opentelemetry-cpp
+  cd opentelemetry-cpp
+  wget https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v1.3.0.tar.gz
+  tar zxf v1.3.0.tar.gz
+  cd opentelemetry-cpp-1.3.0
+  cmake -B build -G Ninja -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF -DWITH_JAEGER=OFF -DWITH_OTLP=ON -DWITH_OTLP_GRPC=OFF -DWITH_OTLP_HTTP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -Dnlohmann_json_ROOT=/opt/ -DCMAKE_INSTALL_PREFIX=/opt
+  cmake --build build --target all
+  cmake --install build --config Debug
+  cd /root
+  rm -rf opentelemetry-cpp
 EOF
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
