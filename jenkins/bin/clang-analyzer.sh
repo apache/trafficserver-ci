@@ -41,7 +41,7 @@ then
   [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
 	cmake -B builddir --preset branch-clang-analyzer
-	cmake --build builddir -v
+	cmake --build builddir -v -j${NPROC}
 
 	${ANAL_BUILD} \
 		--cdb builddir/compile_commands.json \
