@@ -6,32 +6,34 @@ FROM rockylinux:8
 RUN <<EOF
   set -e
 
-  yum -y install epel-release dnf-plugins-core
-  yum config-manager --set-enabled powertools
-  yum repolist
-  yum -y update
+  dnf -y install epel-release dnf-plugins-core
+  dnf config-manager --set-enabled powertools
+  dnf repolist
+  dnf -y update
 
   # Build tools.
-  yum -y install \
+  dnf -y install \
     ccache make pkgconfig bison flex gcc-c++ clang cmake ninja-build \
     autoconf automake libtool \
     gcc-toolset-11 gcc-toolset-11-libasan-devel
 
   # Various other tools
-  yum -y install \
+  dnf -y install \
     sudo git rpm-build distcc-server file wget openssl hwloc \
     nghttp2 libnghttp2-devel fmt fmt-devel
 
   # Devel packages that ATS needs
-  yum -y install \
-    openssl-devel expat-devel pcre-devel libcap-devel hwloc-devel libunwind-devel \
-    xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
-    ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
-    perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html \
+  dnf -y install \
+    openssl-devel expat-devel pcre-devel pcre2-devel libcap-devel \
+    hwloc-devel libunwind-devel xz-devel libcurl-devel ncurses-devel \
+    jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
+    ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel \
+    libmaxminddb-devel perl-ExtUtils-MakeMaker perl-Digest-SHA \
+    perl-URI perl-IPC-Cmd perl-Pod-Html \
     curl tcl-devel java cjose-devel jansson-devel
 
   # autest stuff
-  yum -y install \
+  dnf -y install \
     python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet
 EOF
@@ -70,16 +72,16 @@ RUN pip3 install pipenv httpbin
 #-------------------------------------------------------------------------------
 RUN <<EOF
   set -e
-  yum install -y python38-devel cargo
+  dnf install -y python38-devel cargo
   alternatives --set python /usr/bin/python3.8
-  yum -y install \
+  dnf -y install \
     libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel jansson-devel cjose-devel \
     zlib-devel systemd-devel
 EOF
 
 # go and rust will be installed by build_h3_tools.
-RUN yum remove -y golang rust
+RUN dnf remove -y golang rust
 ARG h3_tools_dir=/root/build_h3_tools
 RUN mkdir -p ${h3_tools_dir}
 COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
@@ -162,7 +164,7 @@ RUN <<EOF
 EOF
 
 # Install lcov.
-RUN yum install -y perl-IO-Compress
+RUN dnf install -y perl-IO-Compress
 ARG lcov_build_dir=/var/tmp/lcov_build_dir
 RUN mkdir -p ${lcov_build_dir}
 RUN <<EOF
@@ -178,7 +180,7 @@ RUN <<EOF
 EOF
 
 # Install ABI checking tools.
-RUN yum install -y ctags elfutils-libelf-devel wdiff
+RUN dnf install -y ctags elfutils-libelf-devel wdiff
 COPY /install_abi_tools.sh /root/install_abi_tools.sh
 RUN bash /root/install_abi_tools.sh
 
@@ -191,5 +193,5 @@ RUN <<EOF
   python3 -m pip install virtualenv
 EOF
 
-# Keep this at the end to clean up the yum cache.
-RUN yum clean all
+# Keep this at the end to clean up the dnf cache.
+RUN dnf clean all

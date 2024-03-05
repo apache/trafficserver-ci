@@ -20,10 +20,12 @@ RUN <<EOF
   # --alowerasing for cur. See:
   # https://bugs.launchpad.net/tripleo/+bug/1953156
   dnf -y install --allowerasing \
-    openssl-devel expat-devel pcre-devel libcap-devel hwloc-devel libunwind-devel \
-    xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
-    ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
-    perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html perl-FindBin \
+    openssl-devel expat-devel pcre-devel pcre2-devel libcap-devel \
+    hwloc-devel libunwind-devel xz-devel libcurl-devel ncurses-devel \
+    jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
+    ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel \
+    libmaxminddb-devel perl-ExtUtils-MakeMaker perl-Digest-SHA \
+    perl-URI perl-IPC-Cmd perl-Pod-Html perl-FindBin \
     curl tcl-devel java
 
   # autest stuff
