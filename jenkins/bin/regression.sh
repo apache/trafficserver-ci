@@ -17,6 +17,7 @@
 #  limitations under the License.
 
 set -x
+set -e
 
 NPROC=$(nproc)
 
