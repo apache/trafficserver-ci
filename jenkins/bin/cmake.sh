@@ -19,6 +19,7 @@
 # This does intentionally not run the regressions, it's primarily a "build" test
 
 set -x
+set -e
 
 NPROC=$(nproc)
 
