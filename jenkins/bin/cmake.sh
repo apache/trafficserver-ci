@@ -57,17 +57,17 @@ done
 # comma separate
 inherits=$(sed 's/ /, /g' <<< "${farray[@]}")
 
-read -d '' contents << EOF
+contents="
 {
-  "version": 2,
-  "configurePresets": [
+  \"version\": 2,
+  \"configurePresets\": [
     { 
-      "name": "branch-user-preset", 
-      "inherits": [${inherits}]
+      \"name\": \"branch-user-preset\", 
+      \"inherits\": [${inherits}]
     } 
   ] 
 }
-EOF
+"
 
 echo "${contents}" > CMakeUserPresets.json
 
