@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -43,7 +43,7 @@ echo "Success! No DOS carriage return"
 
 set -x
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 if [ -d cmake ]
 then

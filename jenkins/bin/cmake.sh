@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -21,7 +21,7 @@
 set -x
 set -e
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 if [ ! -d cmake ]
 then

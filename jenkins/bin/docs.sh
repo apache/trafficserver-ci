@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -18,7 +18,7 @@
 
 set -x
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 # These shenanigans are here to allow it to run both manually, and via Jenkins
 test -z "${ATS_MAKE}" && ATS_MAKE="make"

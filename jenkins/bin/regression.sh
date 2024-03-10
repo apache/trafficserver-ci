@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -19,7 +19,7 @@
 set -x
 set -e
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 #cd "${ATS_BUILD_BASEDIR}/build"
 #cd "${ATS_BUILD_BASEDIR}"
@@ -33,9 +33,9 @@ echo -n "Unit tests started at " && date
 
 if [ -d cmake ]
 then
-  pushd build
-  ctest -B build -j${NPROC} --output-on-failure --no-compress-output -T Test
-  popd
+	pushd build
+	ctest -j${NPROC} --output-on-failure --no-compress-output -T Test
+	popd
 else
   ${ATS_MAKE} -j${NPROC} check VERBOSE=Y V=1 || exit 1
 fi

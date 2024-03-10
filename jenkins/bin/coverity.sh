@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -18,7 +18,7 @@
 
 cd "${WORKSPACE}/src"
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 # Get the Coverity tools into our path
 source /opt/rh/devtoolset-7/enable
