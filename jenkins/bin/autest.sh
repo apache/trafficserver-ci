@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -21,7 +21,7 @@ set +x
 cd src
 #sleep 30
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 git branch --contains ${ghprbActualCommit} > /dev/null
 if [ $? = 0 -a ! -z "$ghprbActualCommit" ]; then

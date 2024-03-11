@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -21,7 +21,7 @@ set -e
 
 grep -q 80010 configure.ac && echo "8.1.x branch detected, stop here!" && exit 0
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 WORKSPACE="${WORKSPACE:-..}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-master}"

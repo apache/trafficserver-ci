@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
 #  or more contributor license agreements.  See the NOTICE file
@@ -20,7 +20,7 @@ set -x
 
 [[ ":$PATH:" != *":/opt/bin:"* ]] && export PATH="/opt/bin:${PATH}"
 
-NPROC=$(nproc)
+NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 # Show which platform we're actually building on
 
