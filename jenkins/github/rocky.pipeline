@@ -68,7 +68,7 @@ pipeline {
                         if [ -d cmake ]
                         then
                             # Retrieve the libswoc version we use in ATS.
-                            swoc_version=$(awk '/set\(LIBSWOC_VERSION/ {print $NF}' lib/swoc/CMakeLists.txt | tr -d ')"')
+                            swoc_version=$(awk '/LIBSWOC_VERSION/ {print $NF; exit}' lib/swoc/CMakeLists.txt | tr -d '")')
 
                             pushd /var/tmp
                             git clone https://github.com/apache/trafficserver-libswoc.git
