@@ -19,6 +19,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+set -e
 
 
 # This is a slightly modified version of:
@@ -31,12 +32,12 @@
 #   versions of these over time.
 #
 # * It also doesn't run sudo since the Dockerfile will run this as root.
-
-
-set -e
+#
+# * It also doesn't use a mktemp since the caller sets up a temporary directory
+#   that it later removes.
 
 # Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"OpenSSL_1_1_1t+quic"}
+OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.1.4+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -45,10 +46,8 @@ OPENSSL_BASE=${OPENSSL_BASE:-"${BASE}/openssl-quic"}
 OPENSSL_PREFIX=${OPENSSL_PREFIX:-"${OPENSSL_BASE}-${OPENSSL_BRANCH}"}
 MAKE="make"
 
-# These are for Linux like systems, specially the LDFLAGS, also depends on dirs above
 CFLAGS=${CFLAGS:-"-O3 -g"}
 CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
-LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_PREFIX}/lib"}
 
 if [ -e /etc/redhat-release ]; then
     MAKE="gmake"
@@ -79,6 +78,14 @@ elif [ -e /etc/debian_version ]; then
     echo
 fi
 
+if [ `uname -s` = "Darwin" ]; then
+    echo "+-------------------------------------------------------------------------+"
+    echo "| When building on a Mac, be aware that the Apple version of clang may    |"
+    echo "| fail to build curl due to the issue described here:                     |"
+    echo "| https://github.com/curl/curl/issues/11391#issuecomment-1623890325       |"
+    echo "+-------------------------------------------------------------------------+"
+fi
+
 if [ -z ${QUICHE_BSSL_PATH+x} ]; then
    QUICHE_BSSL_PATH=${TMP_QUICHE_BSSL_PATH:-"${BASE}/boringssl/lib"}
 fi
@@ -87,6 +94,9 @@ set -x
 if [ `uname -s` = "Linux" ]
 then
   num_threads=$(nproc)
+elif [ `uname -s` = "FreeBSD" ]
+then
+  num_threads=$(sysctl -n hw.ncpu)
 else
   # MacOS.
   num_threads=$(sysctl -n hw.logicalcpu)
@@ -98,7 +108,7 @@ echo "Building boringssl..."
 # We need this go version.
 mkdir -p ${BASE}/go
 
-if [ `uname -m` = "arm64" ]; then
+if [ `uname -m` = "arm64" -o `uname -m` = "aarch64" ]; then
     ARCH="arm64"
 else
     ARCH="amd64"
@@ -106,32 +116,35 @@ fi
 
 if [ `uname -s` = "Darwin" ]; then
     OS="darwin"
+elif [ `uname -s` = "FreeBSD" ]; then
+    OS="freebsd"
 else
     OS="linux"
 fi
 
-wget https://go.dev/dl/go1.20.1.${OS}-${ARCH}.tar.gz
-rm -rf ${BASE}/go && tar -C ${BASE} -xf go1.20.1.${OS}-${ARCH}.tar.gz
-rm go1.20.1.${OS}-${ARCH}.tar.gz
+wget https://go.dev/dl/go1.21.6.${OS}-${ARCH}.tar.gz
+rm -rf ${BASE}/go && tar -C ${BASE} -xf go1.21.6.${OS}-${ARCH}.tar.gz
+rm go1.21.6.${OS}-${ARCH}.tar.gz
+chmod -R a+rX ${BASE}
 
 GO_BINARY_PATH=${BASE}/go/bin/go
 if [ ! -d boringssl ]; then
   git clone https://boringssl.googlesource.com/boringssl
   cd boringssl
-  git checkout 31bad2514d21f6207f3925ba56754611c462a873
+  git checkout a1843d660b47116207877614af53defa767be46a
   cd ..
 fi
 cd boringssl
-mkdir -p build
-cd build
 cmake \
+  -B build \
   -DGO_EXECUTABLE=${GO_BINARY_PATH} \
   -DCMAKE_INSTALL_PREFIX=${BASE}/boringssl \
   -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SHARED_LIBS=1 ../
-
-${MAKE} -j ${num_threads}
-${MAKE} install
+  -DCMAKE_CXX_FLAGS='-Wno-error=ignored-attributes' \
+  -DBUILD_SHARED_LIBS=1
+cmake --build build -j ${num_threads}
+cmake --install build
+chmod -R a+rX ${BASE}
 cd ..
 
 # Build quiche
@@ -145,7 +158,7 @@ source /root/.cargo/env
 QUICHE_BASE="${BASE:-/opt}/quiche"
 [ ! -d quiche ] && git clone --recursive https://github.com/cloudflare/quiche.git
 cd quiche
-git checkout 0b37da1cc564e40749ba650febd40586a4355be4
+git checkout 0.20.1
 QUICHE_BSSL_PATH=${QUICHE_BSSL_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
 mkdir -p ${QUICHE_BASE}/lib/pkgconfig
 mkdir -p ${QUICHE_BASE}/include
@@ -153,96 +166,100 @@ cp target/release/libquiche.a ${QUICHE_BASE}/lib/
 [ -f target/release/libquiche.so ] && cp target/release/libquiche.so ${QUICHE_BASE}/lib/
 cp quiche/include/quiche.h ${QUICHE_BASE}/include/
 cp target/release/quiche.pc ${QUICHE_BASE}/lib/pkgconfig
+chmod -R a+rX ${BASE}
 cd ..
 
-# OpenSSL needs special hackery ... Only grabbing the branch we need here... Bryan has shit for network.
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
 cd openssl-quic
-git checkout c3f5f36f5dadfa334119e940b7576a4abfa428c8
 ./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
 ${MAKE} -j ${num_threads}
-${MAKE} -j install
+${MAKE} install_sw
+chmod -R a+rX ${BASE}
 
 # The symlink target provides a more convenient path for the user while also
 # providing, in the symlink source, the precise branch of the OpenSSL build.
 ln -sf ${OPENSSL_PREFIX} ${OPENSSL_BASE}
+chmod -R a+rX ${BASE}
 cd ..
+
+# OpenSSL will install in /lib or lib64 depending upon the architecture.
+if [ -d "${OPENSSL_PREFIX}/lib" ]; then
+  OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
+elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
+  OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
+else
+  echo "Could not find the OpenSSL install library directory."
+  exit 1
+fi
+LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_LIB}"}
 
 # Then nghttp3
 echo "Building nghttp3..."
-if [ ! -d nghttp3 ]; then
-  git clone https://github.com/ngtcp2/nghttp3.git
-  cd nghttp3
-  git checkout -b v0.9.0 v0.9.0
-  cd ..
-fi
+[ ! -d nghttp3 ] && git clone --depth 1 -b v1.2.0 https://github.com/ngtcp2/nghttp3.git
 cd nghttp3
+git submodule update --init
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
   --enable-lib-only
 ${MAKE} -j ${num_threads}
 ${MAKE} install
+chmod -R a+rX ${BASE}
 cd ..
 
 # Now ngtcp2
 echo "Building ngtcp2..."
-if [ ! -d ngtcp2 ]; then
-  git clone https://github.com/ngtcp2/ngtcp2.git
-  cd ngtcp2
-  git checkout -b v0.13.1 v0.13.1
-  cd ..
-fi
+[ ! -d ngtcp2 ] && git clone --depth 1 -b v1.4.0 https://github.com/ngtcp2/ngtcp2.git
 cd ngtcp2
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
   --enable-lib-only
 ${MAKE} -j ${num_threads}
 ${MAKE} install
+chmod -R a+rX ${BASE}
 cd ..
 
 # Then nghttp2, with support for H3
 echo "Building nghttp2 ..."
-if [ ! -d nghttp2 ]; then
-  git clone https://github.com/tatsuhiro-t/nghttp2.git
-  cd nghttp2
-  git checkout -b v1.52.0 v1.52.0
-  cd ..
-fi
+[ ! -d nghttp2 ] && git clone --depth 1 -b v1.60.0 https://github.com/tatsuhiro-t/nghttp2.git
 cd nghttp2
+git submodule update --init
 autoreconf -if
-if [ `uname -s` = "Darwin" ]
+if [ `uname -s` = "Darwin" ] || [ `uname -s` = "FreeBSD" ]
 then
-  # --enable-app requires systemd which is not available on Mac.
+  # --enable-app requires systemd which is not available on Mac/FreeBSD.
   ENABLE_APP=""
 else
   ENABLE_APP="--enable-app"
 fi
+
+# Note for FreeBSD: This will not build h2load. h2load can be run on a remote machine.
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_PREFIX}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
-  LDFLAGS="${LDFLAGS}" \
+  LDFLAGS="${LDFLAGS} -L${OPENSSL_LIB}" \
   --enable-http3 \
   ${ENABLE_APP}
 ${MAKE} -j ${num_threads}
 ${MAKE} install
+chmod -R a+rX ${BASE}
 cd ..
 
 # Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone --branch curl-7_88_1 https://github.com/curl/curl.git
+[ ! -d curl ] && git clone --depth 1 -b curl-8_5_0 https://github.com/curl/curl.git
 cd curl
 # On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
 # The second runs fine.
@@ -258,4 +275,5 @@ autoreconf -fi || autoreconf -fi
   LDFLAGS="${LDFLAGS}"
 ${MAKE} -j ${num_threads}
 ${MAKE} install
+chmod -R a+rX ${BASE}
 cd ..
