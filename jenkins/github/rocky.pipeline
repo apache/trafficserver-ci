@@ -67,23 +67,13 @@ pipeline {
 
                         if [ -d cmake ]
                         then
-                            # Retrieve the libswoc version we use in ATS.
-                            swoc_version=$(awk '/LIBSWOC_VERSION/ {print $NF; exit}' lib/swoc/CMakeLists.txt | tr -d '")')
-
-                            pushd /var/tmp
-                            git clone https://github.com/apache/trafficserver-libswoc.git
-                            pushd trafficserver-libswoc
-                            git checkout ${swoc_version}
-                            pipenv install
-                            pipenv run scons -j`nproc` all
-                            popd
-                            popd
-                            libswoc_dir=/var/tmp/trafficserver-libswoc/_install/debug_posix-$(uname -m)_default
-
                             # Now build ATS, using the external libswoc.
+                            libswoc_dir=/opt/libswoc
+                            yaml_cpp_dir=/opt/yaml-cpp
                             PKG_CONFIG_PATH=${libswoc_dir}/lib/pkgconfig \
                             cmake -B build --preset ci-rocky \
-                              -DEXTERNAL_LIBSWOC=ON -Dlibswoc_ROOT=${libswoc_dir}
+                              -DEXTERNAL_LIBSWOC=ON -Dlibswoc_ROOT=${libswoc_dir} \
+                              -DEXTERNAL_YAML_CPP=ON -Dyaml-cpp_ROOT=${yaml_cpp_dir}
                             cmake --build build -v
                             cmake --install build
                             pushd build
