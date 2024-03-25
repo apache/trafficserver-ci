@@ -193,5 +193,49 @@ RUN <<EOF
   python3 -m pip install virtualenv
 EOF
 
+# Install some tools to test out of source builds.
+RUN <<EOF
+  set -e
+  set -x
+
+  # Retrieve the libswoc version we use in ATS.
+  cd /root/
+  mkdir libswoc
+  cd libswoc
+  wget -O CMakeLists.txt https://raw.githubusercontent.com/apache/trafficserver/master/lib/swoc/CMakeLists.txt
+  swoc_version=$(awk '/LIBSWOC_VERSION/ {print $NF; exit}' CMakeLists.txt | tr -d '")')
+
+  # Now, checkout that version and install libswoc in /opt/libswoc
+  git clone https://github.com/apache/trafficserver-libswoc.git
+  cd trafficserver-libswoc
+  git checkout ${swoc_version}
+  pipenv install
+  pipenv run scons -j`nproc` all
+  arch=$(uname -m)
+  old_path=/root/libswoc/trafficserver-libswoc/_install/debug_posix-${arch}_default
+  cp -rf ${old_path} /opt/libswoc
+  chmod 755 /opt/libswoc
+  sed -i "s:${old_path}:/opt/libswoc:g" /opt/libswoc/lib/pkgconfig/*.pc
+  cd /root/
+  rm -rf /root/libswoc
+
+  # Retrieve the yaml-cpp version we use in ATS.
+  cd /root/
+  mkdir yaml-cpp
+  cd yaml-cpp
+  wget -O CMakeLists.txt https://raw.githubusercontent.com/apache/trafficserver/master/lib/yamlcpp/CMakeLists.txt
+  yaml_version=$(awk '/project/ {print $3}' CMakeLists.txt)
+
+  cd /root/yaml-cpp
+  git clone https://github.com/jbeder/yaml-cpp.git
+  cd yaml-cpp
+  git checkout ${yaml_version}
+  cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/opt/yaml-cpp
+  cmake --build build
+  cmake --install build
+  cd /root
+  rm -rf yaml-cpp
+EOF
+
 # Keep this at the end to clean up the dnf cache.
 RUN dnf clean all
