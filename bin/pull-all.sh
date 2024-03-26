@@ -1,7 +1,7 @@
 #!/bin/sh
 
-docker pull ci.trafficserver.apache.org/ats/fedora:38
 docker pull ci.trafficserver.apache.org/ats/fedora:39
+docker pull ci.trafficserver.apache.org/ats/fedora:40
 docker pull ci.trafficserver.apache.org/ats/ubuntu:20.10
 docker pull ci.trafficserver.apache.org/ats/ubuntu:20.04
 docker pull ci.trafficserver.apache.org/ats/ubuntu:19.04
