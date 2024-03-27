@@ -1,7 +1,7 @@
 #!/bin/sh
 
+docker push ci.trafficserver.apache.org/ats/fedora:38
 docker push ci.trafficserver.apache.org/ats/fedora:39
-docker push ci.trafficserver.apache.org/ats/fedora:40
 docker push ci.trafficserver.apache.org/ats/ubuntu:20.10
 docker push ci.trafficserver.apache.org/ats/ubuntu:20.04
 docker push ci.trafficserver.apache.org/ats/ubuntu:19.04
