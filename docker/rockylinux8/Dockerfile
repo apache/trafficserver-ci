@@ -119,11 +119,14 @@ RUN update-crypto-policies --set LEGACY
 # package these, so this has to be built by hand.
 RUN <<EOF
   set -e
+  set -x
 
   git clone https://github.com/eBay/NuRaft.git
   cd NuRaft
+  sed -i 's/-std=c++11/-std=c++17/g' CMakeLists.txt
   ./prepare.sh
 
+  # openssl-quic nuraft
   OPENSSL_PREFIX=/opt/openssl-quic
   if [ -d "${OPENSSL_PREFIX}/lib" ]; then
     OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
@@ -134,13 +137,29 @@ RUN <<EOF
     exit 1
   fi
   cmake \
-    -B build \
+    -B build_openssl \
     -G Ninja \
     -DCMAKE_INSTALL_PREFIX=/opt/ \
     -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
     -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
-  cmake --build build
-  cmake --install build
+  cmake --build build_openssl
+  cmake --install build_openssl
+
+  # boringssl nuraft
+  BORINGSSL_PREFIX=/opt/boringssl
+  BORINGSSL_LIB="${BORINGSSL_PREFIX}/lib"
+  if [ -e /etc/redhat-release ]; then
+    BORINGSSL_LIB="${BORINGSSL_PREFIX}/lib64"
+  fi
+  cmake \
+    -B build_boringssl \
+    -G Ninja \
+    -DCMAKE_INSTALL_PREFIX=/opt/nuraft-boringssl \
+    -DOPENSSL_LIBRARY_PATH=${BORINGSSL_LIB} \
+    -DOPENSSL_INCLUDE_PATH=${BORINGSSL_PREFIX}/include
+  cmake --build build_boringssl
+  cmake --install build_boringssl
+
   cd ../
   rm -rf NuRaft
 EOF
