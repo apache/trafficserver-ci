@@ -164,6 +164,33 @@ RUN <<EOF
   rm -rf opentelemetry-cpp
 EOF
 
+# For the proxy wasm plugin.
+RUN <<EOF
+  set -e
+
+  # WAMR
+  BASE=/opt
+  build_dir=/var/tmp/wamr_build
+
+  # Get the WAMR source.
+  mkdir ${build_dir}
+  cd ${build_dir}
+  wget https://github.com/bytecodealliance/wasm-micro-runtime/archive/refs/tags/WAMR-1.2.1.tar.gz
+  tar zxvf WAMR-1.2.1.tar.gz
+
+  # Build WAMR.
+  cd wasm-micro-runtime-WAMR-1.2.1
+  cp core/iwasm/include/* ${BASE}/include/
+  cd product-mini/platforms/linux
+  cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=${BASE} -DWAMR_BUILD_INTERP=1 -DWAMR_BUILD_FAST_INTERP=1 -DWAMR_BUILD_JIT=0 -DWAMR_BUILD_AOT=0 -DWAMR_BUILD_SIMD=0 -DWAMR_BUILD_MULTI_MODULE=1 -DWAMR_BUILD_LIBC_WASI=0 -DWAMR_BUILD_TAIL_CALL=1 -DWAMR_DISABLE_HW_BOUND_CHECK=1 -DWAMR_BUILD_BULK_MEMORY=1 -DWAMR_BUILD_WASM_CACHE=0
+  cmake --build build
+  sudo cmake --install build
+
+  # WAMR Cleanup.
+  cd /var/tmp
+  rm -rf ${build_dir}
+EOF
+
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
 # issues.
