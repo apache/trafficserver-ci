@@ -34,7 +34,7 @@ echo -n "Unit tests started at " && date
 if [ -d cmake ]
 then
 	pushd build
-	ctest -j${NPROC} --output-on-failure --no-compress-output -T Test
+	ctest -j${NPROC} --output-on-failure --no-compress-output -T Test || exit 1
 	popd
 else
   ${ATS_MAKE} -j${NPROC} check VERBOSE=Y V=1 || exit 1
