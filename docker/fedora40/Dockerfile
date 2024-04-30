@@ -79,12 +79,25 @@ RUN pip3 install pipenv httpbin
 # go will be installed by build_h3_tools.
 ARG h3_tools_dir=/root/build_h3_tools
 RUN mkdir -p ${h3_tools_dir}
-COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
-# This will install OpenSSL QUIC and related tools in /opt.
+COPY build_boringssl_h3_tools.sh ${h3_tools_dir}
+# boringssl
 RUN <<EOF
   set -e
   cd ${h3_tools_dir}
-  bash ${h3_tools_dir}/build_h3_tools.sh; \
+  export BASE=/opt/h3-tools-boringssl
+  bash ${h3_tools_dir}/build_boringssl_h3_tools.sh
+  cd /root
+  rm -rf ${h3_tools_dir} /root/.rustup
+EOF
+# openssl: These are stored in /opt so that CI can easily access the curl,
+# h2load, etc., from there.
+RUN mkdir -p ${h3_tools_dir}
+COPY build_openssl_h3_tools.sh ${h3_tools_dir}
+RUN <<EOF
+  set -e
+  cd ${h3_tools_dir}
+  export BASE=/opt
+  bash ${h3_tools_dir}/build_openssl_h3_tools.sh
   cd /root
   rm -rf ${h3_tools_dir} /root/.rustup
 EOF
@@ -96,6 +109,7 @@ EOF
 # Autests require some go applications.
 RUN <<EOF
   set -e
+  ln -s /opt/h3-tools-boringssl/go /opt/go
   echo 'export PATH=$PATH:/opt/go/bin' | tee -a /etc/profile.d/go.sh
   echo 'export GOBIN=/opt/go/bin' | tee -a /etc/profile.d/go.sh
 
