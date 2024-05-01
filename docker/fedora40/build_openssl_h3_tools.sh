@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-#  Simple script to build OpenSSL and various tools with H3 and QUIC support.
+#  Simple script to build OpenSSL and various tools with H3 and QUIC support
+#  including quiche+openssl-quictls.
 #  This probably needs to be modified based on platform.
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
@@ -21,37 +22,35 @@
 
 set -e
 
-
 # This is a slightly modified version of:
-# https://github.com/apache/trafficserver/blob/19dfdd4753232d0b77ca555f7ef5f5ba3d2ccae1/tools/build_h3_tools.sh
+# https://github.com/apache/trafficserver/blob/master/tools/build_openssl_h3_tools.sh
 #
 # This present script been modified from the latter in the following ways:
 #
-# * This version checks out specific commits of the repos so that people
-#   creating images from the corresponding Dockerfile do not get different
-#   versions of these over time.
+# * It doesn't run sudo since the Dockerfile will run this as root.
 #
-# * It also doesn't run sudo since the Dockerfile will run this as root.
-#
-# * It also doesn't use a mktemp since the caller sets up a temporary directory
+# * It doesn't use a mktemp since the caller sets up a temporary directory
 #   that it later removes.
+
+WORKDIR="$(pwd)"
 
 # Update this as the draft we support updates.
 OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.1.4+quic"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
-BASE=${BASE:-"/opt"}
+BASE=${BASE:-"/opt/h3-tools-openssl"}
 OPENSSL_BASE=${OPENSSL_BASE:-"${BASE}/openssl-quic"}
 OPENSSL_PREFIX=${OPENSSL_PREFIX:-"${OPENSSL_BASE}-${OPENSSL_BRANCH}"}
 MAKE="make"
+
+echo "Building openssl/quictls H3 dependencies in ${WORKDIR}. Installation will be done in ${BASE}"
 
 CFLAGS=${CFLAGS:-"-O3 -g"}
 CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
 
 if [ -e /etc/redhat-release ]; then
     MAKE="gmake"
-    TMP_QUICHE_BSSL_PATH="${BASE}/boringssl/lib64"
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
@@ -64,7 +63,6 @@ if [ -e /etc/redhat-release ]; then
     echo
     echo
 elif [ -e /etc/debian_version ]; then
-    TMP_QUICHE_BSSL_PATH="${BASE}/boringssl/lib"
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
@@ -86,10 +84,6 @@ if [ `uname -s` = "Darwin" ]; then
     echo "+-------------------------------------------------------------------------+"
 fi
 
-if [ -z ${QUICHE_BSSL_PATH+x} ]; then
-   QUICHE_BSSL_PATH=${TMP_QUICHE_BSSL_PATH:-"${BASE}/boringssl/lib"}
-fi
-
 set -x
 if [ `uname -s` = "Linux" ]
 then
@@ -101,68 +95,6 @@ else
   # MacOS.
   num_threads=$(sysctl -n hw.logicalcpu)
 fi
-
-# boringssl
-echo "Building boringssl..."
-
-# We need this go version.
-mkdir -p ${BASE}/go
-
-if [ `uname -m` = "arm64" -o `uname -m` = "aarch64" ]; then
-    ARCH="arm64"
-else
-    ARCH="amd64"
-fi
-
-if [ `uname -s` = "Darwin" ]; then
-    OS="darwin"
-elif [ `uname -s` = "FreeBSD" ]; then
-    OS="freebsd"
-else
-    OS="linux"
-fi
-
-wget https://go.dev/dl/go1.21.6.${OS}-${ARCH}.tar.gz
-rm -rf ${BASE}/go && tar -C ${BASE} -xf go1.21.6.${OS}-${ARCH}.tar.gz
-rm go1.21.6.${OS}-${ARCH}.tar.gz
-chmod -R a+rX ${BASE}
-
-GO_BINARY_PATH=${BASE}/go/bin/go
-if [ ! -d boringssl ]; then
-  git clone https://boringssl.googlesource.com/boringssl
-  cd boringssl
-  git checkout a1843d660b47116207877614af53defa767be46a
-  cd ..
-fi
-cd boringssl
-cmake \
-  -B build \
-  -DGO_EXECUTABLE=${GO_BINARY_PATH} \
-  -DCMAKE_INSTALL_PREFIX=${BASE}/boringssl \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_FLAGS='-Wno-error=ignored-attributes' \
-  -DBUILD_SHARED_LIBS=1
-cmake --build build -j ${num_threads}
-cmake --install build
-chmod -R a+rX ${BASE}
-cd ..
-
-# Build quiche
-# Steps borrowed from: https://github.com/apache/trafficserver-ci/blob/main/docker/rockylinux8/Dockerfile
-echo "Building quiche"
-QUICHE_BASE="${BASE:-/opt}/quiche"
-[ ! -d quiche ] && git clone --recursive https://github.com/cloudflare/quiche.git
-cd quiche
-git checkout 0.20.1
-QUICHE_BSSL_PATH=${QUICHE_BSSL_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
-mkdir -p ${QUICHE_BASE}/lib/pkgconfig
-mkdir -p ${QUICHE_BASE}/include
-cp target/release/libquiche.a ${QUICHE_BASE}/lib/
-[ -f target/release/libquiche.so ] && cp target/release/libquiche.so ${QUICHE_BASE}/lib/
-cp quiche/include/quiche.h ${QUICHE_BASE}/include/
-cp target/release/quiche.pc ${QUICHE_BASE}/lib/pkgconfig
-chmod -R a+rX ${BASE}
-cd ..
 
 echo "Building OpenSSL with QUIC support"
 [ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
@@ -188,6 +120,27 @@ else
   exit 1
 fi
 LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_LIB}"}
+
+# Build quiche
+# Steps borrowed from: https://github.com/apache/trafficserver-ci/blob/main/docker/rockylinux8/Dockerfile
+echo "Building quiche"
+QUICHE_BASE="${BASE:-/opt}/quiche"
+[ ! -d quiche ] && git clone https://github.com/cloudflare/quiche.git
+cd quiche
+git checkout 0.21.0
+
+PKG_CONFIG_PATH="$OPENSSL_LIB"/pkgconfig LD_LIBRARY_PATH="$OPENSSL_LIB" \
+  cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog,openssl
+
+mkdir -p ${QUICHE_BASE}/lib/pkgconfig
+mkdir -p ${QUICHE_BASE}/include
+cp target/release/libquiche.a ${QUICHE_BASE}/lib/
+[ -f target/release/libquiche.so ] && cp target/release/libquiche.so ${QUICHE_BASE}/lib/
+cp quiche/include/quiche.h ${QUICHE_BASE}/include/
+cp target/release/quiche.pc ${QUICHE_BASE}/lib/pkgconfig
+chmod -R a+rX ${BASE}
+cd ..
+
 
 # Then nghttp3
 echo "Building nghttp3..."
