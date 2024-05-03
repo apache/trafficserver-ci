@@ -28,13 +28,19 @@ then
   exit 0
 fi
 
+SSL_FLAVOR="boringssl"
+if [ $# -eq 2 ]
+then
+  SSL_FLAVOR=$1
+fi
+
 cd "${WORKSPACE}/src"
 
 # copy in CMakePresets.json
 presetpath="../ci/jenkins/branch/CMakePresets.json"
 [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-cmake -B build --preset branch-quiche-on-boringssl
+cmake -B build --preset branch-quiche-on-${SSL_FLAVOR}
 cmake --build build -j${NPROC} -v
 cmake --install build
 
