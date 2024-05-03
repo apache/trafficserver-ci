@@ -17,6 +17,13 @@ RUN <<EOF
     autoconf automake libtool \
     gcc-toolset-11 gcc-toolset-11-libasan-devel
 
+  # build_h3_tools.sh dependencies.
+  dnf -y install \
+    python38-devel \
+    libev-devel jemalloc-devel libxml2-devel \
+    c-ares-devel libevent-devel jansson-devel cjose-devel \
+    zlib-devel systemd-devel
+
   # Various other tools
   dnf -y install \
     sudo git rpm-build distcc-server file wget openssl hwloc \
@@ -36,6 +43,9 @@ RUN <<EOF
   dnf -y install \
     python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet
+
+  # This keeps our Docker layers smaller.
+  dnf clean all
 EOF
 
 #-------------------------------------------------------------------------------
@@ -70,29 +80,39 @@ RUN pip3 install pipenv httpbin
 #-------------------------------------------------------------------------------
 # Install the HTTP/3 build tools, including openssl-quic.
 #-------------------------------------------------------------------------------
-RUN <<EOF
-  set -e
-  dnf install -y python38-devel cargo
-  alternatives --set python /usr/bin/python3.8
-  dnf -y install \
-    libev-devel jemalloc-devel libxml2-devel \
-    c-ares-devel libevent-devel jansson-devel cjose-devel \
-    zlib-devel systemd-devel
-EOF
 
-# go and rust will be installed by build_h3_tools.
-RUN dnf remove -y golang rust
 ARG h3_tools_dir=/root/build_h3_tools
 RUN mkdir -p ${h3_tools_dir}
-COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
-# This will install OpenSSL QUIC and related tools in /opt.
+COPY build_boringssl_h3_tools.sh ${h3_tools_dir}
+# boringssl
+RUN <<EOF
+  set -e
+  alternatives --set python /usr/bin/python3.8
+  # go will be installed by build_boringssl_h3_tools.sh
+  dnf remove -y golang rust
+  dnf install -y cargo
+  # This keeps our Docker layers smaller.
+  dnf clean all
+EOF
+
 RUN <<EOF
   set -e
   cd ${h3_tools_dir}
-  bash ${h3_tools_dir}/build_h3_tools.sh
-
-  # Removing the build dir is crucial to keeping the Docker image size
-  # reasonable.
+  export BASE=/opt/h3-tools-boringssl
+  bash ${h3_tools_dir}/build_boringssl_h3_tools.sh
+  cd /root
+  rm -rf ${h3_tools_dir} /root/.rustup
+EOF
+# openssl: These are stored in /opt so that CI can easily access the curl,
+# h2load, etc., from there.
+RUN mkdir -p ${h3_tools_dir}
+COPY build_openssl_h3_tools.sh ${h3_tools_dir}
+RUN <<EOF
+  set -e
+  cd ${h3_tools_dir}
+  export BASE=/opt
+  bash ${h3_tools_dir}/build_openssl_h3_tools.sh
+  cd /root
   rm -rf ${h3_tools_dir} /root/.rustup
 EOF
 
@@ -103,6 +123,7 @@ EOF
 # Autests require some go applications.
 RUN <<EOF
   set -e
+  ln -s /opt/h3-tools-boringssl/go /opt/go
   echo 'export PATH=$PATH:/opt/go/bin' | tee -a /etc/profile.d/go.sh
   echo 'export GOBIN=/opt/go/bin' | tee -a /etc/profile.d/go.sh
 
@@ -146,7 +167,7 @@ RUN <<EOF
   cmake --install build_openssl
 
   # boringssl nuraft
-  BORINGSSL_PREFIX=/opt/boringssl
+  BORINGSSL_PREFIX=/opt/h3-tools-boringssl/boringssl
   BORINGSSL_LIB="${BORINGSSL_PREFIX}/lib"
   if [ -e /etc/redhat-release ]; then
     BORINGSSL_LIB="${BORINGSSL_PREFIX}/lib64"
