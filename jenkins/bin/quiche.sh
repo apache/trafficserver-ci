@@ -29,7 +29,7 @@ then
 fi
 
 SSL_FLAVOR="boringssl"
-if [ $# -eq 2 ]
+if [ $# -ge 1 ]
 then
   SSL_FLAVOR=$1
 fi
