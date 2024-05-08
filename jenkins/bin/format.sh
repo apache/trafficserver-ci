@@ -22,6 +22,7 @@ cd "${WORKSPACE}/src"
 # First, make sure there are no trailing WS!!!
 git grep -IE ' +$' | \
     fgrep -v 'lib/yamlcpp' | \
+    fgrep -v 'lib/systemtap' | \
     fgrep -v '.gold:' | \
     fgrep -v '.test_input'
 if [ "1" != "$?" ]; then
@@ -34,6 +35,7 @@ echo "Success! No trailing whitespace"
 # Unix format please!
 git grep -IE $'\r$' | \
     fgrep -v 'lib/yamlcpp' | \
+    fgrep -v 'lib/systemtap' | \
     fgrep -v '.test_input'
 if [ "1" != "$?" ]; then
     echo "Error: Please make sure to run dos2unix on the above file(s)"
