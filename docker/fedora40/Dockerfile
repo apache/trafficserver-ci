@@ -34,7 +34,7 @@ RUN <<EOF
 
   # autest stuff
   dnf -y install \
-    python3 httpd-tools procps-ng nmap-ncat python3-pip \
+    bpftrace python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet
 
   # Needed to install openssl-quic
