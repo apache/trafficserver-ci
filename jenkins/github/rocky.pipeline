@@ -85,8 +85,8 @@ pipeline {
                             echo "Falling back to autotools."
                             autoreconf -fiv
                             ./configure \
-                                --with-quiche=/opt/quiche \
-                                --with-openssl=/opt/boringssl \
+                                --with-quiche=/opt/h3-tools-boringssl/quiche \
+                                --with-openssl=/opt/h3-tools-boringssl/boringssl \
                                 --enable-experimental-plugins \
                                 --enable-example-plugins \
                                 --prefix=/tmp/ats/ \
