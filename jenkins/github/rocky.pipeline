@@ -70,6 +70,7 @@ pipeline {
                             # Now build ATS, using the external libswoc.
                             libswoc_dir=/opt/libswoc
                             yaml_cpp_dir=/opt/yaml-cpp
+                            src_top=$(git rev-parse --show-toplevel)
                             PKG_CONFIG_PATH=${libswoc_dir}/lib/pkgconfig \
                             cmake -B build --preset ci-rocky \
                               -DEXTERNAL_LIBSWOC=ON -Dlibswoc_ROOT=${libswoc_dir} \
@@ -78,6 +79,7 @@ pipeline {
                             cmake --install build
                             pushd build
                             ctest -j4 --output-on-failure --no-compress-output -T Test
+                            LSAN_OPTIONS=suppressions=${src_top}/ci/asan_leak_suppression/regression.txt \
                             /tmp/ats-quiche/bin/traffic_server -K -k -R 1
                             popd
                         else
