@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-#  Simple script to build OpenSSL and various tools with H3 and QUIC support.
+#  Simple script to build BoringsSSL and various tools with H3 and QUIC support
+#  including quiche+BoringSSL.
 #  This probably needs to be modified based on platform.
 #
 #  Licensed to the Apache Software Foundation (ASF) under one
@@ -21,37 +22,32 @@
 
 set -e
 
-
 # This is a slightly modified version of:
-# https://github.com/apache/trafficserver/blob/19dfdd4753232d0b77ca555f7ef5f5ba3d2ccae1/tools/build_h3_tools.sh
+# https://github.com/apache/trafficserver/blob/master/tools/build_boringssl_h3_tools.sh
 #
 # This present script been modified from the latter in the following ways:
 #
-# * This version checks out specific commits of the repos so that people
-#   creating images from the corresponding Dockerfile do not get different
-#   versions of these over time.
+# * It doesn't run sudo since the Dockerfile will run this as root.
 #
-# * It also doesn't run sudo since the Dockerfile will run this as root.
-#
-# * It also doesn't use a mktemp since the caller sets up a temporary directory
+# * It doesn't use a mktemp since the caller sets up a temporary directory
 #   that it later removes.
 
-# Update this as the draft we support updates.
-OPENSSL_BRANCH=${OPENSSL_BRANCH:-"openssl-3.1.4+quic"}
+WORKDIR="$(pwd)"
 
 # Set these, if desired, to change these to your preferred installation
 # directory
-BASE=${BASE:-"/opt"}
-OPENSSL_BASE=${OPENSSL_BASE:-"${BASE}/openssl-quic"}
-OPENSSL_PREFIX=${OPENSSL_PREFIX:-"${OPENSSL_BASE}-${OPENSSL_BRANCH}"}
+BASE=${BASE:-"/opt/h3-tools-boringssl"}
 MAKE="make"
+
+echo "Building boringssl H3 dependencies in ${WORKDIR}. Installation will be done in ${BASE}"
 
 CFLAGS=${CFLAGS:-"-O3 -g"}
 CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
+BORINGSSL_PATH="${BASE}/boringssl"
 
 if [ -e /etc/redhat-release ]; then
     MAKE="gmake"
-    TMP_QUICHE_BSSL_PATH="${BASE}/boringssl/lib64"
+    TMP_BORINGSSL_LIB_PATH="${BASE}/boringssl/lib64"
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
@@ -64,7 +60,7 @@ if [ -e /etc/redhat-release ]; then
     echo
     echo
 elif [ -e /etc/debian_version ]; then
-    TMP_QUICHE_BSSL_PATH="${BASE}/boringssl/lib"
+    TMP_BORINGSSL_LIB_PATH="${BASE}/boringssl/lib"
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
@@ -86,8 +82,8 @@ if [ `uname -s` = "Darwin" ]; then
     echo "+-------------------------------------------------------------------------+"
 fi
 
-if [ -z ${QUICHE_BSSL_PATH+x} ]; then
-   QUICHE_BSSL_PATH=${TMP_QUICHE_BSSL_PATH:-"${BASE}/boringssl/lib"}
+if [ -z ${BORINGSSL_LIB_PATH+x} ]; then
+   BORINGSSL_LIB_PATH=${TMP_BORINGSSL_LIB_PATH:-"${BORINGSSL_PATH}/lib"}
 fi
 
 set -x
@@ -135,59 +131,66 @@ if [ ! -d boringssl ]; then
   cd ..
 fi
 cd boringssl
+
+# un-set it for a bit.
+set +e
+BSSL_C_FLAGS="-Wdangling-pointer=0"
+GCCO=$(eval "gcc --help=warnings | grep dangling-pointer=")
+retVal=$?
+if [ $retVal -eq 1 ]; then
+    BSSL_C_FLAGS=""
+fi
+set -e
+
+# Note: -Wdangling-pointer=0
+# We may have some issues with latest GCC compilers, so disabling -Wdangling-pointer=
+# Note: -UBORINGSSL_HAVE_LIBUNWIND
+#   Disable related libunwind test builds, there are some version number issues
+#   with this pkg in Ubuntu 20.04, so disable this to make sure it builds.
 cmake \
-  -B build \
+  -B build-shared \
   -DGO_EXECUTABLE=${GO_BINARY_PATH} \
   -DCMAKE_INSTALL_PREFIX=${BASE}/boringssl \
   -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_FLAGS='-Wno-error=ignored-attributes' \
+  -DCMAKE_CXX_FLAGS='-Wno-error=ignored-attributes -UBORINGSSL_HAVE_LIBUNWIND' \
+  -DCMAKE_C_FLAGS=${BSSL_C_FLAGS} \
   -DBUILD_SHARED_LIBS=1
-cmake --build build -j ${num_threads}
-cmake --install build
+cmake \
+  -B build-static \
+  -DGO_EXECUTABLE=${GO_BINARY_PATH} \
+  -DCMAKE_INSTALL_PREFIX=${BASE}/boringssl \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS='-Wno-error=ignored-attributes -UBORINGSSL_HAVE_LIBUNWIND' \
+  -DCMAKE_C_FLAGS=${BSSL_C_FLAGS} \
+  -DBUILD_SHARED_LIBS=0
+cmake --build build-shared -j ${num_threads}
+cmake --build build-static -j ${num_threads}
+cmake --install build-shared
+cmake --install build-static
 chmod -R a+rX ${BASE}
+
 cd ..
 
 # Build quiche
 # Steps borrowed from: https://github.com/apache/trafficserver-ci/blob/main/docker/rockylinux8/Dockerfile
 echo "Building quiche"
 QUICHE_BASE="${BASE:-/opt}/quiche"
-[ ! -d quiche ] && git clone --recursive https://github.com/cloudflare/quiche.git
+[ ! -d quiche ] && git clone  https://github.com/cloudflare/quiche.git
 cd quiche
-git checkout 0.20.1
-QUICHE_BSSL_PATH=${QUICHE_BSSL_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
+git checkout 0.22.0
+QUICHE_BSSL_PATH=${BORINGSSL_LIB_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
 mkdir -p ${QUICHE_BASE}/lib/pkgconfig
 mkdir -p ${QUICHE_BASE}/include
 cp target/release/libquiche.a ${QUICHE_BASE}/lib/
 [ -f target/release/libquiche.so ] && cp target/release/libquiche.so ${QUICHE_BASE}/lib/
+# Why a link? https://github.com/cloudflare/quiche/issues/1808#issuecomment-2196233378
+ln -s ${QUICHE_BASE}/lib/libquiche.so ${QUICHE_BASE}/lib/libquiche.so.0
 cp quiche/include/quiche.h ${QUICHE_BASE}/include/
 cp target/release/quiche.pc ${QUICHE_BASE}/lib/pkgconfig
 chmod -R a+rX ${BASE}
 cd ..
 
-echo "Building OpenSSL with QUIC support"
-[ ! -d openssl-quic ] && git clone -b ${OPENSSL_BRANCH} --depth 1 https://github.com/quictls/openssl.git openssl-quic
-cd openssl-quic
-./config enable-tls1_3 --prefix=${OPENSSL_PREFIX}
-${MAKE} -j ${num_threads}
-${MAKE} install_sw
-chmod -R a+rX ${BASE}
-
-# The symlink target provides a more convenient path for the user while also
-# providing, in the symlink source, the precise branch of the OpenSSL build.
-ln -sf ${OPENSSL_PREFIX} ${OPENSSL_BASE}
-chmod -R a+rX ${BASE}
-cd ..
-
-# OpenSSL will install in /lib or lib64 depending upon the architecture.
-if [ -d "${OPENSSL_PREFIX}/lib" ]; then
-  OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
-elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
-  OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
-else
-  echo "Could not find the OpenSSL install library directory."
-  exit 1
-fi
-LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_LIB}"}
+LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${BORINGSSL_LIB_PATH}"}
 
 # Then nghttp3
 echo "Building nghttp3..."
@@ -197,7 +200,7 @@ git submodule update --init
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${BORINGSSL_LIB_PATH}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}" \
@@ -214,9 +217,12 @@ cd ngtcp2
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
-  CFLAGS="${CFLAGS}" \
-  CXXFLAGS="${CXXFLAGS}" \
+  --with-boringssl \
+  BORINGSSL_CFLAGS="-I${BORINGSSL_PATH}/include" \
+  BORINGSSL_LIBS="-L${BORINGSSL_LIB_PATH} -lssl -lcrypto" \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig \
+  CFLAGS="${CFLAGS} -fPIC" \
+  CXXFLAGS="${CXXFLAGS} -fPIC" \
   LDFLAGS="${LDFLAGS}" \
   --enable-lib-only
 ${MAKE} -j ${num_threads}
@@ -241,11 +247,13 @@ fi
 # Note for FreeBSD: This will not build h2load. h2load can be run on a remote machine.
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
-  CFLAGS="${CFLAGS}" \
-  CXXFLAGS="${CXXFLAGS}" \
-  LDFLAGS="${LDFLAGS} -L${OPENSSL_LIB}" \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig \
+  CFLAGS="${CFLAGS} -I${BORINGSSL_PATH}/include" \
+  CXXFLAGS="${CXXFLAGS} -I${BORINGSSL_PATH}/include" \
+  LDFLAGS="${LDFLAGS}" \
+  OPENSSL_LIBS="-lcrypto -lssl -L${BORINGSSL_LIB_PATH}" \
   --enable-http3 \
+  --disable-examples \
   ${ENABLE_APP}
 ${MAKE} -j ${num_threads}
 ${MAKE} install
@@ -254,20 +262,20 @@ cd ..
 
 # Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone --depth 1 -b curl-8_5_0 https://github.com/curl/curl.git
+[ ! -d curl ] && git clone --depth 1 -b curl-8_7_1 https://github.com/curl/curl.git
 cd curl
 # On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
 # The second runs fine.
 autoreconf -fi || autoreconf -fi
 ./configure \
   --prefix=${BASE} \
-  --with-ssl=${OPENSSL_PREFIX} \
+  --with-openssl="${BORINGSSL_PATH}" \
   --with-nghttp2=${BASE} \
   --with-nghttp3=${BASE} \
   --with-ngtcp2=${BASE} \
+  LDFLAGS="${LDFLAGS} -L${BORINGSSL_LIB_PATH} -Wl,-rpath,${BORINGSSL_LIB_PATH}" \
   CFLAGS="${CFLAGS}" \
-  CXXFLAGS="${CXXFLAGS}" \
-  LDFLAGS="${LDFLAGS}"
+  CXXFLAGS="${CXXFLAGS}"
 ${MAKE} -j ${num_threads}
 ${MAKE} install
 chmod -R a+rX ${BASE}
