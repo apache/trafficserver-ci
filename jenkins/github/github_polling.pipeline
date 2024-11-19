@@ -248,7 +248,7 @@ pipeline {
 								args_arr = GITHUB_PR_COMMENT_BODY_MATCH.split(" ").collect{ it.trim() }
 								if (1 < args_arr.length) {
 									def index = args_arr[1] as int
-									if (index < nshards) {
+									if (0 <= index && index < nshards) {
 										String shard = index + "of" + env.AUTEST_SHARDS
 										result = buildJob('AuTest ' + shard, jobpath, shard)
 									}
