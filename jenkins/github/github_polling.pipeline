@@ -245,8 +245,6 @@ pipeline {
 							if (env.AUTEST_SHARDS) {
 								def nshards = env.AUTEST_SHARDS as int
 
-								println "Checking autest comment: '${GITHUB_PR_COMMENT_BODY_MATCH}'"
-
 								// extract optional shard
 								mg = (GITHUB_PR_COMMENT_BODY_MATCH =~ /autest\W*(\d+)/)
 								if (mg) {
