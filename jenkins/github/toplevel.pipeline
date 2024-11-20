@@ -244,10 +244,21 @@ pipeline {
 							String jobpath = 'Github_Builds/autest'
 							if (env.AUTEST_SHARDS) {
 								def nshards = env.AUTEST_SHARDS as int
-								def jobs = [:]
-								for (index = 0 ; index < nshards ; index++) {
-									String shard = index + "of" + env.AUTEST_SHARDS
-									jobs[shard] = { buildJob('AuTest ' + shard, jobpath, shard) }
+
+								// extract optional shard
+								mg = (GITHUB_PR_COMMENT_BODY_MATCH =~ /autest\W*(\d+)/)
+								if (mg) {
+									def index = mg.group(1) as int
+									if (0 <= index && index < nshards) {
+										String shard = index + "of" + env.AUTEST_SHARDS
+										result = buildJob('AuTest ' + shard, jobpath, shard)
+									}
+								} else {
+									def jobs = [:]
+									for (index = 0 ; index < nshards ; index++) {
+										String shard = index + "of" + env.AUTEST_SHARDS
+										jobs[shard] = { buildJob('AuTest ' + shard, jobpath, shard) }
+									}
 								}
 								parallel jobs
 							} else {
