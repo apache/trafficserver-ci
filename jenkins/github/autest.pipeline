@@ -136,7 +136,7 @@ pipeline {
 
 						autest_args=""
 						testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
-						if [ -d ../build ]; then
+						if [ -d ../cmake ]; then
 							# CMake: Enter into the build's test directory.
 							cd ../build/tests
 							pipenv install
