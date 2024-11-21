@@ -259,8 +259,8 @@ pipeline {
 										String shard = index + "of" + env.AUTEST_SHARDS
 										jobs[shard] = { buildJob('AuTest ' + shard, jobpath, shard) }
 									}
+									parallel jobs
 								}
-								parallel jobs
 							} else {
 								result = buildJob('AuTest', jobpath)
 								if (result == 'FAILURE') {
