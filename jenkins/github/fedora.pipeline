@@ -1,7 +1,7 @@
 pipeline {
     agent {
         docker {
-            image 'ats/fedora:40'
+            image 'ats/fedora:41'
             //registryUrl 'https://ci.trafficserver.apache.org/'
             args '-v ${HOME}/ccache:/tmp/ccache:rw'
             label 'linux'
