@@ -23,10 +23,19 @@ EOF
 RUN <<EOF
     set -e
     cd /root
-    wget https://github.com/Kitware/CMake/releases/download/v3.27.7/cmake-3.27.7-linux-x86_64.sh
-    chmod +x cmake-3.27.7-linux-x86_64.sh
-    bash ./cmake-3.27.7-linux-x86_64.sh --skip-license --prefix=/opt
-    rm cmake-3.27.7-linux-x86_64.sh
+
+    if [ `uname -m` = "arm64" -o `uname -m` = "aarch64" ]; then
+        arch="aarch64"
+    else
+        arch="x86_64"
+    fi
+    version=3.27.7
+    installer="cmake-${version}-linux-${arch}.sh"
+
+    wget https://github.com/Kitware/CMake/releases/download/v${version}/${installer}
+    chmod +x ${installer}
+    bash ${installer} --skip-license --prefix=/opt
+    rm ${installer}
 EOF
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
