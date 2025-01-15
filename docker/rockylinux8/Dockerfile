@@ -242,8 +242,7 @@ RUN <<EOF
   cd /root/
   mkdir libswoc
   cd libswoc
-  wget -O CMakeLists.txt https://raw.githubusercontent.com/apache/trafficserver/master/lib/swoc/CMakeLists.txt
-  swoc_version=$(awk '/LIBSWOC_VERSION/ {print $NF; exit}' CMakeLists.txt | tr -d '")')
+  swoc_version=1.5.13
 
   # Now, checkout that version and install libswoc in /opt/libswoc
   git clone https://github.com/apache/trafficserver-libswoc.git
