@@ -15,11 +15,12 @@ RUN <<EOF
   dnf -y install \
     ccache make pkgconfig bison flex gcc-c++ clang cmake ninja-build \
     autoconf automake libtool \
-    gcc-toolset-11 gcc-toolset-11-libasan-devel
+    gcc-toolset-11 gcc-toolset-11-libasan-devel \
+    gcc-toolset-14 gcc-toolset-14-libasan-devel
 
   # build_h3_tools.sh dependencies.
   dnf -y install \
-    python38-devel \
+    python3.12-devel \
     libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel jansson-devel cjose-devel \
     zlib-devel systemd-devel
@@ -37,7 +38,8 @@ RUN <<EOF
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel \
     libmaxminddb-devel perl-ExtUtils-MakeMaker perl-Digest-SHA \
     perl-URI perl-IPC-Cmd perl-Pod-Html \
-    curl tcl-devel java cjose-devel jansson-devel
+    curl tcl-devel java cjose-devel jansson-devel \
+    python3.12 python3.12-pip
 
   # autest stuff
   dnf -y install \
@@ -74,8 +76,14 @@ RUN <<EOF
   rm -f ninja ninja-linux.zip
 EOF
 
-RUN pip3 install --upgrade pip
-RUN pip3 install pipenv httpbin
+RUN <<EOF
+  set -e
+  pip3 install --upgrade pip
+  pip3 install pipenv httpbin
+
+  python3.12 -m pip install --upgrade pip
+  python3.12 -m pip install pipenv httpbin
+EOF
 
 #-------------------------------------------------------------------------------
 # Install the HTTP/3 build tools, including openssl-quic.
@@ -87,7 +95,6 @@ COPY build_boringssl_h3_tools.sh ${h3_tools_dir}
 # boringssl
 RUN <<EOF
   set -e
-  alternatives --set python /usr/bin/python3.8
   # go will be installed by build_boringssl_h3_tools.sh
   dnf remove -y golang rust
   dnf install -y cargo
@@ -98,6 +105,7 @@ EOF
 RUN <<EOF
   set -e
   cd ${h3_tools_dir}
+  source /opt/rh/gcc-toolset-14/enable
   export BASE=/opt/h3-tools-boringssl
   bash ${h3_tools_dir}/build_boringssl_h3_tools.sh
   cd /root
@@ -110,6 +118,7 @@ COPY build_openssl_h3_tools.sh ${h3_tools_dir}
 RUN <<EOF
   set -e
   cd ${h3_tools_dir}
+  source /opt/rh/gcc-toolset-14/enable
   export BASE=/opt
   bash ${h3_tools_dir}/build_openssl_h3_tools.sh
   cd /root
@@ -144,7 +153,7 @@ RUN <<EOF
 
   git clone https://github.com/eBay/NuRaft.git
   cd NuRaft
-  sed -i 's/-std=c++11/-std=c++17/g' CMakeLists.txt
+  source /opt/rh/gcc-toolset-14/enable
   ./prepare.sh
 
   # openssl-quic nuraft
@@ -161,6 +170,8 @@ RUN <<EOF
     -B build_openssl \
     -G Ninja \
     -DCMAKE_INSTALL_PREFIX=/opt/ \
+    -DCMAKE_CXX_STANDARD=17 \
+    -DCMAKE_CXX_FLAGS="-Wno-sign-compare" \
     -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
     -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
   cmake --build build_openssl
@@ -176,6 +187,8 @@ RUN <<EOF
     -B build_boringssl \
     -G Ninja \
     -DCMAKE_INSTALL_PREFIX=/opt/nuraft-boringssl \
+    -DCMAKE_CXX_STANDARD=17 \
+    -DCMAKE_CXX_FLAGS="-Wno-sign-compare" \
     -DOPENSSL_LIBRARY_PATH=${BORINGSSL_LIB} \
     -DOPENSSL_INCLUDE_PATH=${BORINGSSL_PREFIX}/include
   cmake --build build_boringssl
@@ -209,6 +222,7 @@ ARG lcov_build_dir=/var/tmp/lcov_build_dir
 RUN mkdir -p ${lcov_build_dir}
 RUN <<EOF
   set -e
+  source /opt/rh/gcc-toolset-14/enable
   cd ${lcov_build_dir}
   git clone https://github.com/linux-test-project/lcov.git
   cd lcov
@@ -224,10 +238,8 @@ RUN dnf install -y ctags elfutils-libelf-devel wdiff
 COPY /install_abi_tools.sh /root/install_abi_tools.sh
 RUN bash /root/install_abi_tools.sh
 
-# Autest and yapf require python3.8.
 RUN <<EOF
   set -e
-  alternatives --set python3 /usr/bin/python3.8
   python3 -m ensurepip --upgrade
   python3 -m pip install --upgrade pip
   python3 -m pip install virtualenv
@@ -237,6 +249,8 @@ EOF
 RUN <<EOF
   set -e
   set -x
+
+  source /opt/rh/gcc-toolset-14/enable
 
   # Retrieve the libswoc version we use in ATS.
   cd /root/
@@ -248,8 +262,8 @@ RUN <<EOF
   git clone https://github.com/apache/trafficserver-libswoc.git
   cd trafficserver-libswoc
   git checkout ${swoc_version}
-  pipenv install
-  pipenv run scons -j`nproc` all
+  python3.12 -m pipenv install --python python3.12
+  python3.12 -m pipenv run scons -j`nproc` all
   arch=$(uname -m)
   old_path=/root/libswoc/trafficserver-libswoc/_install/debug_posix-${arch}_default
   cp -rf ${old_path} /opt/libswoc
