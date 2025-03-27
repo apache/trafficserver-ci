@@ -72,11 +72,6 @@ pipeline {
 
                     sudo chmod -R 777 . || exit 1
 
-                    # Sphinx 8.1 requires a recent version of Python.
-                    export PIPENV_VENV_IN_PROJECT=1
-                    python3.12 -m pipenv install --python python3.12
-                    source .venv/bin/activate
-
                     if [ -d cmake ]
                     then
                         cmake -B docs-build --preset ci-docs
