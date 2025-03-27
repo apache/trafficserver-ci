@@ -240,6 +240,7 @@ RUN bash /root/install_abi_tools.sh
 
 RUN <<EOF
   set -e
+  alternatives --set python3 /usr/bin/python3.12
   python3 -m ensurepip --upgrade
   python3 -m pip install --upgrade pip
   python3 -m pip install virtualenv
