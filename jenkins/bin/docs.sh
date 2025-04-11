@@ -50,6 +50,11 @@ then
 
   docbuilddir="docbuild/doc/docbuild"
 
+  # Sphinx 8.1 requires a recent version of Python.
+  export PIPENV_VENV_IN_PROJECT=1
+  python3.12 -m pipenv install --python python3.12
+  source .venv/bin/activate
+
   # english
   rm -rf docbuild
   cmake -B docbuild -DDOC_LANG:STRING='en' -DENABLE_DOCS=ON
