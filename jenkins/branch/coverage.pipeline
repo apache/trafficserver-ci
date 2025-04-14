@@ -167,7 +167,7 @@ pipeline {
 						[ "${RUN_REGRESSION_TESTS}" == "true" ] || exit 0
 						chmod -R go+w .
 						chmod -R go+w /tmp/ats/
-						/tmp/ats/bin/traffic_server -K -k -R 1
+						/tmp/ats/bin/traffic_server -K -R 1
 					 '''
 				}
 				echo 'Starting AuTest'

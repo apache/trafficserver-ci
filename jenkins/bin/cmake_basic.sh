@@ -40,5 +40,5 @@ cmake --install build
 
 pushd build
 ctest -j${NPROC} --output-on-failure --no-compress-output -T Test
-/tmp/ats/bin/traffic_server -K -k -R 1
+/tmp/ats/bin/traffic_server -K -R 1
 popd
