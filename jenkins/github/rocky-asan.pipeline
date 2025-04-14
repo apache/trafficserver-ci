@@ -78,7 +78,7 @@ pipeline {
                             cmake --install build
                             pushd build
                             ctest -j4 --output-on-failure --no-compress-output -T Test
-                            /tmp/ats-quiche/bin/traffic_server -K -k -R 1
+                            /tmp/ats-quiche/bin/traffic_server -K -R 1
                             popd
                         else
                             echo "CMake builds are not supported for the this branch."
