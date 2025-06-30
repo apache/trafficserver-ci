@@ -289,6 +289,19 @@ RUN <<EOF
   cmake --install build
   cd /root
   rm -rf yaml-cpp
+
+  cd /root/
+  mkdir libfmt
+  cd libfmt
+  mkdir fmt
+  wget -O libfmt-8.1.1.tar.gz https://github.com/fmtlib/fmt/archive/refs/tags/8.1.1.tar.gz
+  tar -xvzf libfmt-8.1.1.tar.gz -C fmt --strip-components=1
+  cd fmt
+  cmake -B build -DCMAKE_INSTALL_PREFIX=/opt/libfmt -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE
+  cmake --build build
+  cmake --install build
+  cd /root
+  rm -rf libfmt
 EOF
 
 # Keep this at the end to clean up the dnf cache.
