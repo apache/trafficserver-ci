@@ -1,4 +1,4 @@
-FROM fedora:42
+FROM fedora:42 AS build
 
 #-------------------------------------------------------------------------------
 # Install the various system packages we use.
@@ -32,11 +32,6 @@ RUN <<EOF
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html \
     curl tcl-devel java cjose-devel protobuf-devel
 
-  # autest stuff
-  dnf -y install \
-    bpftrace python3 httpd-tools procps-ng nmap-ncat python3-pip \
-    python3-gunicorn python3-requests python3-devel python3-psutil telnet
-
   # Needed to install openssl-quic
   dnf -y install libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel cjose-devel jansson-devel zlib-devel \
@@ -44,9 +39,6 @@ RUN <<EOF
 
   # build_h3_tools will install its own version of golang.
   dnf remove -y golang
-
-  # lcov is used for code coverage.
-  dnf install -y lcov
 
   # abi tool dependencies.
   dnf install -y ctags elfutils-libelf-devel wdiff rfcdiff
@@ -69,8 +61,6 @@ RUN <<EOF
   echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
 EOF
 ARG PATH=/opt/bin:$PATH
-
-RUN pip3 install pipenv httpbin
 
 #-------------------------------------------------------------------------------
 # Install the HTTP/3 build tools, including openssl-quic.
@@ -205,6 +195,61 @@ RUN <<EOF
   rm -rf ${build_dir}
 EOF
 
+# Install abi checking tools.
+RUN <<EOF
+  set -e
+  mkdir -p /root/src/abi
+  cd /root/src/abi
+  git clone https://github.com/lvc/installer.git
+  cd installer
+  for i in abi-dumper abi-tracker abi-compliance-checker vtable-dumper abi-monitor
+  do
+    make install prefix=/opt target=${i}
+  done
+  cd /root
+  rm -rf src/abi
+EOF
+
+FROM fedora:42
+
+RUN <<EOF
+  set -e
+
+  dnf repolist
+  dnf -y update
+
+  # Build tools.
+  dnf -y install \
+    ccache make pkgconfig bison flex gcc-c++ clang \
+    autoconf automake libtool \
+    cmake ninja-build
+
+  # Various other tools
+  dnf -y install \
+    sudo git rpm-build distcc-server file wget openssl hwloc \
+    fmt fmt-devel pcre2-devel
+
+  # Devel packages that ATS needs
+  dnf -y install \
+    openssl-devel openssl-devel-engine expat-devel pcre-devel libcap-devel hwloc-devel libunwind-devel \
+    xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
+    ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
+    perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html \
+    curl tcl-devel java cjose-devel protobuf-devel
+
+  # lcov is used for code coverage.
+  dnf install -y lcov
+
+  # autest stuff
+  dnf -y install \
+    bpftrace python3 httpd-tools procps-ng nghttp2 nmap-ncat python3-pip \
+    python3-gunicorn python3-requests python3-devel python3-psutil telnet
+
+  dnf clean all
+EOF
+
+RUN pip3 install pipenv httpbin
+
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
 # issues.
@@ -223,20 +268,7 @@ RUN <<EOF
   chown -R ${username} /home/${username}
 EOF
 
-# Install abi checking tools.
-RUN <<EOF
-  set -e
-  mkdir -p /root/src/abi
-  cd /root/src/abi
-  git clone https://github.com/lvc/installer.git
-  cd installer
-  for i in abi-dumper abi-tracker abi-compliance-checker vtable-dumper abi-monitor
-  do
-    make install prefix=/opt target=${i}
-  done
-  cd /root
-  rm -rf src/abi
-EOF
+COPY --from=build /opt /opt
 
-# Keep this at the end to ensure the dnf cache is cleared out.
-RUN dnf clean all
+ENV PATH="$PATH:/opt/bin"
+
