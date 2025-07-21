@@ -151,8 +151,9 @@ pipeline {
 							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
 						fi
 
+						autest_failed=0
 						if [ ${SHARDCNT} -le 0 ]; then
-							./autest.sh ${autest_args} || true
+							./autest.sh ${autest_args} || autest_failed=1
 						else
 							testsall=( $(
 								for el in  "${testsall[@]}" ; do
@@ -164,13 +165,19 @@ pipeline {
 							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
 							shardbeg=$((${shardsize} * ${SHARD}))
 							sliced=${testsall[@]:${shardbeg}:${shardsize}}
-							./autest.sh ${autest_args} -f ${sliced[@]} || true
+							./autest.sh ${autest_args} -f ${sliced[@]} || autest_failed=1
 						fi
 
 						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
 							touch ${export_dir}/Autest_failures
 							cp -rf /tmp/sandbox/ "${export_dir}"
 							ls "${export_dir}"
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 1
+						elif [ ${autest_failed} -ne 0 ]; then
+							# No sandbox. Probably a catestrophic failure, like an exception,
+							# that prevented execution and the creation of a sandbox.
+							touch ${export_dir}/Autest_failures
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 1
 						else
