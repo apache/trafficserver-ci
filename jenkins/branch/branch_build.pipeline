@@ -88,13 +88,14 @@ String buildJob(String jobpath, String jobname) {
 	return result
 }
 
-String autestJob(String jobpath, String jobname, String shard) {
+String autestJob(String jobpath, String jobname, String cmake_preset, String shard) {
 	echo "Autest Build of: " + jobname + " " + shard
 	if (DUMMY) { jobpath = "Branch_Builds/dummy" }
 	def jobBuild = build(job: '/' + jobpath, propagate: false,
 		parameters: [
 			string(name: 'GITHUB_URL', value: GITHUB_URL),
 			string(name: 'GITHUB_BRANCH', value: GITHUB_BRANCH),
+			string(name: 'CMAKE_PRESET', value: cmake_preset),
 			string(name: 'JOB_DIR', value: JOB_DIR),
 			string(name: 'SHA1', value: SHA1),
 			string(name: 'AUTEST_SHARD', value: shard),
@@ -122,6 +123,9 @@ pipeline {
 			agent { label 'master' }
 			steps {
 				script {
+					if (!env.CMAKE_PRESET) {
+						env.CMAKE_PRESET = 'branch-autest'
+					}
 					if (! env.AUTEST_SHARDS) {
 						env.AUTEST_SHARDS = 4
 					}
@@ -238,7 +242,7 @@ pipeline {
 								for (ind = 0 ; ind < nshards ; ind++) {
 									index = ind
 									String shard = index + "of" + env.AUTEST_SHARDS
-									jobs[shard] = { autestJob(jobpath, 'autest', shard) }
+									jobs[shard] = { autestJob(jobpath, 'autest', env.CMAKE_PRESET, shard) }
 								}
 								parallel jobs
 							} else {
