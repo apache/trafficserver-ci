@@ -37,6 +37,10 @@ pipeline {
 						env.SHARD = 0
 						env.SHARDCNT = 0
 					}
+
+					if (!env.CMAKE_PRESET) {
+						env.CMAKE_PRESET = 'branch-autest'
+					}
 				}
 			}
 		}
@@ -96,7 +100,7 @@ pipeline {
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
 							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
 
-							cmake -B build --preset branch-autest
+							cmake -B build --preset ${env.CMAKE_PRESET}
 							cmake --build build -j${NPROC} -v
 							cmake --install build -v
 
