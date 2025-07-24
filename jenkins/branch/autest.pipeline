@@ -100,7 +100,7 @@ pipeline {
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
 							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
 
-							cmake -B build --preset env.CMAKE_PRESET
+							cmake -B build --preset ${CMAKE_PRESET}
 							cmake --build build -j${NPROC} -v
 							cmake --install build -v
 
