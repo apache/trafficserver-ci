@@ -136,13 +136,13 @@ pipeline {
 
 						autest_args=""
 						testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
-						if [ -d ../cmake ]; then
-							# CMake: Enter into the build's test directory.
+
+						if [ -d ../cmake ]
+						then
 							cd ../build/tests
 							pipenv install
 							autest_args="--sandbox /tmp/sandbox"
 						else
-							# Autoconf.
 							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
 						fi
 
@@ -161,7 +161,6 @@ pipeline {
 							shardbeg=$((${shardsize} * ${SHARD}))
 							sliced=${testsall[@]:${shardbeg}:${shardsize}}
 							./autest.sh ${autest_args} -f ${sliced[@]} || autest_failed=1
-
 						fi
 
 						if [ -n "$(ls -A /tmp/sandbox/)" ]; then

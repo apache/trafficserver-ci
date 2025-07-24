@@ -1,13 +1,12 @@
 pipeline {
 	agent {
 		docker {
+			image 'ci.trafficserver.apache.org/ats/fedora:42'
 			registryUrl 'https://ci.trafficserver.apache.org/'
-			image 'ci.trafficserver.apache.org/ats/rockylinux:8'
 			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
 			label 'branch'
 		}
 	}
-
 	environment {
 		CCACHE_DIR = "/tmp/ccache"
 	}
@@ -132,9 +131,8 @@ pipeline {
 			steps {
 				echo 'Starting AuTest'
 				dir('src/tests') {
-
 					sh '''#!/bin/bash -x
-						#set +e
+						set +e
 						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
 						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
@@ -181,6 +179,7 @@ pipeline {
 						elif [ ${autest_failed} -ne 0 ]; then
 							# No sandbox. Probably a catestrophic failure, like an exception,
 							# that prevented execution and the creation of a sandbox.
+							echo "AuTest failed."
 							touch ${export_dir}/Autest_failures
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 1
