@@ -31,6 +31,10 @@ pipeline {
 						env.SHARD = 0
 						env.SHARDCNT = 0
 					}
+
+					if (!env.CMAKE_PRESET) {
+						env.CMAKE_PRESET = 'ci-fedora-autest'
+					}
 				}
 			}
 		}
@@ -93,7 +97,7 @@ pipeline {
 						if [ -d cmake ]
 						then
 							echo "Building with CMake."
-							cmake -B build --preset ci-fedora-autest
+							cmake -B build --preset ${CMAKE_PRESET}
 							cmake --build build -j4 -v
 							cmake --install build
 						else
