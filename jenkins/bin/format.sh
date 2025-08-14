@@ -22,6 +22,7 @@ cd "${WORKSPACE}/src"
 # First, make sure there are no trailing WS!!!
 git grep -IE ' +$' | \
     fgrep -v 'lib/yamlcpp' | \
+    fgrep -v 'lib/Catch2' | \
     fgrep -v 'lib/systemtap' | \
     fgrep -v '.gold:' | \
     fgrep -v '.test_input'
@@ -35,6 +36,7 @@ echo "Success! No trailing whitespace"
 # Unix format please!
 git grep -IE $'\r$' | \
     fgrep -v 'lib/yamlcpp' | \
+    fgrep -v 'lib/Catch2' | \
     fgrep -v 'lib/systemtap' | \
     fgrep -v '.test_input'
 if [ "1" != "$?" ]; then

@@ -225,6 +225,7 @@ pipeline {
 								'/usr/*' \
 								'*/TestBox.h' \
 								'*/lib/yamlcpp/*' \
+								'*/lib/Catch2/*' \
 								'*/lib/systemtap/*' \
 								'*/test/*' \
 								'*/test_*' \
