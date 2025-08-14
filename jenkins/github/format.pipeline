@@ -59,14 +59,14 @@ pipeline {
                 dir('src') {
                     sh '''#!/bin/bash
                             set -x
-                            git grep -IE ' +$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/systemtap' | fgrep -v '.gold:' | fgrep -v '.test_input'
+                            git grep -IE ' +$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/Catch2' | fgrep -v 'lib/systemtap' | fgrep -v '.gold:' | fgrep -v '.test_input'
                             if [ "1" != "$?" ]; then
                                 echo "Error: Trailing whitespaces are not allowed!"
                                 echo "Error: Please run: git grep -IE ' +$'"
                                 exit 1
                             fi
                             echo "Success! No trailing whitespace"
-                            git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/systemtap' | fgrep -v '.test_input'
+                            git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/Catch2' | fgrep -v 'lib/systemtap' | fgrep -v '.test_input'
                             if [ "1" != "$?" ]; then
                                 echo "Error: Please make sure to run dos2unix on the above file(s)"
                                 exit 1
