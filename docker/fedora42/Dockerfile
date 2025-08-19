@@ -243,7 +243,7 @@ RUN <<EOF
   # autest stuff
   dnf -y install \
     bpftrace python3 httpd-tools procps-ng nghttp2 nmap-ncat python3-pip \
-    python3-gunicorn python3-requests python3-devel python3-psutil telnet
+    python3-gunicorn python3-requests python3-devel python3-psutil telnet jq
 
   dnf clean all
 EOF
