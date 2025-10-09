@@ -257,7 +257,7 @@ RUN <<EOF
   cd /root/
   mkdir libswoc
   cd libswoc
-  swoc_version=1.5.13
+  swoc_version=1.5.15
 
   # Now, checkout that version and install libswoc in /opt/libswoc
   git clone https://github.com/apache/trafficserver-libswoc.git
