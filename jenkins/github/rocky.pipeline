@@ -70,11 +70,13 @@ pipeline {
                             # Now build ATS, using the external libswoc.
                             libswoc_dir=/opt/libswoc
                             yaml_cpp_dir=/opt/yaml-cpp
+                            fmt_dir=/opt/libfmt/
                             src_top=$(git rev-parse --show-toplevel)
-                            PKG_CONFIG_PATH=${libswoc_dir}/lib/pkgconfig \
+                            PKG_CONFIG_PATH=${libswoc_dir}/lib/pkgconfig:${fmt_dir}/lib64/pkgconfig \
                             cmake -B build --preset ci-rocky \
                               -DEXTERNAL_LIBSWOC=ON -Dlibswoc_ROOT=${libswoc_dir} \
-                              -DEXTERNAL_YAML_CPP=ON -Dyaml-cpp_ROOT=${yaml_cpp_dir}
+                              -DEXTERNAL_YAML_CPP=ON -Dyaml-cpp_ROOT=${yaml_cpp_dir} \
+                              -DENABLE_CRIPTS=on
                             cmake --build build -v
                             cmake --install build
                             pushd build
