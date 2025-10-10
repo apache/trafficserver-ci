@@ -74,8 +74,7 @@ pipeline {
                             PKG_CONFIG_PATH=${libswoc_dir}/lib/pkgconfig \
                             cmake -B build --preset ci-rocky \
                               -DEXTERNAL_LIBSWOC=ON -Dlibswoc_ROOT=${libswoc_dir} \
-                              -DEXTERNAL_YAML_CPP=ON -Dyaml-cpp_ROOT=${yaml_cpp_dir} \
-                              -Dfmt_ROOT=/opt/libfmt -DENABLE_CRIPTS=ON
+                              -DEXTERNAL_YAML_CPP=ON -Dyaml-cpp_ROOT=${yaml_cpp_dir}
                             cmake --build build -v
                             cmake --install build
                             pushd build
