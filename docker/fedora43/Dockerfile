@@ -248,7 +248,7 @@ RUN <<EOF
   dnf clean all
 EOF
 
-#RUN pip3 install pipenv httpbin
+RUN pip3 install pipenv httpbin
 
 # Add the CI's test user. N.B: 1200 is the uid that our jenkins user is
 # configured with, so that has to be used. Otherwise there will be permissions
