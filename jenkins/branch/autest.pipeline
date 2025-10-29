@@ -1,7 +1,7 @@
 pipeline {
 	agent {
 		docker {
-			image 'ci.trafficserver.apache.org/ats/fedora:43'
+			image 'ci.trafficserver.apache.org/ats/fedora:42'
 			registryUrl 'https://ci.trafficserver.apache.org/'
 			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
 			label 'branch'
