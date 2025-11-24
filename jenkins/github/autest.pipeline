@@ -167,17 +167,17 @@ pipeline {
 							./autest.sh ${autest_args} -f ${sliced[@]} || autest_failed=1
 						fi
 
-						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
-							touch ${export_dir}/Autest_failures
-							cp -rf /tmp/sandbox/ "${export_dir}"
-							ls "${export_dir}"
-							sudo chmod -R 777 ${WORKSPACE}
-							exit 1
-						elif [ ${autest_failed} -ne 0 ]; then
-							# No sandbox. Probably a catestrophic failure, like an exception,
+						if [ ! -d /tmp/sandbox/ ]; then
+							# No sandbox. Probably a catastrophic failure, like an exception,
 							# that prevented execution and the creation of a sandbox.
 							echo "AuTest failed."
 							touch ${export_dir}/Autest_failures
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 1
+						elif [ ${autest_failed} -ne 0 ]; then
+							touch ${export_dir}/Autest_failures
+							cp -rf /tmp/sandbox/ "${export_dir}"
+							ls "${export_dir}"
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 1
 						else
