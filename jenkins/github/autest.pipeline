@@ -1,212 +1,206 @@
 pipeline {
-	agent {
-		docker {
-			image 'ci.trafficserver.apache.org/ats/fedora:42'
-			registryUrl 'https://ci.trafficserver.apache.org/'
-			args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
-			label 'docker'
-		}
-	}
-	environment {
-		CCACHE_DIR = "/tmp/ccache"
-		CCACHE_BASEDIR = "${WORKSPACE}"
-	}
-	stages {
-		stage('Initialization') {
-			steps {
-				script {
-					if (env.AUTEST_SHARD) {
-						String[] arr = env.AUTEST_SHARD.split('of')
-						if (2 == arr.length) {
-							shard = arr[0] as int
-							shardcnt = arr[1] as int
-							if (shard < shardcnt) {
-								env.SHARD = shard
-								env.SHARDCNT = shardcnt
-							}
-						}
-					}
+  agent {
+    docker {
+      image 'ci.trafficserver.apache.org/ats/fedora:42'
+      registryUrl 'https://ci.trafficserver.apache.org/'
+      args '--init --cap-add=SYS_PTRACE --network=host -v ${HOME}/ccache:/tmp/ccache:rw'
+      label 'docker'
+    }
+  }
+  environment {
+    CCACHE_DIR = "/tmp/ccache"
+    CCACHE_BASEDIR = "${WORKSPACE}"
+  }
+  stages {
+    stage('Initialization') {
+      steps {
+        script {
+          if (env.AUTEST_SHARD) {
+            String[] arr = env.AUTEST_SHARD.split('of')
+            if (2 == arr.length) {
+              shard = arr[0] as int
+              shardcnt = arr[1] as int
+              if (shard < shardcnt) {
+                env.SHARD = shard
+                env.SHARDCNT = shardcnt
+              }
+            }
+          }
 
-					if (! env.SHARD || ! env.SHARDCNT) {
-						env.SHARD = 0
-						env.SHARDCNT = 0
-					}
+          if (! env.SHARD || ! env.SHARDCNT) {
+            env.SHARD = 0
+            env.SHARDCNT = 0
+          }
 
-					if (!env.CMAKE_PRESET) {
-						env.CMAKE_PRESET = 'ci-fedora-autest'
-					}
-				}
-			}
-		}
-		stage('Clone') {
-			steps {
-				dir('src') {
-					echo "${sha1}"
-					checkout([$class: 'GitSCM',
-						branches: [[name: sha1]],
-						extensions: [
-							// We have to set an idenity for the merge step because Git requires
-							// the user.name and user.email to be set to do a merge.
-							[$class: "UserIdentity",
-								name: "ATS CI User",
-								email: "noreply@trafficserver.apache.org"
-							],
-							[$class: "PreBuildMerge",
-								options: [
-									mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
-									fastForwardMode: "NO_FF",
-									mergeRemote: "origin",
-									mergeStrategy: "DEFAULT"
-								]
-							],
-						],
-						userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
-					sh '''#!/bin/bash
-						set -x
+          if (!env.CMAKE_PRESET) {
+            env.CMAKE_PRESET = 'ci-fedora-autest'
+          }
+        }
+      }
+    }
+    stage('Clone') {
+      steps {
+        dir('src') {
+          echo "${sha1}"
+          checkout([$class: 'GitSCM',
+            branches: [[name: sha1]],
+            extensions: [
+              // We have to set an idenity for the merge step because Git requires
+              // the user.name and user.email to be set to do a merge.
+              [$class: "UserIdentity",
+                name: "ATS CI User",
+                email: "noreply@trafficserver.apache.org"
+              ],
+              [$class: "PreBuildMerge",
+                options: [
+                  mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                  fastForwardMode: "NO_FF",
+                  mergeRemote: "origin",
+                  mergeStrategy: "DEFAULT"
+                ]
+              ],
+            ],
+            userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+          sh '''#!/bin/bash
+            set -x
 
-						echo
-						echo
-						cat /etc/*release*
+            echo
+            echo
+            cat /etc/*release*
 
-						echo
-						git show HEAD^2 --no-patch
-						git show HEAD^1 --no-patch
-						echo
+            echo
+            git show HEAD^2 --no-patch
+            git show HEAD^1 --no-patch
+            echo
 
-						git show -n 10 --decorate --graph --oneline --no-patch
-						echo
-						echo
+            git show -n 10 --decorate --graph --oneline --no-patch
+            echo
+            echo
                                         '''
-				}
-				echo 'Finished Cloning'
-			}
-		}
-		stage('Build') {
-			steps {
-				echo 'Starting build'
-				dir('src') {
-					sh '''#!/bin/bash
+        }
+        echo 'Finished Cloning'
+      }
+    }
+    stage('Build') {
+      steps {
+        echo 'Starting build'
+        dir('src') {
+          sh '''#!/bin/bash
 
-						set -x
-						set -e
+            set -x
+            set -e
 
-						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-						export PATH=/opt/bin:${PATH}
+            # We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+            # The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+            export PATH=/opt/bin:${PATH}
 
-						if [ -d cmake ]
-						then
-							echo "Building with CMake."
-							cmake -B build --preset ${CMAKE_PRESET}
-							cmake --build build -j4 -v
-							cmake --install build
-						else
-							echo "CMake builds are not supported for this branch."
-							echo "Building with autotools instead."
+            if [ -d cmake ]
+            then
+              echo "Building with CMake."
+              cmake -B build --preset ${CMAKE_PRESET}
+              cmake --build build -j4 -v
+              cmake --install build
+            else
+              echo "CMake builds are not supported for this branch."
+              echo "Building with autotools instead."
 
-							# Change permissions so that all files are readable
-							# (default user umask may change and make these unreadable)
-							sudo chmod -R o+r .
-							autoreconf -fiv
-							./configure \
-								--with-openssl=/opt/openssl-quic \
-								--enable-experimental-plugins \
-								--enable-example-plugins \
-								--prefix=/tmp/ats \
-								--enable-werror \
-								--enable-debug \
-								--enable-wccp \
-								--enable-ccache
-							make -j4
-							make install
-						fi
-						'''
-				}
-			}
-		}
-		stage('AuTest') {
-			steps {
-				echo 'Starting AuTest'
-				dir('src/tests') {
-					sh '''#!/bin/bash -x
-						set +e
-						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
-						export PATH=/opt/bin:${PATH}
-						export PATH=/opt/go/bin:${PATH}
+              # Change permissions so that all files are readable
+              # (default user umask may change and make these unreadable)
+              sudo chmod -R o+r .
+              autoreconf -fiv
+              ./configure \
+                --with-openssl=/opt/openssl-quic \
+                --enable-experimental-plugins \
+                --enable-example-plugins \
+                --prefix=/tmp/ats \
+                --enable-werror \
+                --enable-debug \
+                --enable-wccp \
+                --enable-ccache
+              make -j4
+              make install
+            fi
+            '''
+        }
+      }
+    }
+    stage('AuTest') {
+      steps {
+        echo 'Starting AuTest'
+        dir('src/tests') {
+          sh '''#!/bin/bash -x
+            set +e
+            # We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
+            # The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+            export PATH=/opt/bin:${PATH}
+            export PATH=/opt/go/bin:${PATH}
 
-						export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
-						mkdir -p ${export_dir}
+            export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
+            mkdir -p ${export_dir}
 
-						autest_args=""
-						testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
+            autest_args=""
+            testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
 
-						if [ -d ../cmake ]
-						then
-							cd ../build/tests
-							pipenv install
-							autest_args="--sandbox /tmp/sandbox"
-						else
-							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
-						fi
+            if [ -d ../cmake ]
+            then
+              cd ../build/tests
+              pipenv install
+              autest_args="--sandbox /tmp/sandbox"
+            else
+              autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+            fi
 
-						autest_failed=0
-						if [ ${SHARDCNT} -le 0 ]; then
-							./autest.sh ${autest_args} || autest_failed=1
-						else
-							testsall=( $(
-							  for el in  "${testsall[@]}" ; do
-							    echo $el
-							  done | sort) )
-							ntests=${#testsall[@]}
+            autest_failed=0
+            if [ ${SHARDCNT} -le 0 ]; then
+              ./autest.sh ${autest_args} || autest_failed=1
+            else
+              testsall=( $(
+                for el in  "${testsall[@]}" ; do
+                  echo $el
+                done | sort) )
+              ntests=${#testsall[@]}
 
-							shardsize=$((${ntests} / ${SHARDCNT}))
-							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
-							shardbeg=$((${shardsize} * ${SHARD}))
-							sliced=${testsall[@]:${shardbeg}:${shardsize}}
-							./autest.sh ${autest_args} -f ${sliced[@]} || autest_failed=1
-						fi
+              shardsize=$((${ntests} / ${SHARDCNT}))
+              [ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
+              shardbeg=$((${shardsize} * ${SHARD}))
+              sliced=${testsall[@]:${shardbeg}:${shardsize}}
+              ./autest.sh ${autest_args} -f ${sliced[@]} || autest_failed=1
+            fi
 
-						if [ ! -d /tmp/sandbox/ ]; then
-							# No sandbox. Probably a catastrophic failure, like an exception,
-							# that prevented execution and the creation of a sandbox.
-							#echo "AuTest failed."
-							#touch ${export_dir}/Autest_failures
-							#sudo chmod -R 777 ${WORKSPACE}
-							#exit 1 For now while we commit fixes to ATS. TODO: put this back
+            if [ ! -d /tmp/sandbox/ ]; then
+              # No sandbox. Probably a catastrophic failure, like an exception,
+              # that prevented execution and the creation of a sandbox.
+              echo "AuTest execution fundamentally failed. No tests were run."
+              touch ${export_dir}/Autest_failures
+              sudo chmod -R 777 ${WORKSPACE}
+              exit 1
+            elif [ ${autest_failed} -ne 0 ]; then
+              echo "AuTest tests failed."
+              touch ${export_dir}/Autest_failures
+              cp -rf /tmp/sandbox/ "${export_dir}"
+              ls "${export_dir}"
+              sudo chmod -R 777 ${WORKSPACE}
+              exit 1
+            else
+              touch ${export_dir}/No_autest_failures
+              sudo chmod -R 777 ${WORKSPACE}
+              exit 0
+            fi
+            '''
+        }
+      }
+    }
+  }
 
-
-
-							# Remove this and uncomment above.
-							touch ${export_dir}/No_autest_failures
-							sudo chmod -R 777 ${WORKSPACE}
-							exit 0
-						elif [ ${autest_failed} -ne 0 ]; then
-							touch ${export_dir}/Autest_failures
-							cp -rf /tmp/sandbox/ "${export_dir}"
-							ls "${export_dir}"
-							sudo chmod -R 777 ${WORKSPACE}
-							exit 1
-						else
-							touch ${export_dir}/No_autest_failures
-							sudo chmod -R 777 ${WORKSPACE}
-							exit 0
-						fi
-						'''
-				}
-			}
-		}
-	}
-
-	post {
-		always {
-			// We exclude socket files because archiveArtifacts doesn't deal well with
-			// their file type.
-			archiveArtifacts artifacts: "output/${GITHUB_PR_NUMBER}/**/*", fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
-			echo "See the build job description for a link to the sandbox."
-		}
-		cleanup {
-			cleanWs()
-		}
-	}
+  post {
+    always {
+      // We exclude socket files because archiveArtifacts doesn't deal well with
+      // their file type.
+      archiveArtifacts artifacts: "output/${GITHUB_PR_NUMBER}/**/*", fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
+      echo "See the build job description for a link to the sandbox."
+    }
+    cleanup {
+      cleanWs()
+    }
+  }
 }
