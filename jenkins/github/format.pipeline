@@ -58,28 +58,30 @@ pipeline {
                 echo 'Starting build'
                 dir('src') {
                     sh '''#!/bin/bash
-                            set -x
-                            git grep -IE ' +$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/Catch2' | fgrep -v 'lib/systemtap' | fgrep -v '.gold:' | fgrep -v '.test_input'
-                            if [ "1" != "$?" ]; then
-                                echo "Error: Trailing whitespaces are not allowed!"
-                                echo "Error: Please run: git grep -IE ' +$'"
-                                exit 1
-                            fi
-                            echo "Success! No trailing whitespace"
-                            git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/Catch2' | fgrep -v 'lib/systemtap' | fgrep -v '.test_input'
-                            if [ "1" != "$?" ]; then
-                                echo "Error: Please make sure to run dos2unix on the above file(s)"
-                                exit 1
-                            fi
-                            echo "Success! No DOS carriage return"
-
-                            set -x
 
                             if [ -d cmake ]
                             then
                                 cmake -B build
                                 cmake --build build --target format || exit 1
                             else
+                                # The following whitespace checks were added to the `format` cmake target in 10.2.0, but are not backported to 9.x.
+                                set -x
+                                git grep -IE ' +$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/Catch2' | fgrep -v 'lib/systemtap' | fgrep -v '.gold:' | fgrep -v '.test_input'
+                                if [ "1" != "$?" ]; then
+                                    echo "Error: Trailing whitespaces are not allowed!"
+                                    echo "Error: Please run: git grep -IE ' +$'"
+                                    exit 1
+                                fi
+                                echo "Success! No trailing whitespace"
+                                git grep -IE $'\r$' | fgrep -v 'lib/yamlcpp' | fgrep -v 'lib/Catch2' | fgrep -v 'lib/systemtap' | fgrep -v '.test_input'
+                                if [ "1" != "$?" ]; then
+                                    echo "Error: Please make sure to run dos2unix on the above file(s)"
+                                    exit 1
+                                fi
+                                echo "Success! No DOS carriage return"
+
+                                set -x
+
                                 # Pre 10.x branches only supported autotools.
                                 autoreconf -if && ./configure && make clang-format || exit 1
 
