@@ -26,7 +26,7 @@ NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 #[ -d BUILDS ] && cd BUILDS
 
 #chmod -R go+w /tmp/ats
-#/tmp/ats/bin/traffic_server -K -k -R 1
+#/tmp/ats/bin/traffic_server -K -k -R 3
 
 echo
 echo -n "Unit tests started at " && date
@@ -44,7 +44,7 @@ echo -n "Unit tests finished at " && date
 
 echo
 echo -n "Regression tests started at " && date
-/tmp/ats/bin/traffic_server -K -R 1
+/tmp/ats/bin/traffic_server -K -R 3
 rval=$?
 echo -n "Regression tests finished at " && date
 exit $rval

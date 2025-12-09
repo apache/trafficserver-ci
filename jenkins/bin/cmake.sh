@@ -80,4 +80,4 @@ cmake --install build
 #popd
 
 #chmod -R go+w /tmp/ats
-#/tmp/ats/bin/traffic_server -K -R 1
+#/tmp/ats/bin/traffic_server -K -R 3

@@ -75,7 +75,7 @@ echo -n "Unit tests finished at " && date
 
 echo
 echo -n "Regression tests started at " && date
-${INSTALL}/bin/traffic_server -K -k -R 1
+${INSTALL}/bin/traffic_server -K -k -R 3
 rval=$?
 echo -n "Regression tests finished at " && date
 exit $rval

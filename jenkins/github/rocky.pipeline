@@ -80,7 +80,7 @@ pipeline {
                             pushd build
                             ctest -j4 --output-on-failure --no-compress-output -T Test
                             LSAN_OPTIONS=suppressions=${src_top}/ci/asan_leak_suppression/regression.txt \
-                            /tmp/ats-quiche/bin/traffic_server -K -R 1
+                            /tmp/ats-quiche/bin/traffic_server -K -R 3
                             popd
                         else
                             echo "CMake builds are not supported for the this branch."
@@ -98,7 +98,7 @@ pipeline {
                             make -j4 V=1 Q=
                             make -j 2 check VERBOSE=Y V=1
                             make install
-                            /tmp/ats/bin/traffic_server -K -k -R 1
+                            /tmp/ats/bin/traffic_server -K -k -R 3
                         fi
                         '''
                 }
