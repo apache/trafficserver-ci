@@ -62,30 +62,59 @@ pipeline {
                 dir('src') {
                     sh '''#!/bin/bash
                         set -x
-                        set -e
+                        set +e
 
                         source /opt/rh/devtoolset-10/enable
+
+                        export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
+                        mkdir -p ${export_dir}
+                        build_failed=0
 
                         if [ -d cmake ]
                         then
                             # cmake for the centos image is installed in /opt/bin.
                             export PATH=/opt/bin:${PATH}
 
-                            cmake -B build --preset ci-centos
-                            cmake --build build -j4 -v
-                            cmake --install build
-                            pushd build
-                            ctest -j4 --output-on-failure --no-compress-output -T Test
-                            /tmp/ats/bin/traffic_server -K -R 1
-                            popd
+                            cmake -B build --preset ci-centos || build_failed=1
+                            if [ ${build_failed} -eq 0 ]; then
+                                cmake --build build -j4 -v || build_failed=1
+                            fi
+                            if [ ${build_failed} -eq 0 ]; then
+                                cmake --install build || build_failed=1
+                            fi
+                            if [ ${build_failed} -eq 0 ]; then
+                                pushd build
+                                ctest -j4 --output-on-failure --no-compress-output -T Test || build_failed=1
+                                /tmp/ats/bin/traffic_server -K -R 1 || build_failed=1
+                                popd
+                            fi
                         else
                             # Pre 10 branches only supported autotools.
-                            autoreconf -fiv
-                            ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-ccache
-                            make -j4 V=1 Q=
-                            make -j 2 check VERBOSE=Y V=1
-                            make install
-                            /tmp/ats/bin/traffic_server -K -k -R 1
+                            autoreconf -fiv || build_failed=1
+                            if [ ${build_failed} -eq 0 ]; then
+                                ./configure --with-openssl=/opt/openssl-quic --enable-experimental-plugins --enable-example-plugins --prefix=/tmp/ats/ --enable-werror --enable-debug --enable-ccache || build_failed=1
+                            fi
+                            if [ ${build_failed} -eq 0 ]; then
+                                make -j4 V=1 Q= || build_failed=1
+                            fi
+                            if [ ${build_failed} -eq 0 ]; then
+                                make -j 2 check VERBOSE=Y V=1 || build_failed=1
+                            fi
+                            if [ ${build_failed} -eq 0 ]; then
+                                make install || build_failed=1
+                            fi
+                            if [ ${build_failed} -eq 0 ]; then
+                                /tmp/ats/bin/traffic_server -K -k -R 1 || build_failed=1
+                            fi
+                        fi
+
+                        # Archive logs on failure.
+                        if [ ${build_failed} -ne 0 ]; then
+                            if [ -d /tmp/ats/var/log/trafficserver ]; then
+                                cp -rf /tmp/ats/var/log/trafficserver "${export_dir}/logs"
+                            fi
+                            sudo chmod -R 777 ${WORKSPACE}
+                            exit 1
                         fi
                         '''
                 }
@@ -94,6 +123,9 @@ pipeline {
     }
 
     post {
+        always {
+            archiveArtifacts artifacts: "output/${GITHUB_PR_NUMBER}/**/*", fingerprint: false, allowEmptyArchive: true
+        }
         cleanup {
             cleanWs()
         }
