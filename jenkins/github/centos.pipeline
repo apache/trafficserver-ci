@@ -4,7 +4,7 @@ pipeline {
             image 'ci.trafficserver.apache.org/ats/centos:7'
             registryUrl 'https://ci.trafficserver.apache.org/'
             label 'docker'
-            args '-v ${HOME}/ccache:/tmp/ccache:rw'
+            args '--init --cap-add=SYS_PTRACE -v ${HOME}/ccache:/tmp/ccache:rw'
         }
     }
     environment {
