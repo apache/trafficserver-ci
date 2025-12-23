@@ -44,11 +44,12 @@ pipeline {
                             cat /etc/*release*
 
                             echo
-                            git show HEAD^2 --no-patch
-                            git show HEAD^1 --no-patch
+                            # Use -s instead of --no-patch for compatibility with older git.
+                            git show HEAD^2 -s
+                            git show HEAD^1 -s
                             echo
 
-                            git show -n 10 --decorate --graph --oneline --no-patch
+                            git log -n 10 --decorate --graph --oneline
                             echo
                             echo
                     '''
@@ -68,6 +69,16 @@ pipeline {
 
                         export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
                         mkdir -p ${export_dir}
+
+                        # Set up a trap to archive logs on any exit, including signals.
+                        archive_logs() {
+                            if [ -d /tmp/ats/var/log/trafficserver ]; then
+                                cp -rf /tmp/ats/var/log/trafficserver "${export_dir}/logs"
+                            fi
+                            sudo chmod -R 777 ${WORKSPACE} || true
+                        }
+                        trap archive_logs EXIT
+
                         build_failed=0
 
                         if [ -d cmake ]
@@ -108,12 +119,8 @@ pipeline {
                             fi
                         fi
 
-                        # Archive logs on failure.
+                        # Exit with failure if build failed. The trap will archive logs.
                         if [ ${build_failed} -ne 0 ]; then
-                            if [ -d /tmp/ats/var/log/trafficserver ]; then
-                                cp -rf /tmp/ats/var/log/trafficserver "${export_dir}/logs"
-                            fi
-                            sudo chmod -R 777 ${WORKSPACE}
                             exit 1
                         fi
                         '''
