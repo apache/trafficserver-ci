@@ -128,7 +128,7 @@ GO_BINARY_PATH=${BASE}/go/bin/go
 if [ ! -d boringssl ]; then
   git clone https://boringssl.googlesource.com/boringssl
   cd boringssl
-  git checkout a1843d660b47116207877614af53defa767be46a
+  git checkout 45b2464158379f48cec6e35a1ef503ddea1511a6
   cd ..
 fi
 cd boringssl
@@ -180,7 +180,7 @@ echo "Building quiche"
 QUICHE_BASE="${BASE:-/opt}/quiche"
 [ ! -d quiche ] && git clone  https://github.com/cloudflare/quiche.git
 cd quiche
-git checkout 0.22.0
+git checkout 0.23.2
 QUICHE_BSSL_PATH=${BORINGSSL_LIB_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
 mkdir -p ${QUICHE_BASE}/lib/pkgconfig
 mkdir -p ${QUICHE_BASE}/include
@@ -197,7 +197,7 @@ LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${BORINGSSL_LIB_PATH}"}
 
 # Then nghttp3
 echo "Building nghttp3..."
-[ ! -d nghttp3 ] && git clone --depth 1 -b v1.2.0 https://github.com/ngtcp2/nghttp3.git
+[ ! -d nghttp3 ] && git clone --depth 1 -b v1.8.0 https://github.com/ngtcp2/nghttp3.git
 cd nghttp3
 git submodule update --init
 autoreconf -if
@@ -215,7 +215,7 @@ cd ..
 
 # Now ngtcp2
 echo "Building ngtcp2..."
-[ ! -d ngtcp2 ] && git clone --depth 1 -b v1.4.0 https://github.com/ngtcp2/ngtcp2.git
+[ ! -d ngtcp2 ] && git clone --depth 1 -b v1.11.0 https://github.com/ngtcp2/ngtcp2.git
 cd ngtcp2
 autoreconf -if
 ./configure \
@@ -235,7 +235,7 @@ cd ..
 
 # Then nghttp2, with support for H3
 echo "Building nghttp2 ..."
-[ ! -d nghttp2 ] && git clone --depth 1 -b v1.60.0 https://github.com/tatsuhiro-t/nghttp2.git
+[ ! -d nghttp2 ] && git clone --depth 1 -b v1.65.0 https://github.com/tatsuhiro-t/nghttp2.git
 cd nghttp2
 git submodule update --init
 autoreconf -if
@@ -250,10 +250,10 @@ fi
 # Note for FreeBSD: This will not build h2load. h2load can be run on a remote machine.
 ./configure \
   --prefix=${BASE} \
-  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:/usr/local/lib/pkgconfig \
   CFLAGS="${CFLAGS} -I${BORINGSSL_PATH}/include" \
   CXXFLAGS="${CXXFLAGS} -I${BORINGSSL_PATH}/include" \
-  LDFLAGS="${LDFLAGS}" \
+  LDFLAGS="${LDFLAGS} -L/usr/local/lib" \
   OPENSSL_LIBS="-lcrypto -lssl -L${BORINGSSL_LIB_PATH}" \
   --enable-http3 \
   --disable-examples \
@@ -265,7 +265,7 @@ cd ..
 
 # Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone --depth 1 -b curl-8_7_1 https://github.com/curl/curl.git
+[ ! -d curl ] && git clone --depth 1 -b curl-8_12_1 https://github.com/curl/curl.git
 cd curl
 # On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
 # The second runs fine.
