@@ -38,6 +38,7 @@ RUN <<EOF
   set -e
   pip3 install --upgrade pip
   pip3 install pipenv httpbin
+  export XDG_BIN_HOME=/opt/bin
   curl -LsSf https://astral.sh/uv/install.sh | sh
 EOF
 

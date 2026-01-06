@@ -91,6 +91,7 @@ RUN <<EOF
   python3.12 -m pip install --upgrade pip
   python3.12 -m pip install pipenv httpbin
 
+  export XDG_BIN_HOME=/opt/bin
   curl -LsSf https://astral.sh/uv/install.sh | sh
 EOF
 
