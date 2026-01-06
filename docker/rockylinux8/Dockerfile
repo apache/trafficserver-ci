@@ -23,7 +23,7 @@ RUN <<EOF
     python3.12-devel \
     libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel jansson-devel cjose-devel \
-    zlib-devel systemd-devel
+    zlib-devel systemd-devel libpsl-devel
 
   # Various other tools
   dnf -y install \
@@ -69,11 +69,18 @@ ARG PATH=/opt/bin:$PATH
 # older system version.
 RUN <<EOF
   set -e
-  wget https://github.com/ninja-build/ninja/releases/download/v1.11.1/ninja-linux.zip
-  unzip ninja-linux.zip
+  arch=$(uname -m)
+  ninja_version=1.12.1
+  if [ "${arch}" = "aarch64" ]; then
+    ninja_zip="ninja-linux-aarch64.zip"
+  else
+    ninja_zip="ninja-linux.zip"
+  fi
+  wget https://github.com/ninja-build/ninja/releases/download/v${ninja_version}/${ninja_zip}
+  unzip ${ninja_zip}
   cp ninja /opt/bin
   chmod 755 /opt/bin/
-  rm -f ninja ninja-linux.zip
+  rm -f ninja ${ninja_zip}
 EOF
 
 RUN <<EOF
@@ -83,6 +90,8 @@ RUN <<EOF
 
   python3.12 -m pip install --upgrade pip
   python3.12 -m pip install pipenv httpbin
+
+  curl -LsSf https://astral.sh/uv/install.sh | sh
 EOF
 
 #-------------------------------------------------------------------------------
@@ -100,6 +109,25 @@ RUN <<EOF
   dnf install -y cargo
   # This keeps our Docker layers smaller.
   dnf clean all
+EOF
+
+# Build c-ares from source since Rocky Linux 8's version (1.13.0) is too old
+# for nghttp2's --enable-app option which requires >= 1.16.0.
+RUN <<EOF
+  set -e
+  source /opt/rh/gcc-toolset-14/enable
+  cd /root
+  c_ares_version=1.34.4
+  wget https://github.com/c-ares/c-ares/releases/download/v${c_ares_version}/c-ares-${c_ares_version}.tar.gz
+  tar xf c-ares-${c_ares_version}.tar.gz
+  cd c-ares-${c_ares_version}
+  # Use INSTALL_LIBDIR=lib to ensure pkg-config file goes to a known location.
+  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib
+  cmake --build build
+  cmake --install build
+  cd /root
+  rm -rf c-ares-${c_ares_version} c-ares-${c_ares_version}.tar.gz
+  ldconfig /usr/local/lib
 EOF
 
 RUN <<EOF
@@ -172,6 +200,7 @@ RUN <<EOF
     -DCMAKE_INSTALL_PREFIX=/opt/ \
     -DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_CXX_FLAGS="-Wno-sign-compare" \
+    -DCMAKE_EXE_LINKER_FLAGS="-ldl" \
     -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
     -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
   cmake --build build_openssl
@@ -189,6 +218,7 @@ RUN <<EOF
     -DCMAKE_INSTALL_PREFIX=/opt/nuraft-boringssl \
     -DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_CXX_FLAGS="-Wno-sign-compare" \
+    -DCMAKE_EXE_LINKER_FLAGS="-ldl" \
     -DOPENSSL_LIBRARY_PATH=${BORINGSSL_LIB} \
     -DOPENSSL_INCLUDE_PATH=${BORINGSSL_PREFIX}/include
   cmake --build build_boringssl
