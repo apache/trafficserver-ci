@@ -64,6 +64,7 @@ pipeline {
 
                         set -x
                         set -e
+                        export PATH=/opt/bin:$PATH
 
                         if [ -d cmake ]
                         then

@@ -59,6 +59,7 @@ pipeline {
 					set -x
 					set -e
 					source ../ci/jenkins/bin/environment.sh
+					export PATH=/opt/bin:$PATH
 
 					if [ -d cmake ]
 					then

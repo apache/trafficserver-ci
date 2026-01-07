@@ -31,6 +31,7 @@ ANAL_BUILD=$(ls /usr/bin/analyze-build* | grep -v py | tail -n 1)
 RPTDIR="${WORKSPACE}/output/${GITHUB_BRANCH}"
 
 mkdir -p ${RPTDIR}
+export PATH=/opt/bin:$PATH
 
 if [ -d cmake ]
 then

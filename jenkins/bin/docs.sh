@@ -42,6 +42,7 @@ vername="${GITHUB_PR_NUMBER:=""}"
 outputdir="${PWD}/output"
 enoutdir="${outputdir}/en/${vername}"
 jaoutdir="${outputdir}/ja/${vername}"
+export PATH=/opt/bin:$PATH
 
 sudo chmod -R ugo+w . || exit 1
 

@@ -59,6 +59,7 @@ pipeline {
                 dir('src') {
                     sh '''#!/bin/bash
 
+                            export PATH=/opt/bin:$PATH
                             if [ -d cmake ]
                             then
                                 cmake -B build

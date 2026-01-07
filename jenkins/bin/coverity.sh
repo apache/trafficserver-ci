@@ -22,7 +22,7 @@ NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 # Get the Coverity tools into our path
 source /opt/rh/devtoolset-7/enable
-export PATH=/home/coverity/bin:${PATH}
+export PATH=/home/coverity/bin:/opt/bin:${PATH}
 
 COV_TARBALL=/tmp/trafficserver-${TODAY}.tgz
 COV_VERSION=$(git rev-parse --short HEAD)
