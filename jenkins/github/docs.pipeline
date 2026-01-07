@@ -76,6 +76,7 @@ pipeline {
                     export PIPENV_VENV_IN_PROJECT=1
                     python3.12 -m pipenv install --python python3.12
                     source .venv/bin/activate
+                    export PATH=/opt/bin:$PATH
 
                     if [ -d cmake ]
                     then

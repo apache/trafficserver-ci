@@ -48,6 +48,7 @@ echo "Success! No DOS carriage return"
 set -x
 
 NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
+export PATH=/opt/bin:$PATH
 
 if [ -d cmake ]
 then

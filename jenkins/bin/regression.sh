@@ -20,6 +20,7 @@ set -x
 set -e
 
 NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
+export PATH=/opt/bin:$PATH
 
 #cd "${ATS_BUILD_BASEDIR}/build"
 #cd "${ATS_BUILD_BASEDIR}"

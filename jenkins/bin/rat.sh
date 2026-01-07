@@ -22,6 +22,7 @@ set -e
 WORKSPACE="${WORKSPACE:-..}"
 
 cd "${WORKSPACE}/src"
+export PATH=/opt/bin:$PATH
 
 if [ -d cmake ]
 then

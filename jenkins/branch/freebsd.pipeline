@@ -34,6 +34,7 @@ pipeline {
 						set -e
 
 						NPROC=3
+						export PATH=/opt/bin:$PATH
 
 						if [ -d cmake ]
 						then
