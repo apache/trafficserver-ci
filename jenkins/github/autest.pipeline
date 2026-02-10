@@ -150,6 +150,11 @@ pipeline {
               autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
             fi
 
+            # Check for parallel support in autest.sh - originally added in 10.2.0.
+            if grep -q parallel_mode autest.sh; then
+              autest_args="-j 2 ${autest_args}"
+            fi
+
             autest_failed=0
             if [ ${SHARDCNT} -le 0 ]; then
               ./autest.sh ${autest_args} || autest_failed=1
