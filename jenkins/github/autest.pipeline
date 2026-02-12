@@ -183,6 +183,8 @@ pipeline {
               echo "AuTest tests failed."
               touch ${export_dir}/Autest_failures
               cp -rf /tmp/sandbox/ "${export_dir}"
+              # Remove socket files so they don't break archiveArtifacts.
+              find "${export_dir}" -type s -delete
               ls "${export_dir}"
               sudo chmod -R 777 ${WORKSPACE}
               exit 1
@@ -201,7 +203,7 @@ pipeline {
     always {
       // We exclude socket files because archiveArtifacts doesn't deal well with
       // their file type.
-      archiveArtifacts artifacts: "output/${GITHUB_PR_NUMBER}/**/*", fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/cache.db'
+      archiveArtifacts artifacts: "output/${GITHUB_PR_NUMBER}/**/*", fingerprint: false, allowEmptyArchive: true, excludes: '**/*.sock, **/*.socket, **/cache.db'
       echo "See the build job description for a link to the sandbox."
     }
     cleanup {
