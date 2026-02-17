@@ -30,7 +30,7 @@ RUN <<EOF
     xz-devel libcurl-devel ncurses-devel jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel libmaxminddb-devel \
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html \
-    curl tcl-devel java cjose-devel protobuf-devel
+    curl tcl-devel java cjose-devel protobuf-devel antlr4-cpp-runtime-devel antlr4
 
   # Needed to install openssl-quic
   dnf -y install libev-devel jemalloc-devel libxml2-devel \
