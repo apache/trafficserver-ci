@@ -24,11 +24,22 @@ WORKSPACE="${WORKSPACE:-..}"
 cd "${WORKSPACE}/src"
 export PATH=/opt/bin:$PATH
 
+check_rat_output() {
+  local rat_output=$1
+
+  if [ -f ci/apache-rat-0.17.jar ]; then
+    grep -Eq '^INFO:[[:space:]]+Unapproved:[[:space:]]+0$' "${rat_output}" || return 1
+    grep -Eq '^INFO:[[:space:]]+Unknown:[[:space:]]+0$' "${rat_output}" || return 1
+  else
+    grep '^0 Unknown Licenses' "${rat_output}" >/dev/null || return 1
+  fi
+}
+
 if [ -d cmake ]
 then
 
   cmake -B builder
-  cmake --build builder --target rat
+  cmake --build builder --target rat | tee RAT.txt
 
 else
 
@@ -39,9 +50,9 @@ else
   rm -f lib/ts/stamp-h1
 
   ${ATS_MAKE} rat | tee RAT.txt
-  grep '^0 Unknown Licenses' RAT.txt >/dev/null || exit 1
-
 fi
+
+check_rat_output RAT.txt || exit 1
 #mv RAT.txt /CA/RAT/rat-${ATS_BRANCH}.txt.new
 #mv /CA/RAT/rat-${ATS_BRANCH}.txt.new /CA/RAT/rat-${ATS_BRANCH}.txt
 
