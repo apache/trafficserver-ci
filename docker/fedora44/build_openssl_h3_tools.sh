@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+#
+#  Simple script to build OpenSSL and various tools with H3 and QUIC support
+#  including quiche+OpenSSL.
+#  This probably needs to be modified based on platform.
+#
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+set -e
+
+# This is a slightly modified version of:
+# https://github.com/apache/trafficserver/blob/master/tools/build_openssl_h3_tools.sh
+#
+# This present script been modified from the latter in the following ways:
+#
+# * It doesn't run sudo since the Dockerfile will run this as root.
+#
+# * It doesn't use a mktemp since the caller sets up a temporary directory
+#   that it later removes.
+
+WORKDIR="$(pwd)"
+
+# OPENSSL_BRANCH is kept for compatibility with older local invocations.
+OPENSSL_TAG=${OPENSSL_TAG:-${OPENSSL_BRANCH:-"openssl-3.5.5"}}
+NGHTTP3_TAG=${NGHTTP3_TAG:-"v1.15.0"}
+NGTCP2_TAG=${NGTCP2_TAG:-"v1.21.0"}
+NGHTTP2_TAG=${NGHTTP2_TAG:-"v1.68.0"}
+
+# Set these, if desired, to change these to your preferred installation
+# directory
+BASE=${BASE:-"/opt/h3-tools-openssl"}
+OPENSSL_BASE=${OPENSSL_BASE:-"${BASE}/openssl-quic"}
+OPENSSL_PREFIX=${OPENSSL_PREFIX:-"${OPENSSL_BASE}-${OPENSSL_TAG}"}
+MAKE="make"
+
+echo "Building OpenSSL H3 dependencies in ${WORKDIR}. Installation will be done in ${BASE}"
+
+CFLAGS=${CFLAGS:-"-O3 -g"}
+CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
+
+if [ -e /etc/redhat-release ]; then
+    MAKE="gmake"
+    echo "+-------------------------------------------------------------------------+"
+    echo "| You probably need to run this, or something like this, for your system: |"
+    echo "|                                                                         |"
+    echo "|   sudo yum -y install libev-devel jemalloc-devel python2-devel          |"
+    echo "|   sudo yum -y install libxml2-devel c-ares-devel libevent-devel         |"
+    echo "|   sudo yum -y install jansson-devel zlib-devel systemd-devel cargo      |"
+    echo "|                                                                         |"
+    echo "| Rust may be needed too, see https://rustup.rs for the details           |"
+    echo "+-------------------------------------------------------------------------+"
+    echo
+    echo
+elif [ -e /etc/debian_version ]; then
+    echo "+-------------------------------------------------------------------------+"
+    echo "| You probably need to run this, or something like this, for your system: |"
+    echo "|                                                                         |"
+    echo "|   sudo apt -y install libev-dev libjemalloc-dev python2-dev libxml2-dev |"
+    echo "|   sudo apt -y install libpython2-dev libc-ares-dev libsystemd-dev       |"
+    echo "|   sudo apt -y install libevent-dev libjansson-dev zlib1g-dev cargo      |"
+    echo "|                                                                         |"
+    echo "| Rust may be needed too, see https://rustup.rs for the details           |"
+    echo "+-------------------------------------------------------------------------+"
+    echo
+    echo
+fi
+
+if [ `uname -s` = "Darwin" ]; then
+    echo "+-------------------------------------------------------------------------+"
+    echo "| When building on a Mac, be aware that the Apple version of clang may    |"
+    echo "| fail to build curl due to the issue described here:                     |"
+    echo "| https://github.com/curl/curl/issues/11391#issuecomment-1623890325       |"
+    echo "+-------------------------------------------------------------------------+"
+fi
+
+set -x
+if [ `uname -s` = "Linux" ]
+then
+  num_threads=$(nproc)
+elif [ `uname -s` = "FreeBSD" ]
+then
+  num_threads=$(sysctl -n hw.ncpu)
+else
+  # MacOS.
+  num_threads=$(sysctl -n hw.logicalcpu)
+fi
+
+echo "Building OpenSSL with QUIC support"
+[ ! -d openssl ] && git clone -b ${OPENSSL_TAG} --depth 1 https://github.com/openssl/openssl.git openssl
+cd openssl
+./config enable-tls1_3 --prefix=${OPENSSL_PREFIX} --libdir=lib
+${MAKE} -j ${num_threads}
+${MAKE} install_sw
+chmod -R a+rX ${BASE}
+
+# The symlink target provides a more convenient path for the user while also
+# providing, in the symlink source, the precise branch of the OpenSSL build.
+ln -sf ${OPENSSL_PREFIX} ${OPENSSL_BASE}
+chmod -R a+rX ${BASE}
+cd ..
+
+# OpenSSL will install in /lib or lib64 depending upon the architecture.
+if [ -d "${OPENSSL_PREFIX}/lib" ]; then
+  OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
+elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
+  OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
+else
+  echo "Could not find the OpenSSL install library directory."
+  exit 1
+fi
+LDFLAGS=${LDFLAGS:-"-Wl,-rpath,${OPENSSL_LIB}"}
+
+# Build quiche
+# Steps borrowed from: https://github.com/apache/trafficserver-ci/blob/main/docker/rockylinux8/Dockerfile
+echo "Building quiche"
+QUICHE_BASE="${BASE:-/opt}/quiche"
+[ ! -d quiche ] && git clone https://github.com/cloudflare/quiche.git
+cd quiche
+git checkout 0.23.2
+
+PKG_CONFIG_PATH="$OPENSSL_LIB"/pkgconfig LD_LIBRARY_PATH="$OPENSSL_LIB" \
+  cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog,openssl
+
+mkdir -p ${QUICHE_BASE}/lib/pkgconfig
+mkdir -p ${QUICHE_BASE}/include
+cp target/release/libquiche.a ${QUICHE_BASE}/lib/
+if [ -f target/release/libquiche.so ]; then
+  cp target/release/libquiche.so ${QUICHE_BASE}/lib/
+  # Why a link? https://github.com/cloudflare/quiche/issues/1808#issuecomment-2196233378
+  ln -sf ${QUICHE_BASE}/lib/libquiche.so ${QUICHE_BASE}/lib/libquiche.so.0
+fi
+cp quiche/include/quiche.h ${QUICHE_BASE}/include/
+cp target/release/quiche.pc ${QUICHE_BASE}/lib/pkgconfig
+chmod -R a+rX ${BASE}
+cd ..
+
+
+# Then nghttp3
+echo "Building nghttp3..."
+[ ! -d nghttp3 ] && git clone --depth 1 -b ${NGHTTP3_TAG} https://github.com/ngtcp2/nghttp3.git
+cd nghttp3
+git submodule update --init
+autoreconf -if
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}" \
+  --enable-lib-only
+${MAKE} -j ${num_threads}
+${MAKE} install
+chmod -R a+rX ${BASE}
+cd ..
+
+# Now ngtcp2
+echo "Building ngtcp2..."
+[ ! -d ngtcp2 ] && git clone --depth 1 -b ${NGTCP2_TAG} https://github.com/ngtcp2/ngtcp2.git
+cd ngtcp2
+git submodule update --init
+autoreconf -if
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}" \
+  --enable-lib-only
+${MAKE} -j ${num_threads}
+${MAKE} install
+chmod -R a+rX ${BASE}
+cd ..
+
+# Then nghttp2, with support for H3
+echo "Building nghttp2 ..."
+[ ! -d nghttp2 ] && git clone --depth 1 -b ${NGHTTP2_TAG} https://github.com/nghttp2/nghttp2.git
+cd nghttp2
+git submodule update --init
+autoreconf -if
+if [ `uname -s` = "Darwin" ] || [ `uname -s` = "FreeBSD" ]
+then
+  # --enable-app requires systemd which is not available on Mac/FreeBSD.
+  ENABLE_APP=""
+else
+  ENABLE_APP="--enable-app"
+fi
+
+# Note for FreeBSD: This will not build h2load. h2load can be run on a remote machine.
+./configure \
+  --prefix=${BASE} \
+  PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS} -L${OPENSSL_LIB}" \
+  --enable-http3 \
+  ${ENABLE_APP}
+${MAKE} -j ${num_threads}
+${MAKE} install
+chmod -R a+rX ${BASE}
+cd ..
+
+# Then curl
+echo "Building curl ..."
+[ ! -d curl ] && git clone --depth 1 -b curl-8_12_1 https://github.com/curl/curl.git
+cd curl
+# On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
+# The second runs fine.
+autoreconf -fi || autoreconf -fi
+# Curl's OpenSSL QUIC backend does not use ngtcp2.
+PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
+./configure \
+  --prefix=${BASE} \
+  --with-ssl=${OPENSSL_PREFIX} \
+  --with-nghttp2=${BASE} \
+  --with-nghttp3=${BASE} \
+  --with-openssl-quic \
+  --without-ngtcp2 \
+  CFLAGS="${CFLAGS}" \
+  CXXFLAGS="${CXXFLAGS}" \
+  LDFLAGS="${LDFLAGS}"
+${MAKE} -j ${num_threads}
+${MAKE} install
+chmod -R a+rX ${BASE}
+cd ..
