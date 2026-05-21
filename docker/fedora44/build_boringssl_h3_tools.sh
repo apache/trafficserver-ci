@@ -105,6 +105,27 @@ else
   num_threads=$(sysctl -n hw.logicalcpu)
 fi
 
+extract_tarball() {
+  archive="$1"
+  destination="$2"
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$archive" "$destination" <<'PY'
+import sys
+import tarfile
+
+archive_path, destination = sys.argv[1:]
+with tarfile.open(archive_path) as archive:
+    try:
+        archive.extractall(destination, filter="fully_trusted")
+    except TypeError:
+        archive.extractall(destination)
+PY
+  else
+    tar -C "$destination" -xf "$archive"
+  fi
+}
+
 # boringssl
 echo "Building boringssl..."
 
@@ -126,7 +147,7 @@ else
 fi
 
 wget https://go.dev/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz
-rm -rf ${BASE}/go && tar -C ${BASE} -xf go${GO_VERSION}.${OS}-${ARCH}.tar.gz
+rm -rf ${BASE}/go && extract_tarball go${GO_VERSION}.${OS}-${ARCH}.tar.gz ${BASE}
 rm go${GO_VERSION}.${OS}-${ARCH}.tar.gz
 chmod -R a+rX ${BASE}
 

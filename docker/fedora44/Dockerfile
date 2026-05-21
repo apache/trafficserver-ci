@@ -148,7 +148,7 @@ RUN <<EOF
   mkdir nlohmann-json
   cd nlohmann-json
   wget https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.tar.gz
-  tar zxf v3.11.3.tar.gz
+  python3 -m tarfile -e v3.11.3.tar.gz
   cd json-3.11.3
   cmake -B build -G Ninja -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_INSTALL_PREFIX=/opt -DJSON_BuildTests=OFF
   cmake --build build
@@ -159,7 +159,7 @@ RUN <<EOF
   mkdir opentelemetry-cpp
   cd opentelemetry-cpp
   wget https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v1.3.0.tar.gz
-  tar zxf v1.3.0.tar.gz
+  python3 -m tarfile -e v1.3.0.tar.gz
   cd opentelemetry-cpp-1.3.0
   cmake -B build -G Ninja -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF -DWITH_JAEGER=OFF -DWITH_OTLP=ON -DWITH_OTLP_GRPC=OFF -DWITH_OTLP_HTTP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -Dnlohmann_json_ROOT=/opt/ -DCMAKE_INSTALL_PREFIX=/opt
   cmake --build build --target all
@@ -180,7 +180,7 @@ RUN <<EOF
   mkdir ${build_dir}
   cd ${build_dir}
   wget https://github.com/bytecodealliance/wasm-micro-runtime/archive/refs/tags/WAMR-1.2.1.tar.gz
-  tar zxvf WAMR-1.2.1.tar.gz
+  python3 -m tarfile -e WAMR-1.2.1.tar.gz
 
   # Build WAMR.
   cd wasm-micro-runtime-WAMR-1.2.1
@@ -202,6 +202,7 @@ RUN <<EOF
   cd /root/src/abi
   git clone https://github.com/lvc/installer.git
   cd installer
+  perl -0pi -e 's{qx/tar -xf archive\.tar\.gz/;}{qx/python3 -m tarfile -e archive.tar.gz/;}' installer.pl
   for i in abi-dumper abi-tracker abi-compliance-checker vtable-dumper abi-monitor
   do
     make install prefix=/opt target=${i}
