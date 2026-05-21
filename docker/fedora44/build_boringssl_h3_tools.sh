@@ -44,6 +44,10 @@ echo "Building boringssl H3 dependencies in ${WORKDIR}. Installation will be don
 CFLAGS=${CFLAGS:-"-O3 -g"}
 CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
 BORINGSSL_PATH="${BASE}/boringssl"
+GO_VERSION=${GO_VERSION:-"1.26.2"}
+BORINGSSL_COMMIT=${BORINGSSL_COMMIT:-"c3ffc3300a9450cf8e396c7880be7c6cadc16a4a"}
+QUICHE_TAG=${QUICHE_TAG:-"0.28.0"}
+CURL_TAG=${CURL_TAG:-"curl-8_20_0"}
 NGHTTP3_TAG=${NGHTTP3_TAG:-"v1.15.0"}
 NGTCP2_TAG=${NGTCP2_TAG:-"v1.21.0"}
 NGHTTP2_TAG=${NGHTTP2_TAG:-"v1.68.0"}
@@ -67,9 +71,9 @@ elif [ -e /etc/debian_version ]; then
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
-    echo "|   sudo apt -y install libev-dev libjemalloc-dev python2-dev libxml2-dev |"
-    echo "|   sudo apt -y install libpython2-dev libc-ares-dev libsystemd-dev       |"
-    echo "|   sudo apt -y install libevent-dev libjansson-dev zlib1g-dev cargo      |"
+    echo "|   sudo apt -y install libev-dev libjemalloc-dev python3-dev libxml2-dev |"
+    echo "|   sudo apt -y install libpython3-dev libc-ares-dev libsystemd-dev       |"
+    echo "|   sudo apt -y install libevent-dev libjansson-dev zlib1g-dev libpsl-dev |"
     echo "|                                                                         |"
     echo "| Rust may be needed too, see https://rustup.rs for the details           |"
     echo "+-------------------------------------------------------------------------+"
@@ -121,17 +125,16 @@ else
     OS="linux"
 fi
 
-go_version=1.25.10
-wget https://go.dev/dl/go${go_version}.${OS}-${ARCH}.tar.gz
-rm -rf ${BASE}/go && tar -C ${BASE} -xf go${go_version}.${OS}-${ARCH}.tar.gz
-rm go${go_version}.${OS}-${ARCH}.tar.gz
+wget https://go.dev/dl/go${GO_VERSION}.${OS}-${ARCH}.tar.gz
+rm -rf ${BASE}/go && tar -C ${BASE} -xf go${GO_VERSION}.${OS}-${ARCH}.tar.gz
+rm go${GO_VERSION}.${OS}-${ARCH}.tar.gz
 chmod -R a+rX ${BASE}
 
 GO_BINARY_PATH=${BASE}/go/bin/go
 if [ ! -d boringssl ]; then
   git clone https://boringssl.googlesource.com/boringssl
   cd boringssl
-  git checkout 02bc0949e5cac0e1ee82c6f365f5a6c3cfd0cfa9
+  git checkout ${BORINGSSL_COMMIT}
   cd ..
 fi
 cd boringssl
@@ -203,7 +206,7 @@ echo "Building quiche"
 QUICHE_BASE="${BASE:-/opt}/quiche"
 [ ! -d quiche ] && git clone  https://github.com/cloudflare/quiche.git
 cd quiche
-git checkout 0.23.2
+git checkout ${QUICHE_TAG}
 QUICHE_BSSL_PATH=${BORINGSSL_LIB_PATH} QUICHE_BSSL_LINK_KIND=dylib cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog
 mkdir -p ${QUICHE_BASE}/lib/pkgconfig
 mkdir -p ${QUICHE_BASE}/include
@@ -291,7 +294,7 @@ cd ..
 
 # Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone --depth 1 -b curl-8_12_1 https://github.com/curl/curl.git
+[ ! -d curl ] && git clone --depth 1 -b ${CURL_TAG} https://github.com/curl/curl.git
 cd curl
 # On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
 # The second runs fine.
