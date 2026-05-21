@@ -36,6 +36,8 @@ WORKDIR="$(pwd)"
 
 # OPENSSL_BRANCH is kept for compatibility with older local invocations.
 OPENSSL_TAG=${OPENSSL_TAG:-${OPENSSL_BRANCH:-"openssl-3.5.5"}}
+QUICHE_TAG=${QUICHE_TAG:-"0.28.0"}
+CURL_TAG=${CURL_TAG:-"curl-8_20_0"}
 NGHTTP3_TAG=${NGHTTP3_TAG:-"v1.15.0"}
 NGTCP2_TAG=${NGTCP2_TAG:-"v1.21.0"}
 NGHTTP2_TAG=${NGHTTP2_TAG:-"v1.68.0"}
@@ -69,9 +71,9 @@ elif [ -e /etc/debian_version ]; then
     echo "+-------------------------------------------------------------------------+"
     echo "| You probably need to run this, or something like this, for your system: |"
     echo "|                                                                         |"
-    echo "|   sudo apt -y install libev-dev libjemalloc-dev python2-dev libxml2-dev |"
-    echo "|   sudo apt -y install libpython2-dev libc-ares-dev libsystemd-dev       |"
-    echo "|   sudo apt -y install libevent-dev libjansson-dev zlib1g-dev cargo      |"
+    echo "|   sudo apt -y install libev-dev libjemalloc-dev python3-dev libxml2-dev |"
+    echo "|   sudo apt -y install libpython3-dev libc-ares-dev libsystemd-dev       |"
+    echo "|   sudo apt -y install libevent-dev libjansson-dev zlib1g-dev libpsl-dev |"
     echo "|                                                                         |"
     echo "| Rust may be needed too, see https://rustup.rs for the details           |"
     echo "+-------------------------------------------------------------------------+"
@@ -130,7 +132,7 @@ echo "Building quiche"
 QUICHE_BASE="${BASE:-/opt}/quiche"
 [ ! -d quiche ] && git clone https://github.com/cloudflare/quiche.git
 cd quiche
-git checkout 0.23.2
+git checkout ${QUICHE_TAG}
 
 PKG_CONFIG_PATH="$OPENSSL_LIB"/pkgconfig LD_LIBRARY_PATH="$OPENSSL_LIB" \
   cargo build -j4 --package quiche --release --features ffi,pkg-config-meta,qlog,openssl
@@ -175,6 +177,7 @@ git submodule update --init
 autoreconf -if
 ./configure \
   --prefix=${BASE} \
+  --with-openssl \
   PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
@@ -215,20 +218,19 @@ cd ..
 
 # Then curl
 echo "Building curl ..."
-[ ! -d curl ] && git clone --depth 1 -b curl-8_12_1 https://github.com/curl/curl.git
+[ ! -d curl ] && git clone --depth 1 -b ${CURL_TAG} https://github.com/curl/curl.git
 cd curl
 # On mac autoreconf fails on the first attempt with an issue finding ltmain.sh.
 # The second runs fine.
 autoreconf -fi || autoreconf -fi
-# Curl's OpenSSL QUIC backend does not use ngtcp2.
+# Curl 8.20 uses ngtcp2 for its OpenSSL-backed HTTP/3 transport.
 PKG_CONFIG_PATH=${BASE}/lib/pkgconfig:${OPENSSL_LIB}/pkgconfig \
 ./configure \
   --prefix=${BASE} \
   --with-ssl=${OPENSSL_PREFIX} \
   --with-nghttp2=${BASE} \
   --with-nghttp3=${BASE} \
-  --with-openssl-quic \
-  --without-ngtcp2 \
+  --with-ngtcp2=${BASE} \
   CFLAGS="${CFLAGS}" \
   CXXFLAGS="${CXXFLAGS}" \
   LDFLAGS="${LDFLAGS}"
