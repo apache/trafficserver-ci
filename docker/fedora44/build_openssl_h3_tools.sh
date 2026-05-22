@@ -35,12 +35,12 @@ set -e
 WORKDIR="$(pwd)"
 
 # OPENSSL_BRANCH is kept for compatibility with older local invocations.
-OPENSSL_TAG=${OPENSSL_TAG:-${OPENSSL_BRANCH:-"openssl-3.5.5"}}
+OPENSSL_TAG=${OPENSSL_TAG:-${OPENSSL_BRANCH:-"openssl-3.5.6"}}
 QUICHE_TAG=${QUICHE_TAG:-"0.28.0"}
 CURL_TAG=${CURL_TAG:-"curl-8_20_0"}
 NGHTTP3_TAG=${NGHTTP3_TAG:-"v1.15.0"}
-NGTCP2_TAG=${NGTCP2_TAG:-"v1.21.0"}
-NGHTTP2_TAG=${NGHTTP2_TAG:-"v1.68.0"}
+NGTCP2_TAG=${NGTCP2_TAG:-"v1.22.1"}
+NGHTTP2_TAG=${NGHTTP2_TAG:-"v1.69.0"}
 
 # Set these, if desired, to change these to your preferred installation
 # directory
@@ -115,7 +115,7 @@ ln -sf ${OPENSSL_PREFIX} ${OPENSSL_BASE}
 chmod -R a+rX ${BASE}
 cd ..
 
-# OpenSSL will install in /lib or lib64 depending upon the architecture.
+# OpenSSL is configured to install its libraries in lib.
 if [ -d "${OPENSSL_PREFIX}/lib" ]; then
   OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
 elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
