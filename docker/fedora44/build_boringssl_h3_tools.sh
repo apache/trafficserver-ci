@@ -49,8 +49,8 @@ BORINGSSL_COMMIT=${BORINGSSL_COMMIT:-"c3ffc3300a9450cf8e396c7880be7c6cadc16a4a"}
 QUICHE_TAG=${QUICHE_TAG:-"0.28.0"}
 CURL_TAG=${CURL_TAG:-"curl-8_20_0"}
 NGHTTP3_TAG=${NGHTTP3_TAG:-"v1.15.0"}
-NGTCP2_TAG=${NGTCP2_TAG:-"v1.21.0"}
-NGHTTP2_TAG=${NGHTTP2_TAG:-"v1.68.0"}
+NGTCP2_TAG=${NGTCP2_TAG:-"v1.22.1"}
+NGHTTP2_TAG=${NGHTTP2_TAG:-"v1.69.0"}
 
 if [ -e /etc/redhat-release ]; then
     MAKE="gmake"
@@ -150,7 +150,7 @@ fi
 set -e
 
 # Check compiler flags before passing them to CMake. GCC errors on some
-# Clang-only -Wno-error= flags, including -Wcharacter-conversion.
+# Clang-only -Wno-error flags, including -Wno-error=character-conversion.
 compiler_supports_flag() {
   local compiler=$1
   local flag=$2
