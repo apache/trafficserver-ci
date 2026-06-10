@@ -1,0 +1,15 @@
+# Temporary cron fallback for GitHub mirror updates before ASF webhooks are live.
+#
+# Install on the controller as:
+#   sudo install -o root -g root -m 0644 \
+#     /opt/trafficserver-ci/github-mirror/cron/github-mirror \
+#     /etc/cron.d/github-mirror
+#
+# Remove this file after the GitHub webhook has been validated and the
+# github-mirror-fallback.timer is the only periodic fallback updater.
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MIRROR_ROOT=/home/mirror
+
+* * * * * gitdaemon /opt/trafficserver-ci/github-mirror/bin/update-mirror.sh --all 2>&1 | /usr/bin/logger -t github-mirror-cron

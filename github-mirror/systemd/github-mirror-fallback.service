@@ -1,0 +1,14 @@
+[Unit]
+Description=ATS CI GitHub mirror fallback refresh
+Documentation=file:@INSTALL_ROOT@/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=@MIRROR_USER@
+Group=@MIRROR_GROUP@
+Environment=MIRROR_ROOT=@MIRROR_ROOT@
+ExecStart=@INSTALL_ROOT@/bin/update-mirror.sh --all
+TimeoutStartSec=30min
+Nice=5

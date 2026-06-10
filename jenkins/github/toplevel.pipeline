@@ -7,7 +7,7 @@ String buildJob(String ghcontext, String jobName, String shard='') {
 		currentBuild.description = "Builds:<br>"
 	}
 	currentBuild.displayName = "PR: #${GITHUB_PR_NUMBER} - Build: #${BUILD_NUMBER}"
-	https_github_url = GITHUB_REPO_GIT_URL.replace("git://", "https://")
+	https_github_url = env.GITHUB_URL ?: GITHUB_REPO_GIT_URL.replace("git://", "https://")
 
 	def parms = [
 		string(name: 'SHA1', value: GITHUB_PR_HEAD_SHA),

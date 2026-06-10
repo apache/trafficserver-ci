@@ -1,0 +1,7 @@
+# Defaults for git-daemon initscript.
+
+GIT_DAEMON_ENABLE=true
+GIT_DAEMON_USER=gitdaemon
+GIT_DAEMON_BASE_PATH=/home/mirror
+GIT_DAEMON_DIRECTORY=/home/mirror
+GIT_DAEMON_OPTIONS="--export-all --reuseaddr --port=9418"
