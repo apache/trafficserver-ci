@@ -16,7 +16,7 @@ pipeline {
 		stage('Initialization') {
 			steps {
 				dir('ci') {
-					git url: 'https://github.com/apache/trafficserver-ci',
+					git url: 'https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git',
 						branch: 'main'
 				}
 				dir('src') {
@@ -25,7 +25,7 @@ pipeline {
 						rm -rf *
 						set -x
 					'''
-					git 'https://github.com/apache/trafficserver.git'
+					git 'https://ci.trafficserver.apache.org/mirror/trafficserver.git'
 					sh '''#!/bin/bash
 						set +x
 						source /opt/rh/gcc-toolset-11/enable

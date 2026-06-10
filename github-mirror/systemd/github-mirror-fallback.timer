@@ -1,0 +1,12 @@
+[Unit]
+Description=Run ATS CI GitHub mirror fallback refresh
+Documentation=file:@INSTALL_ROOT@/README.md
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=github-mirror-fallback.service
+
+[Install]
+WantedBy=timers.target

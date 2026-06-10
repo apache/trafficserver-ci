@@ -28,7 +28,7 @@ pipeline {
 				}
 
 				dir('ci') {
-					git url: 'https://github.com/apache/trafficserver-ci',
+					git url: 'https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git',
 						branch: 'main'
 				}
 
