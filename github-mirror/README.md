@@ -647,10 +647,15 @@ Jenkins cannot clone from HTTPS:
 - Verify ATS remap order.
 - Verify `/mirror/` points to `http://localhost:9417/mirror/`.
 - Verify the smart HTTP service is healthy.
+- If the service logs say `detected dubious ownership`, rebuild the current
+  image so Git trusts the bind-mounted mirror repositories.
 - Verify the public URL:
 
   ```bash
   sudo systemctl status github-mirror-smart-http.service
+  cd /opt/trafficserver-ci/github-mirror/httpd
+  sudo docker-compose build
+  sudo systemctl restart github-mirror-smart-http.service
   sudo docker exec github-mirror-smart-http httpd -t
   git ls-remote https://ci.trafficserver.apache.org/mirror/trafficserver.git refs/heads/master
   ```
