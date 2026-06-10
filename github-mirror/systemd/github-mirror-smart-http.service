@@ -1,0 +1,20 @@
+[Unit]
+Description=ATS CI GitHub mirror smart HTTP service
+Documentation=file:@INSTALL_ROOT@/README.md
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=@INSTALL_ROOT@/httpd
+ExecStartPre=/usr/bin/install -d -o root -g root -m 0755 /var/log/github-mirror-smart-http
+ExecStartPre=/usr/bin/docker-compose build
+ExecStart=/usr/bin/docker-compose up --remove-orphans
+ExecStop=/usr/bin/docker-compose down
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=10min
+
+[Install]
+WantedBy=multi-user.target

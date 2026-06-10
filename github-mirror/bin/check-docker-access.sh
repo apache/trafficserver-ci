@@ -7,6 +7,7 @@ set -euo pipefail
 CONTROLLER=${CONTROLLER:-controller}
 PUBLIC_BASE=${PUBLIC_BASE:-https://ci.trafficserver.apache.org/mirror}
 PR_NUMBER=${PR_NUMBER:-}
+GITHUB_PR_HEAD_SHA=${GITHUB_PR_HEAD_SHA:-}
 
 usage() {
   cat <<'EOF'
@@ -20,6 +21,8 @@ Environment:
                Set to empty or "-" when running directly on the controller.
   PUBLIC_BASE  Public HTTPS mirror base URL. Default: https://ci.trafficserver.apache.org/mirror
   PR_NUMBER    Optional PR number to verify.
+  GITHUB_PR_HEAD_SHA
+               Optional expected PR head SHA to compare against --pr.
 EOF
 }
 
@@ -55,12 +58,28 @@ for docker_host in "$@"; do
     ssh_args+=(-J "${CONTROLLER}")
   fi
   ssh "${ssh_args[@]}" "${docker_host}" \
-    "PUBLIC_BASE=$(printf '%q' "${PUBLIC_BASE}") PR_NUMBER=$(printf '%q' "${PR_NUMBER}") bash -s" <<'REMOTE_CHECK'
+    "PUBLIC_BASE=$(printf '%q' "${PUBLIC_BASE}") PR_NUMBER=$(printf '%q' "${PR_NUMBER}") GITHUB_PR_HEAD_SHA=$(printf '%q' "${GITHUB_PR_HEAD_SHA}") bash -s" <<'REMOTE_CHECK'
 set -e
-git ls-remote "$PUBLIC_BASE/trafficserver.git" refs/heads/master >/dev/null
-git ls-remote "$PUBLIC_BASE/trafficserver-ci.git" refs/heads/main >/dev/null
+require_ref() {
+  repo=$1
+  ref=$2
+  output=$(git ls-remote "$PUBLIC_BASE/${repo}.git" "$ref")
+  if [ -z "$output" ]; then
+    echo "missing ${repo} ${ref}" >&2
+    exit 1
+  fi
+  printf '%s\n' "$output" | awk 'NR == 1 { print $1 }'
+}
+
+require_ref trafficserver refs/heads/master >/dev/null
+require_ref trafficserver-ci refs/heads/main >/dev/null
 if [ -n "$PR_NUMBER" ]; then
-  git ls-remote "$PUBLIC_BASE/trafficserver.git" "refs/pull/${PR_NUMBER}/head" >/dev/null
+  pr_head_sha=$(require_ref trafficserver "refs/pull/${PR_NUMBER}/head")
+  require_ref trafficserver "refs/pull/${PR_NUMBER}/merge" >/dev/null
+  if [ -n "$GITHUB_PR_HEAD_SHA" ] && [ "$pr_head_sha" != "$GITHUB_PR_HEAD_SHA" ]; then
+    echo "PR head ${pr_head_sha} does not match GITHUB_PR_HEAD_SHA=${GITHUB_PR_HEAD_SHA}" >&2
+    exit 1
+  fi
 fi
 REMOTE_CHECK
 done

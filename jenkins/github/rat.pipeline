@@ -16,6 +16,7 @@ pipeline {
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
                         extensions: [
+                            [$class: 'CloneOption', honorRefspec: true, timeout: 20],
                             // We have to set an idenity for the merge step because Git requires
                             // the user.name and user.email to be set to do a merge.
                             [$class: "UserIdentity",
@@ -31,7 +32,8 @@ pipeline {
                                 ]
                             ],
                         ],
-                        userRemoteConfigs: [[url: github_url, refspec: '+refs/pull/*:refs/remotes/origin/pr/*']]])
+                        userRemoteConfigs: [[url: github_url,
+                            refspec: "+refs/heads/${GITHUB_PR_TARGET_BRANCH}:refs/remotes/origin/${GITHUB_PR_TARGET_BRANCH} +refs/pull/${GITHUB_PR_NUMBER}/head:refs/remotes/origin/pr/${GITHUB_PR_NUMBER}/head +refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin/pr/${GITHUB_PR_NUMBER}/merge"]])
                     sh '''#!/bin/bash
                             set -x
 
