@@ -83,6 +83,8 @@ init_repo() {
   fi
 
   configure_remote "${repo_dir}" "${remote_url}" "$@"
+  "${GIT}" --git-dir="${repo_dir}" config http.uploadpack true
+  "${GIT}" --git-dir="${repo_dir}" config http.receivepack false
   touch "${repo_dir}/git-daemon-export-ok"
 
   if [ "$(id -u)" -eq 0 ]; then

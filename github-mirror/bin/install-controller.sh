@@ -16,6 +16,7 @@ ENV_FILE=${ENV_FILE:-${ENV_DIR}/github-mirror-webhook.env}
 APT_INSTALL=${APT_INSTALL:-1}
 START_WEBHOOK=${START_WEBHOOK:-auto}
 START_FALLBACK_TIMER=${START_FALLBACK_TIMER:-1}
+START_SMART_HTTP=${START_SMART_HTTP:-1}
 INIT_MIRRORS=${INIT_MIRRORS:-1}
 
 usage() {
@@ -34,6 +35,8 @@ Environment:
   START_WEBHOOK  auto, 1, or 0. Default: auto
   START_FALLBACK_TIMER
                  Enable/start the systemd fallback timer when set to 1. Default: 1
+  START_SMART_HTTP
+                 Enable/start smart HTTP mirror service when set to 1. Default: 1
 EOF
 }
 
@@ -76,6 +79,8 @@ if [ "${APT_INSTALL}" = "1" ]; then
   DEBIAN_FRONTEND=noninteractive apt-get install -y \
     git \
     git-daemon-sysvinit \
+    docker.io \
+    docker-compose \
     python3 \
     util-linux
 fi
@@ -114,6 +119,8 @@ render_template "${INSTALL_ROOT}/systemd/github-mirror-fallback.service" "${tmp_
 install -o root -g root -m 0644 "${tmp_unit}" /etc/systemd/system/github-mirror-fallback.service
 render_template "${INSTALL_ROOT}/systemd/github-mirror-fallback.timer" "${tmp_unit}"
 install -o root -g root -m 0644 "${tmp_unit}" /etc/systemd/system/github-mirror-fallback.timer
+render_template "${INSTALL_ROOT}/systemd/github-mirror-smart-http.service" "${tmp_unit}"
+install -o root -g root -m 0644 "${tmp_unit}" /etc/systemd/system/github-mirror-smart-http.service
 rm -f "${tmp_unit}"
 
 systemctl daemon-reload
@@ -130,6 +137,12 @@ if [ "${START_FALLBACK_TIMER}" = "1" ]; then
   systemctl enable --now github-mirror-fallback.timer
 else
   systemctl disable --now github-mirror-fallback.timer >/dev/null 2>&1 || true
+fi
+
+if [ "${START_SMART_HTTP}" = "1" ]; then
+  systemctl enable --now github-mirror-smart-http.service
+else
+  systemctl disable --now github-mirror-smart-http.service >/dev/null 2>&1 || true
 fi
 
 if [ "${START_WEBHOOK}" = "1" ] ||
