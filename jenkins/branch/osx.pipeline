@@ -5,8 +5,11 @@ pipeline {
 			steps {
 				echo 'Starting Clone'
 				dir('ci') {
-					git url: 'https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git',
-						branch: 'main'
+					checkout([$class: 'GitSCM',
+						branches: [[name: 'main']],
+						userRemoteConfigs: [[url: 'https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git']],
+						extensions: [[$class: 'CloneOption', shallow: true, depth: 10, noTags: true, timeout: 10]]
+					])
 				}
 				dir('src') {
 					script {
@@ -18,7 +21,10 @@ pipeline {
 						checkout([$class: 'GitSCM',
 							branches: [[name: branch]],
 							userRemoteConfigs: [[url: env.GITHUB_URL]],
-							extensions: [[$class: 'CloneOption', timeout: 10]],
+							// Branch builds normally checkout the current branch tip. If a manually
+							// requested SHA is older than this shallow depth, checkout should fail fast
+							// instead of falling back to a large full-history fetch.
+							extensions: [[$class: 'CloneOption', shallow: true, depth: 1000, noTags: true, timeout: 10]],
 						])
 				  }
 				}

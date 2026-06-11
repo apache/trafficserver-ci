@@ -541,8 +541,21 @@ The repo-managed PR pipeline scripts fetch:
 - only the current PR's `refs/pull/<number>/head`;
 - only the current PR's `refs/pull/<number>/merge`.
 
-They also use `CloneOption(honorRefspec: true, timeout: 20)` so Jenkins does
-not fan out a wildcard PR ref fetch to every child job.
+They also use
+`CloneOption(honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 20)`
+so Jenkins does not fan out a wildcard PR ref fetch to every child job.
+
+The child jobs intentionally combine narrow refspecs with shallow, no-tags
+checkouts. The refspec controls which refs Jenkins asks the mirror for; the
+shallow checkout controls how much reachable commit history Git transfers for
+those refs. `noTags: true` keeps Jenkins from pulling extra tag-reachable
+history that the builds do not need.
+
+PR jobs use `depth: 1000` because they still run Jenkins' local
+`PreBuildMerge`. That depth must be high enough for Git to find the merge base
+between the PR head and the target branch. If the depth is too low, checkout
+should fail during the local merge with shallow-history or missing-ancestor
+errors. Raise the depth before disabling shallow clone globally.
 
 During the temporary cron rollout, set the top-level PR job quiet period to at
 least 90 seconds. Once the webhook is live and verified, the quiet period can
@@ -550,7 +563,10 @@ be removed or reduced.
 
 For branch jobs, configure the top-level branch jobs' `GITHUB_URL` parameter to
 the same ATS mirror URL. Child jobs will receive that value from the fanout job.
-Branch jobs continue using normal branch checkouts from the mirror URL.
+Branch jobs use shallow, no-tags checkouts with `depth: 1000`. Normal branch
+tip builds should have enough history. A manually requested old SHA outside the
+shallow window should fail fast instead of falling back to a large full-history
+fetch.
 
 ## Migrating An Existing Controller
 
