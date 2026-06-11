@@ -16,8 +16,11 @@ pipeline {
 		stage('Initialization') {
 			steps {
 				dir('ci') {
-					git url: 'https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git',
-						branch: 'main'
+					checkout([$class: 'GitSCM',
+						branches: [[name: 'main']],
+						userRemoteConfigs: [[url: 'https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git']],
+						extensions: [[$class: 'CloneOption', shallow: true, depth: 10, noTags: true, timeout: 10]]
+					])
 				}
 				dir('src') {
 					sh '''#!/bin/bash
@@ -25,7 +28,14 @@ pipeline {
 						rm -rf *
 						set -x
 					'''
-					git 'https://ci.trafficserver.apache.org/mirror/trafficserver.git'
+					checkout([$class: 'GitSCM',
+						branches: [[name: env.GITHUB_BRANCH ? "*/${env.GITHUB_BRANCH}" : '*/master']],
+						userRemoteConfigs: [[url: 'https://ci.trafficserver.apache.org/mirror/trafficserver.git']],
+						// Branch builds normally checkout the current branch tip. If a manually
+						// requested SHA is older than this shallow depth, checkout should fail fast
+						// instead of falling back to a large full-history fetch.
+						extensions: [[$class: 'CloneOption', shallow: true, depth: 1000, noTags: true, timeout: 10]]
+					])
 					sh '''#!/bin/bash
 						set +x
 						source /opt/rh/gcc-toolset-11/enable

@@ -8,7 +8,10 @@ pipeline {
                     checkout([$class: 'GitSCM',
                         branches: [[name: sha1]],
                         extensions: [
-                            [$class: 'CloneOption', honorRefspec: true, timeout: 20],
+                            // Keep this depth high enough for PreBuildMerge to find the merge base
+                            // between the PR head and target branch. If it is too low, checkout will
+                            // fail during the local merge with shallow-history / missing-ancestor errors.
+                            [$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 20],
                             // We have to set an identity for the merge step because Git requires
                             // the user.name and user.email to be set to do a merge.
                             [$class: "UserIdentity",
