@@ -669,6 +669,17 @@ Jenkins fetches look like dumb HTTP:
   sudo tail -n 100 /var/log/github-mirror-smart-http/access_log
   ```
 
+Jenkins fetches fail with HTTP 502 after about 60 seconds:
+
+- Rebuild and restart the current smart HTTP image. The supported config gives
+  `git-upload-pack` more time to generate large packs during CI fanout.
+
+  ```bash
+  cd /opt/trafficserver-ci/github-mirror/httpd
+  sudo docker-compose build
+  sudo systemctl restart github-mirror-smart-http.service
+  ```
+
 Docker hosts cannot reach the mirror:
 
 ```bash
