@@ -16,7 +16,9 @@ https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git
 ```
 
 The package is intentionally self-contained. If the controller is lost, this
-README plus the files in this directory are enough to rebuild the mirror.
+README plus the files in this directory are enough to rebuild the mirror. The
+installed controller copy lives under `/opt/github-mirror`, including the
+Docker Compose file and mirror-specific configuration.
 
 ## Architecture
 
@@ -31,7 +33,7 @@ https://ci.trafficserver.apache.org/github-mirror-webhook
   v
 127.0.0.1:9419/github-mirror-webhook
   |
-  | signed webhook receiver, running as gitdaemon
+  | github-mirror compose service, signed webhook receiver
   v
 /home/mirror/trafficserver.git
 /home/mirror/trafficserver-ci.git
@@ -40,7 +42,7 @@ https://ci.trafficserver.apache.org/github-mirror-webhook
   |
 127.0.0.1:9417/mirror/
   |
-  | dedicated httpd container running git-http-backend
+  | github-mirror-smart-http compose service, git-http-backend
   v
 https://ci.trafficserver.apache.org/mirror/
   |
@@ -51,13 +53,28 @@ Jenkins controller and docker agents
 
 The supported Jenkins serving path is smart Git HTTP behind ATS. The public
 URLs stay under `https://ci.trafficserver.apache.org/mirror/`, but ATS remaps
-that path to a dedicated controller-local httpd container on `127.0.0.1:9417`.
-The container runs `git-http-backend` and mounts `/home/mirror` read-only.
+that path to a controller-local Compose service on `127.0.0.1:9417`. That
+service runs `git-http-backend` and mounts `/home/mirror` read-only.
 
 Static dumb HTTP is not acceptable for the Jenkins fanout path. It cannot
 negotiate packs with the client, so many child jobs can repeatedly download
 large static pack files and probe missing loose objects. Smart HTTP uses
 `git-upload-pack` so each clone/fetch gets a negotiated pack.
+
+The normal controller process model is:
+
+```text
+/opt/github-mirror/docker-compose.yml
+  github-mirror              webhook receiver on 127.0.0.1:9419
+  github-mirror-smart-http   smart Git HTTP on 127.0.0.1:9417
+  github-mirror-fallback     manual/timer mirror refresh helper
+
+/etc/systemd/system/github-mirror.service
+  boot hook for the two long-running Compose services
+
+/etc/systemd/system/github-mirror-fallback.timer
+  safety-net timer that runs docker-compose run --rm github-mirror-fallback
+```
 
 `git-daemon` on port 9418 is kept only as a diagnostic or emergency fallback.
 Do not use `git://` URLs as the normal Jenkins configuration.
@@ -80,7 +97,9 @@ These steps assume Ubuntu and a controller that serves
 
 ### ASF Infra Request
 
-Ask ASF Infra to add the following GitHub webhooks.
+Ask ASF Infra to add the following GitHub webhooks. Generate the shared secret
+with `github-mirror/bin/generate-webhook-secret.sh` and share only the secret
+value, not the `GITHUB_WEBHOOK_SECRET=` prefix.
 
 ```text
 Hello ASF Infra,
@@ -99,7 +118,7 @@ Secret:
     github-mirror/bin/generate-webhook-secret.sh
   We will share it with ASF Infra out of band and install it only on the
   Jenkins controller in:
-    /etc/trafficserver-github-mirror/github-mirror-webhook.env
+    /opt/github-mirror/config/github-mirror-webhook.env
 
 Repositories and events:
   apache/trafficserver:
@@ -140,24 +159,29 @@ Thanks.
 
    - installs `git`, `git-daemon-sysvinit`, `docker.io`, `docker-compose`,
      `python3`, `rsync`, and `util-linux`;
-   - installs this package to `/opt/trafficserver-ci/github-mirror`;
+   - installs this package to `/opt/github-mirror`;
+   - preserves `/opt/github-mirror/config` across reinstalls;
+   - creates `/opt/github-mirror/config/github-mirror-webhook.env` if needed;
+   - writes `/opt/github-mirror/.env` with the host mirror UID/GID for Compose;
    - creates/configures `/home/mirror`;
    - creates `/home/mirror/trafficserver.git`;
    - creates `/home/mirror/trafficserver-ci.git`;
    - configures both bare repos with `http.uploadpack=true` and
      `http.receivepack=false`;
-   - installs systemd units;
-   - installs `/etc/default/git-daemon`;
-   - enables the smart HTTP container service;
-   - enables the fallback refresh timer.
+   - installs systemd boot/timer hooks;
+   - links `/etc/default/git-daemon` to
+     `/opt/github-mirror/config/git-daemon.default`;
+   - builds the Compose images.
+
+   If the webhook secret is still `CHANGE_ME`, the installer leaves the Compose
+   stack stopped and prints the command to start it after the secret is set.
 
 3. Install the GitHub webhook secret.
 
    ```bash
-   github-mirror/bin/generate-webhook-secret.sh
-
-   sudo install -d -m 0700 /etc/trafficserver-github-mirror
-   sudo editor /etc/trafficserver-github-mirror/github-mirror-webhook.env
+   /opt/github-mirror/bin/generate-webhook-secret.sh
+   sudo editor /opt/github-mirror/config/github-mirror-webhook.env
+   sudo chmod 0600 /opt/github-mirror/config/github-mirror-webhook.env
    ```
 
    Paste the generated env line into the file:
@@ -166,23 +190,31 @@ Thanks.
    GITHUB_WEBHOOK_SECRET=<generated secret shared with ASF Infra>
    ```
 
-   Share only the secret value, not the `GITHUB_WEBHOOK_SECRET=` prefix, with
-   ASF Infra.
-
    If the old controller is gone and the previous secret is unavailable,
-   generate a new secret with `github-mirror/bin/generate-webhook-secret.sh`
-   and ask ASF Infra to update both GitHub webhooks.
+   generate a new secret and ask ASF Infra to update both GitHub webhooks.
 
-   Keep the file root-owned and private:
+4. Start the Compose stack.
 
    ```bash
-   sudo chown root:root /etc/trafficserver-github-mirror/github-mirror-webhook.env
-   sudo chmod 0600 /etc/trafficserver-github-mirror/github-mirror-webhook.env
+   sudo systemctl enable --now github-mirror.service
+   sudo systemctl enable --now github-mirror-fallback.timer
+
+   cd /opt/github-mirror
+   sudo docker-compose ps
    ```
 
-4. Configure ATS remaps.
+   Common service operations:
 
-   Add `github-mirror/ats/remap-snippet.config` before the generic
+   ```bash
+   cd /opt/github-mirror
+   sudo docker-compose restart github-mirror
+   sudo docker-compose restart github-mirror-smart-http
+   sudo docker-compose run --rm github-mirror-fallback
+   ```
+
+5. Configure ATS remaps.
+
+   Add `/opt/github-mirror/ats/remap-snippet.config` before the generic
    `ci.trafficserver.apache.org` Jenkins remap in:
 
    ```text
@@ -190,16 +222,16 @@ Thanks.
    ```
 
    Add or update the `/mirror/` remap with
-   `github-mirror/ats/mirror-smart-http-remap-snippet.config`. The important
-   change is:
+   `/opt/github-mirror/ats/mirror-smart-http-remap-snippet.config`. The
+   important target is:
 
    ```text
    https://ci.trafficserver.apache.org/mirror/ -> http://localhost:9417/mirror/
    ```
 
    Keep `proxy.config.http.cache.http=0`. Keep `hdr_rw_git.config` unless
-   testing proves it interferes with smart Git POSTs. Remove the mirror purge
-   plugin from this remap. Do not change the docs httpd/container remaps.
+   testing proves it interferes with smart Git POSTs. Do not change the docs
+   httpd/container remaps.
 
    Reload ATS:
 
@@ -207,34 +239,18 @@ Thanks.
    sudo /opt/ats/bin/traffic_ctl config reload
    ```
 
-5. Verify the smart HTTP service.
+6. Verify the smart HTTP service.
 
    ```bash
-   sudo systemctl status github-mirror-smart-http.service
-
-   cd /opt/trafficserver-ci/github-mirror/httpd
+   cd /opt/github-mirror
    sudo docker-compose config
-   sudo docker exec github-mirror-smart-http httpd -t
+   sudo docker-compose exec github-mirror-smart-http httpd -t
 
    git ls-remote http://127.0.0.1:9417/mirror/trafficserver.git refs/heads/master
    git ls-remote http://127.0.0.1:9417/mirror/trafficserver-ci.git refs/heads/main
    ```
 
-6. Start the webhook receiver after the secret is installed.
-
-   ```bash
-   sudo systemctl restart github-mirror-webhook.service
-   sudo systemctl status github-mirror-webhook.service
-   ```
-
-7. Confirm the timer and diagnostic git-daemon are active.
-
-   ```bash
-   systemctl list-timers github-mirror-fallback.timer
-   sudo service git-daemon status
-   ```
-
-8. Configure Jenkins top-level jobs.
+7. Configure Jenkins top-level jobs.
 
    For GitHub PR and branch jobs, set `GITHUB_URL` to the ATS mirror URL:
 
@@ -246,13 +262,13 @@ Thanks.
    repo-managed top-level PR pipelines wait up to two minutes for the mirrored
    PR head and merge refs before starting child jobs.
 
-9. Verify the public HTTPS mirror and at least one docker host.
+8. Verify the public HTTPS mirror and at least one docker host.
 
    ```bash
-   /opt/trafficserver-ci/github-mirror/bin/check-mirror.sh --pr <open-pr-number>
+   /opt/github-mirror/bin/check-mirror.sh --pr <open-pr-number>
 
    CONTROLLER=- \
-     /opt/trafficserver-ci/github-mirror/bin/check-docker-access.sh \
+     /opt/github-mirror/bin/check-docker-access.sh \
        --pr <open-pr-number> docker12
    ```
 
@@ -260,7 +276,7 @@ Thanks.
 
    ```bash
    GITHUB_PR_HEAD_SHA=<sha-from-jenkins-or-github> \
-     /opt/trafficserver-ci/github-mirror/bin/check-mirror.sh --pr <open-pr-number>
+     /opt/github-mirror/bin/check-mirror.sh --pr <open-pr-number>
    ```
 
 ### Webhook Update Behavior
@@ -283,70 +299,50 @@ before fanout starts.
 Initialize or reconfigure the mirrors:
 
 ```bash
-sudo /opt/trafficserver-ci/github-mirror/bin/init-mirrors.sh
+sudo /opt/github-mirror/bin/init-mirrors.sh
 ```
 
 Recreate mirrors from scratch:
 
 ```bash
-sudo /opt/trafficserver-ci/github-mirror/bin/init-mirrors.sh --force
+sudo /opt/github-mirror/bin/init-mirrors.sh --force
 ```
 
 Refresh both mirrors manually:
 
 ```bash
-sudo -u gitdaemon \
-  /opt/trafficserver-ci/github-mirror/bin/update-mirror.sh --all
+cd /opt/github-mirror
+sudo docker-compose run --rm github-mirror-fallback
 ```
 
 Refresh one ATS PR:
 
 ```bash
 sudo -u gitdaemon \
-  /opt/trafficserver-ci/github-mirror/bin/update-mirror.sh trafficserver --pr 12345
+  /opt/github-mirror/bin/update-mirror.sh trafficserver --pr 12345
 ```
 
 Check local and public refs:
 
 ```bash
-/opt/trafficserver-ci/github-mirror/bin/check-mirror.sh --pr 12345
+/opt/github-mirror/bin/check-mirror.sh --pr 12345
 ```
 
 Check from docker agents:
 
 ```bash
-/opt/trafficserver-ci/github-mirror/bin/check-docker-access.sh --pr 12345 docker1 docker12
+/opt/github-mirror/bin/check-docker-access.sh --pr 12345 docker1 docker12
 ```
 
-Back up the controller-local configuration:
+Inspect services:
 
 ```bash
-sudo /opt/trafficserver-ci/github-mirror/bin/backup-controller-config.sh \
-  /secure/backup/location
-```
+sudo systemctl status github-mirror.service
+systemctl list-timers github-mirror-fallback.timer
 
-The backup is written to a timestamped directory under the destination, with
-absolute paths preserved under `rootfs/`. It includes the webhook secret and
-Jenkins job `config.xml` files, so keep the destination private. To restore a
-backup onto a rebuilt controller, inspect `MANIFEST.txt`, then run:
-
-```bash
-cd /secure/backup/location/<backup-name>
-sudo rsync -a rootfs/ /
-sudo systemctl daemon-reload
-sudo /opt/ats/bin/traffic_ctl config reload
-sudo systemctl restart github-mirror-webhook.service
-sudo systemctl restart github-mirror-smart-http.service
-```
-
-Use `--no-jenkins` to skip Jenkins job configs, or `--no-package` to skip the
-installed `/opt/trafficserver-ci/github-mirror` package copy.
-
-Inspect smart HTTP:
-
-```bash
-sudo systemctl status github-mirror-smart-http.service
-cd /opt/trafficserver-ci/github-mirror/httpd
+cd /opt/github-mirror
+sudo docker-compose ps
+sudo docker-compose logs --tail=100 github-mirror
 sudo docker-compose logs --tail=100 github-mirror-smart-http
 sudo tail -n 100 /var/log/github-mirror-smart-http/access_log
 ```
@@ -357,6 +353,52 @@ Use `git-daemon` only as a diagnostic fallback:
 git ls-remote git://ci.trafficserver.apache.org/trafficserver.git refs/heads/master
 ```
 
+## Backups
+
+All mirror-specific application and configuration files live under:
+
+```text
+/opt/github-mirror
+```
+
+That means the simplest mirror backup is:
+
+```bash
+sudo rsync -a /opt/github-mirror/ backup-host:/secure/backups/github-mirror/
+```
+
+The backup includes `/opt/github-mirror/config/github-mirror-webhook.env`, so
+store it in a private, access-controlled location.
+
+The helper script creates a timestamped path-preserving backup. It includes
+Jenkins job XML files by default because Jenkins stores `GITHUB_URL` and
+`quietPeriod` outside `/opt/github-mirror`:
+
+```bash
+sudo /opt/github-mirror/bin/backup-controller-config.sh /secure/backup/location
+```
+
+To include the live ATS config files as well:
+
+```bash
+sudo /opt/github-mirror/bin/backup-controller-config.sh --include-ats \
+  /secure/backup/location
+```
+
+Use `--no-jenkins` when you only want the mirror package and OS integration
+stubs.
+
+To restore a helper-script backup onto a rebuilt controller, inspect
+`MANIFEST.txt`, then run:
+
+```bash
+cd /secure/backup/location/<backup-name>
+sudo rsync -a rootfs/ /
+sudo systemctl daemon-reload
+sudo /opt/ats/bin/traffic_ctl config reload
+sudo systemctl restart github-mirror.service
+```
+
 ## Webhook Testing
 
 After ASF Infra adds the webhook, use the GitHub UI to send a `ping` delivery.
@@ -365,7 +407,8 @@ The response should be HTTP 200.
 View webhook service logs and ATS access logs:
 
 ```bash
-journalctl -u github-mirror-webhook.service -f
+cd /opt/github-mirror
+sudo docker-compose logs -f github-mirror
 sudo tail -f /opt/ats/var/log/trafficserver/access.log
 ```
 
@@ -373,7 +416,7 @@ Local signed ping test:
 
 ```bash
 secret=$(sudo awk -F= '/^GITHUB_WEBHOOK_SECRET=/ { print $2 }' \
-  /etc/trafficserver-github-mirror/github-mirror-webhook.env)
+  /opt/github-mirror/config/github-mirror-webhook.env)
 body='{"repository":{"full_name":"apache/trafficserver"}}'
 sig=$(SECRET="$secret" BODY="$body" python3 - <<'PY'
 import hashlib
@@ -494,20 +537,14 @@ from GitHub again.
 2. Re-run or restart the affected Jenkins jobs.
 
 3. If the mirror should not keep updating while GitHub URLs are in use, stop
-   the webhook service and fallback timer.
+   the Compose stack and fallback timer.
 
    ```bash
-   sudo systemctl stop github-mirror-webhook.service
+   sudo systemctl stop github-mirror.service
    sudo systemctl stop github-mirror-fallback.timer
    ```
 
-4. If the smart HTTP endpoint should also be taken offline, stop its service.
-
-   ```bash
-   sudo systemctl disable --now github-mirror-smart-http.service
-   ```
-
-Rollback does not require deleting `/home/mirror`.
+Rollback does not require deleting `/opt/github-mirror` or `/home/mirror`.
 
 ## Troubleshooting
 
@@ -515,7 +552,7 @@ Missing PR ref:
 
 ```bash
 sudo -u gitdaemon \
-  /opt/trafficserver-ci/github-mirror/bin/update-mirror.sh trafficserver --pr <number>
+  /opt/github-mirror/bin/update-mirror.sh trafficserver --pr <number>
 git --git-dir=/home/mirror/trafficserver.git show-ref refs/pull/<number>/head
 git --git-dir=/home/mirror/trafficserver.git show-ref refs/pull/<number>/merge
 ```
@@ -523,34 +560,35 @@ git --git-dir=/home/mirror/trafficserver.git show-ref refs/pull/<number>/merge
 Webhook returns 401:
 
 - Confirm ASF Infra and the controller have the same secret.
-- Confirm the env file is readable by systemd and not world-readable:
+- Confirm the env file is readable by Docker Compose and not world-readable:
 
   ```bash
-  sudo systemctl cat github-mirror-webhook.service
-  sudo ls -l /etc/trafficserver-github-mirror/github-mirror-webhook.env
+  sudo ls -l /opt/github-mirror/config/github-mirror-webhook.env
+  cd /opt/github-mirror
+  sudo docker-compose config
   ```
 
 Jenkins cannot clone from HTTPS:
 
 - Verify ATS remap order.
 - Verify `/mirror/` points to `http://localhost:9417/mirror/`.
-- Verify the smart HTTP service is healthy.
-- If the service logs say `detected dubious ownership`, rebuild the current
-  image so Git trusts the bind-mounted mirror repositories.
+- Verify the Compose services are healthy.
+- If the smart HTTP service logs say `detected dubious ownership`, rebuild the
+  current image so Git trusts the bind-mounted mirror repositories.
 - Verify the public URL:
 
   ```bash
-  sudo systemctl status github-mirror-smart-http.service
-  cd /opt/trafficserver-ci/github-mirror/httpd
-  sudo docker-compose build
-  sudo systemctl restart github-mirror-smart-http.service
-  sudo docker exec github-mirror-smart-http httpd -t
+  sudo systemctl status github-mirror.service
+  cd /opt/github-mirror
+  sudo docker-compose build github-mirror-smart-http
+  sudo docker-compose restart github-mirror-smart-http
+  sudo docker-compose exec github-mirror-smart-http httpd -t
   git ls-remote https://ci.trafficserver.apache.org/mirror/trafficserver.git refs/heads/master
   ```
 
 Jenkins fetches look like dumb HTTP:
 
-- Confirm ATS is using the smart HTTP remap, not `http://localhost:8080/mirror/`.
+- Confirm ATS is using the smart HTTP remap, not another `/mirror/` backend.
 - Confirm logs include `git-upload-pack`:
 
   ```bash
@@ -563,22 +601,23 @@ Jenkins fetches fail with HTTP 502 after about 60 seconds:
   `git-upload-pack` more time to generate large packs during CI fanout.
 
   ```bash
-  cd /opt/trafficserver-ci/github-mirror/httpd
-  sudo docker-compose build
-  sudo systemctl restart github-mirror-smart-http.service
+  cd /opt/github-mirror
+  sudo docker-compose build github-mirror-smart-http
+  sudo docker-compose restart github-mirror-smart-http
   ```
 
 Docker hosts cannot reach the mirror:
 
 ```bash
-/opt/trafficserver-ci/github-mirror/bin/check-docker-access.sh docker12
+/opt/github-mirror/bin/check-docker-access.sh docker12
 ```
 
 Webhook service will not start:
 
 ```bash
-journalctl -u github-mirror-webhook.service -n 100 --no-pager
-sudo systemctl status github-mirror-webhook.service
+sudo systemctl status github-mirror.service
+cd /opt/github-mirror
+sudo docker-compose logs --tail=100 github-mirror
 ```
 
 The service intentionally refuses to start when `GITHUB_WEBHOOK_SECRET` is
@@ -586,46 +625,43 @@ unset or still set to `CHANGE_ME`.
 
 ## Controller File Inventory
 
-The installer copies this repo-managed package to:
+The installer copies this repo-managed package and all mirror-specific config
+to:
 
 ```text
-/opt/trafficserver-ci/github-mirror/
+/opt/github-mirror/
 ```
 
-The key repo-managed files under that directory are:
+The key files under that directory are:
 
 ```text
-/opt/trafficserver-ci/github-mirror/ats/remap-snippet.config
-/opt/trafficserver-ci/github-mirror/ats/mirror-smart-http-remap-snippet.config
-/opt/trafficserver-ci/github-mirror/bin/backup-controller-config.sh
-/opt/trafficserver-ci/github-mirror/bin/generate-webhook-secret.sh
-/opt/trafficserver-ci/github-mirror/bin/github-mirror-webhook.py
-/opt/trafficserver-ci/github-mirror/bin/init-mirrors.sh
-/opt/trafficserver-ci/github-mirror/bin/update-mirror.sh
-/opt/trafficserver-ci/github-mirror/env/github-mirror-webhook.env.example
-/opt/trafficserver-ci/github-mirror/git-daemon/git-daemon.default
-/opt/trafficserver-ci/github-mirror/httpd/docker-compose.yml
-/opt/trafficserver-ci/github-mirror/httpd/mirror.conf
-/opt/trafficserver-ci/github-mirror/systemd/github-mirror-webhook.service
-/opt/trafficserver-ci/github-mirror/systemd/github-mirror-fallback.service
-/opt/trafficserver-ci/github-mirror/systemd/github-mirror-fallback.timer
-/opt/trafficserver-ci/github-mirror/systemd/github-mirror-smart-http.service
+/opt/github-mirror/docker-compose.yml
+/opt/github-mirror/.env
+/opt/github-mirror/ats/remap-snippet.config
+/opt/github-mirror/ats/mirror-smart-http-remap-snippet.config
+/opt/github-mirror/bin/backup-controller-config.sh
+/opt/github-mirror/bin/generate-webhook-secret.sh
+/opt/github-mirror/bin/github-mirror-webhook.py
+/opt/github-mirror/bin/init-mirrors.sh
+/opt/github-mirror/bin/update-mirror.sh
+/opt/github-mirror/config/github-mirror-webhook.env
+/opt/github-mirror/config/github-mirror-webhook.env.example
+/opt/github-mirror/config/git-daemon.default
+/opt/github-mirror/httpd/Dockerfile
+/opt/github-mirror/httpd/mirror.conf
+/opt/github-mirror/systemd/github-mirror.service
+/opt/github-mirror/systemd/github-mirror-fallback.service
+/opt/github-mirror/systemd/github-mirror-fallback.timer
+/opt/github-mirror/webhook/Dockerfile
 ```
 
-The installer creates or updates these controller files:
+The installer creates these small OS integration files:
 
 ```text
-/etc/default/git-daemon
-/etc/systemd/system/github-mirror-webhook.service
+/etc/default/git-daemon -> /opt/github-mirror/config/git-daemon.default
+/etc/systemd/system/github-mirror.service
 /etc/systemd/system/github-mirror-fallback.service
 /etc/systemd/system/github-mirror-fallback.timer
-/etc/systemd/system/github-mirror-smart-http.service
-```
-
-The webhook secret lives outside the repo-managed package:
-
-```text
-/etc/trafficserver-github-mirror/github-mirror-webhook.env
 ```
 
 The local bare mirrors live under:
@@ -650,8 +686,8 @@ ATS needs the webhook and mirror remap entries in:
 Use these repo snippets as the source of truth for those remaps:
 
 ```text
-/opt/trafficserver-ci/github-mirror/ats/remap-snippet.config
-/opt/trafficserver-ci/github-mirror/ats/mirror-smart-http-remap-snippet.config
+/opt/github-mirror/ats/remap-snippet.config
+/opt/github-mirror/ats/mirror-smart-http-remap-snippet.config
 ```
 
 The mirror remap also references the existing ATS header rewrite file:
