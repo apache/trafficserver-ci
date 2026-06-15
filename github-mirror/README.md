@@ -381,14 +381,18 @@ minute.
    ```
 
 6. Update Jenkins job configuration so the PR and branch top-level jobs pass
-   the ATS mirror URL as `GITHUB_URL`. While the temporary one-minute cron is
-   active, set the GitHub PR top-level job quiet period to at least 90 seconds
-   so the mirror has time to fetch new PR refs before child jobs start.
+   the ATS mirror URL as `GITHUB_URL`. The repo-managed GitHub PR top-level
+   jobs wait for the mirrored PR head and merge refs before starting child
+   jobs, so the GitHub PR top-level job quiet period can be 0.
 
    ```text
    GITHUB_URL=https://ci.trafficserver.apache.org/mirror/trafficserver.git
-   quietPeriod=90
+   quietPeriod=0
    ```
+
+   If the mirror readiness job is not working, set this `quietPeriod` to
+   something like 10 seconds to allow the webhook mechanism enough time to
+   trigger a mirror update.
 
    Then run a small PR job such as docs or RAT before starting the full build
    fanout.
@@ -558,8 +562,10 @@ should fail during the local merge with shallow-history or missing-ancestor
 errors. Raise the depth before disabling shallow clone globally.
 
 During the temporary cron rollout, set the top-level PR job quiet period to at
-least 90 seconds. Once the webhook is live and verified, the quiet period can
-be removed or reduced.
+least 90 seconds. Once the webhook is live and verified, the repo-managed
+top-level PR jobs wait until the mirrored PR head matches `GITHUB_PR_HEAD_SHA`
+and the PR merge ref exists before starting child jobs. After that gate is in
+place, the Jenkins quiet period can be set to 0.
 
 For branch jobs, configure the top-level branch jobs' `GITHUB_URL` parameter to
 the same ATS mirror URL. Child jobs will receive that value from the fanout job.

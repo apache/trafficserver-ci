@@ -1,5 +1,46 @@
 TOP_JOB_DESC = "Builds:\\n"
 
+String githubUrl() {
+	return env.GITHUB_URL ?: GITHUB_REPO_GIT_URL.replace("git://", "https://")
+}
+
+void waitForMirrorUpdate() {
+	def mirrorUrl = githubUrl()
+
+	echo "Waiting up to 2 minutes for ${mirrorUrl} to mirror PR #${GITHUB_PR_NUMBER}"
+	withEnv(["MIRROR_URL=${mirrorUrl}"]) {
+		timeout(time: 2, unit: 'MINUTES') {
+			waitUntil {
+				def status = sh(
+					label: 'Check mirrored PR refs',
+					returnStatus: true,
+					script: '''#!/bin/bash
+set +x
+set -o pipefail
+export GIT_TERMINAL_PROMPT=0
+
+head_sha=$(git ls-remote "${MIRROR_URL}" "refs/pull/${GITHUB_PR_NUMBER}/head" | awk '{print $1}') || exit 1
+merge_sha=$(git ls-remote "${MIRROR_URL}" "refs/pull/${GITHUB_PR_NUMBER}/merge" | awk '{print $1}') || exit 1
+
+if [ "${head_sha}" = "${GITHUB_PR_HEAD_SHA}" ] && [ -n "${merge_sha}" ]; then
+	echo "Mirror has PR ${GITHUB_PR_NUMBER}: head ${head_sha}, merge ${merge_sha}"
+	exit 0
+fi
+
+echo "Waiting for mirror PR ${GITHUB_PR_NUMBER}: head ${head_sha:-missing}, expected ${GITHUB_PR_HEAD_SHA}; merge ${merge_sha:-missing}"
+exit 1
+'''
+				)
+				if (status != 0) {
+					sleep 2
+					return false
+				}
+				return true
+			}
+		}
+	}
+}
+
 String buildJob(String ghcontext, String jobName, String shard='') {
 		setGitHubPullRequestStatus(context: ghcontext, message: 'Building', state: 'PENDING')
 
@@ -7,7 +48,7 @@ String buildJob(String ghcontext, String jobName, String shard='') {
 		currentBuild.description = "Builds:<br>"
 	}
 	currentBuild.displayName = "PR: #${GITHUB_PR_NUMBER} - Build: #${BUILD_NUMBER}"
-	https_github_url = env.GITHUB_URL ?: GITHUB_REPO_GIT_URL.replace("git://", "https://")
+	def https_github_url = githubUrl()
 
 	def parms = [
 		string(name: 'SHA1', value: GITHUB_PR_HEAD_SHA),
@@ -42,6 +83,15 @@ pipeline {
 	agent none
 
 	stages {
+		stage('Wait for Mirror') {
+			agent { label 'controller' }
+			steps {
+				script {
+					waitForMirrorUpdate()
+				}
+			}
+		}
+
 		stage('Quick Checks') {
 			parallel {
 				stage('Format') {
