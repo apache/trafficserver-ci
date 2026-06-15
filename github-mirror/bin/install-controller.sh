@@ -82,6 +82,7 @@ if [ "${APT_INSTALL}" = "1" ]; then
     docker.io \
     docker-compose \
     python3 \
+    rsync \
     util-linux
 fi
 

@@ -3,9 +3,12 @@
 This directory is the complete source of truth for the GitHub mirror used by
 the Apache Traffic Server Jenkins controller.
 
-The goal is to avoid every Jenkins docker agent cloning directly from GitHub.
-GitHub sends webhook deliveries to the controller, the controller updates local
-bare mirrors under `/home/mirror`, and Jenkins jobs clone from:
+The mirror exists because cloning directly from `github.com` during Jenkins
+fanout had performance problems that could cause PR tests to timeout and fail.
+It also makes ATS CI a better citizen of `github.com`'s shared resources.
+Instead of making each CI job perform an external clone, GitHub sends webhook
+deliveries to the controller, the controller updates local bare mirrors under
+`/home/mirror`, and Jenkins jobs clone from:
 
 ```text
 https://ci.trafficserver.apache.org/mirror/trafficserver.git
@@ -70,7 +73,12 @@ are required because Jenkins PR jobs receive `GITHUB_PR_HEAD_SHA` and then run a
 
 `apache/trafficserver-ci` mirrors heads and tags.
 
-## ASF Infra Request
+## Fresh Controller Install
+
+These steps assume Ubuntu and a controller that serves
+`ci.trafficserver.apache.org` through ATS.
+
+### ASF Infra Request
 
 Ask ASF Infra to add the following GitHub webhooks.
 
@@ -87,8 +95,10 @@ Content type:
   application/json
 
 Secret:
-  Please generate a webhook secret or coordinate it with us out of band.
-  We will install it only on the Jenkins controller in:
+  We will generate a webhook secret with:
+    github-mirror/bin/generate-webhook-secret.sh
+  We will share it with ASF Infra out of band and install it only on the
+  Jenkins controller in:
     /etc/trafficserver-github-mirror/github-mirror-webhook.env
 
 Repositories and events:
@@ -111,10 +121,7 @@ Rationale:
 Thanks.
 ```
 
-## Fresh Controller Install
-
-These steps assume Ubuntu and a controller that serves
-`ci.trafficserver.apache.org` through ATS.
+### Controller Setup
 
 1. Clone or copy `trafficserver-ci` onto the controller.
 
@@ -132,7 +139,7 @@ These steps assume Ubuntu and a controller that serves
    The installer:
 
    - installs `git`, `git-daemon-sysvinit`, `docker.io`, `docker-compose`,
-     `python3`, and `util-linux`;
+     `python3`, `rsync`, and `util-linux`;
    - installs this package to `/opt/trafficserver-ci/github-mirror`;
    - creates/configures `/home/mirror`;
    - creates `/home/mirror/trafficserver.git`;
@@ -147,15 +154,24 @@ These steps assume Ubuntu and a controller that serves
 3. Install the GitHub webhook secret.
 
    ```bash
+   github-mirror/bin/generate-webhook-secret.sh
+
    sudo install -d -m 0700 /etc/trafficserver-github-mirror
    sudo editor /etc/trafficserver-github-mirror/github-mirror-webhook.env
    ```
 
-   Set:
+   Paste the generated env line into the file:
 
    ```text
-   GITHUB_WEBHOOK_SECRET=<secret from ASF Infra>
+   GITHUB_WEBHOOK_SECRET=<generated secret shared with ASF Infra>
    ```
+
+   Share only the secret value, not the `GITHUB_WEBHOOK_SECRET=` prefix, with
+   ASF Infra.
+
+   If the old controller is gone and the previous secret is unavailable,
+   generate a new secret with `github-mirror/bin/generate-webhook-secret.sh`
+   and ask ASF Infra to update both GitHub webhooks.
 
    Keep the file root-owned and private:
 
@@ -218,7 +234,19 @@ These steps assume Ubuntu and a controller that serves
    sudo service git-daemon status
    ```
 
-8. Verify the public HTTPS mirror and at least one docker host.
+8. Configure Jenkins top-level jobs.
+
+   For GitHub PR and branch jobs, set `GITHUB_URL` to the ATS mirror URL:
+
+   ```text
+   https://ci.trafficserver.apache.org/mirror/trafficserver.git
+   ```
+
+   For the GitHub PR top-level job, set `quietPeriod` to `0`. The
+   repo-managed top-level PR pipelines wait up to two minutes for the mirrored
+   PR head and merge refs before starting child jobs.
+
+9. Verify the public HTTPS mirror and at least one docker host.
 
    ```bash
    /opt/trafficserver-ci/github-mirror/bin/check-mirror.sh --pr <open-pr-number>
@@ -235,177 +263,20 @@ These steps assume Ubuntu and a controller that serves
      /opt/trafficserver-ci/github-mirror/bin/check-mirror.sh --pr <open-pr-number>
    ```
 
-## Existing Controller Rollout
+### Webhook Update Behavior
 
-1. Commit and merge the repo changes.
+The webhook is the primary update path. Every delivery is validated with
+`X-Hub-Signature-256` before it can mutate a mirror. `ping` deliveries validate
+the endpoint without changing repositories. `push` deliveries update heads and
+tags. `pull_request` deliveries for `apache/trafficserver` update only that
+PR's `refs/pull/<number>/head` and `refs/pull/<number>/merge` refs.
 
-2. Pull the merged branch into `/opt/trafficserver-ci` on `controller`.
-
-   ```bash
-   ssh controller
-   cd /opt/trafficserver-ci
-   sudo git pull --ff-only
-   ```
-
-3. Install or refresh the controller files.
-
-   ```bash
-   sudo github-mirror/bin/install-controller.sh
-   ```
-
-   If ASF webhooks are not ready yet, use the interim cron rollout below.
-
-4. Build/start the smart HTTP service and validate httpd.
-
-   ```bash
-   sudo systemctl enable --now github-mirror-smart-http.service
-   cd /opt/trafficserver-ci/github-mirror/httpd
-   sudo docker-compose config
-   sudo docker exec github-mirror-smart-http httpd -t
-   ```
-
-5. Update the ATS `/mirror/` remap to point at `http://localhost:9417/mirror/`.
-   Keep cache disabled and remove the mirror purge plugin from this remap.
-
-   ```bash
-   sudo /opt/ats/bin/traffic_ctl config reload
-   ```
-
-6. Verify from controller and at least one docker host.
-
-   ```bash
-   /opt/trafficserver-ci/github-mirror/bin/check-mirror.sh --pr <open-pr-number>
-
-   CONTROLLER=- \
-     /opt/trafficserver-ci/github-mirror/bin/check-docker-access.sh \
-       --pr <open-pr-number> docker12
-   ```
-
-7. Confirm the smart HTTP logs show Git requests instead of dumb HTTP object
-   probing.
-
-   ```bash
-   sudo tail -f /var/log/github-mirror-smart-http/access_log
-   ```
-
-   Healthy Jenkins clones should include `git-upload-pack` requests. They should
-   not produce thousands of loose-object 404s.
-
-8. Run a small PR fanout subset before broadening:
-
-   ```text
-   docs
-   rocky
-   one autest shard
-   ```
-
-   Also confirm existing docs URLs still work through the existing docs
-   container.
-
-## Interim Cron Rollout
-
-Use this section while ASF Infra is still setting up the GitHub webhooks. The
-temporary cron updater fetches heads, tags, and ATS pull request refs every
-minute.
-
-1. Install the current `trafficserver-ci` branch on `controller`.
-
-   ```bash
-   ssh controller
-   git clone https://github.com/apache/trafficserver-ci.git /tmp/trafficserver-ci
-   cd /tmp/trafficserver-ci
-   ```
-
-   If testing a PR branch before merge, fetch that branch into this checkout
-   before running the installer.
-
-2. Install the mirror package but do not start the webhook service or systemd
-   fallback timer yet.
-
-   ```bash
-   sudo START_WEBHOOK=0 START_FALLBACK_TIMER=0 \
-     github-mirror/bin/install-controller.sh
-   ```
-
-   This initializes `/home/mirror/trafficserver.git` and
-   `/home/mirror/trafficserver-ci.git`, installs the scripts under
-   `/opt/trafficserver-ci/github-mirror`, starts diagnostic `git-daemon`, and
-   starts the smart HTTP service. Set `START_SMART_HTTP=0` only if you are not
-   ready to change the ATS `/mirror/` remap yet.
-
-3. Install the temporary cron file.
-
-   ```bash
-   sudo install -o root -g root -m 0644 \
-     /opt/trafficserver-ci/github-mirror/cron/github-mirror \
-     /etc/cron.d/github-mirror
-   sudo systemctl restart cron
-   ```
-
-   Check it is installed:
-
-   ```bash
-   sudo cat /etc/cron.d/github-mirror
-   grep github-mirror /var/log/syslog
-   ```
-
-4. Run one manual refresh and verify refs.
-
-   ```bash
-   sudo -u gitdaemon \
-     /opt/trafficserver-ci/github-mirror/bin/update-mirror.sh --all
-
-   /opt/trafficserver-ci/github-mirror/bin/check-mirror.sh
-   ```
-
-   If you have a current open ATS PR number, verify PR refs too:
-
-   ```bash
-   /opt/trafficserver-ci/github-mirror/bin/check-mirror.sh --pr <pr-number>
-   ```
-
-5. Verify from at least one docker host.
-
-   From any checkout of this repo on a host that can SSH through `controller`:
-
-   ```bash
-   github-mirror/bin/check-docker-access.sh --pr <pr-number> docker12
-   ```
-
-   From `controller` itself:
-
-   ```bash
-   CONTROLLER=- \
-     /opt/trafficserver-ci/github-mirror/bin/check-docker-access.sh \
-       --pr <pr-number> docker12
-   ```
-
-6. Update Jenkins job configuration so the PR and branch top-level jobs pass
-   the ATS mirror URL as `GITHUB_URL`. The repo-managed GitHub PR top-level
-   jobs wait for the mirrored PR head and merge refs before starting child
-   jobs, so the GitHub PR top-level job quiet period can be 0.
-
-   ```text
-   GITHUB_URL=https://ci.trafficserver.apache.org/mirror/trafficserver.git
-   quietPeriod=0
-   ```
-
-   If the mirror readiness job is not working, set this `quietPeriod` to
-   something like 10 seconds to allow the webhook mechanism enough time to
-   trigger a mirror update.
-
-   Then run a small PR job such as docs or RAT before starting the full build
-   fanout.
-
-7. When ASF webhooks are available, install the secret, start the webhook, send
-   a GitHub ping delivery, then remove the temporary cron file.
-
-   ```bash
-   sudo systemctl restart github-mirror-webhook.service
-   sudo rm -f /etc/cron.d/github-mirror
-   sudo systemctl restart cron
-   sudo systemctl enable --now github-mirror-fallback.timer
-   ```
+Every mirror update runs through `update-mirror.sh`, takes a per-repository
+`flock`, and finishes with `git update-server-info`. The fallback systemd timer
+is only a safety net for missed deliveries. PR correctness comes from the
+webhook plus the Jenkins readiness gate: the top-level PR jobs wait for the
+mirrored PR head to match `GITHUB_PR_HEAD_SHA` and for the merge ref to exist
+before fanout starts.
 
 ## Mirror Operations
 
@@ -447,6 +318,30 @@ Check from docker agents:
 /opt/trafficserver-ci/github-mirror/bin/check-docker-access.sh --pr 12345 docker1 docker12
 ```
 
+Back up the controller-local configuration:
+
+```bash
+sudo /opt/trafficserver-ci/github-mirror/bin/backup-controller-config.sh \
+  /secure/backup/location
+```
+
+The backup is written to a timestamped directory under the destination, with
+absolute paths preserved under `rootfs/`. It includes the webhook secret and
+Jenkins job `config.xml` files, so keep the destination private. To restore a
+backup onto a rebuilt controller, inspect `MANIFEST.txt`, then run:
+
+```bash
+cd /secure/backup/location/<backup-name>
+sudo rsync -a rootfs/ /
+sudo systemctl daemon-reload
+sudo /opt/ats/bin/traffic_ctl config reload
+sudo systemctl restart github-mirror-webhook.service
+sudo systemctl restart github-mirror-smart-http.service
+```
+
+Use `--no-jenkins` to skip Jenkins job configs, or `--no-package` to skip the
+installed `/opt/trafficserver-ci/github-mirror` package copy.
+
 Inspect smart HTTP:
 
 ```bash
@@ -465,12 +360,13 @@ git ls-remote git://ci.trafficserver.apache.org/trafficserver.git refs/heads/mas
 ## Webhook Testing
 
 After ASF Infra adds the webhook, use the GitHub UI to send a `ping` delivery.
-The response should be HTTP 200 and the service logs should show `pong`.
+The response should be HTTP 200.
 
-View logs:
+View webhook service logs and ATS access logs:
 
 ```bash
 journalctl -u github-mirror-webhook.service -f
+sudo tail -f /opt/ats/var/log/trafficserver/access.log
 ```
 
 Local signed ping test:
@@ -502,6 +398,17 @@ curl -i \
   http://127.0.0.1:9419/github-mirror-webhook
 ```
 
+To test the full public ATS remap path, use the same signed request against the
+public endpoint:
+
+```bash
+curl -i \
+  -H "X-GitHub-Event: ping" \
+  -H "X-Hub-Signature-256: ${sig}" \
+  --data "${body}" \
+  https://ci.trafficserver.apache.org/github-mirror-webhook
+```
+
 A bad secret or unsigned payload should return HTTP 401 and must not update any
 repository:
 
@@ -510,7 +417,7 @@ curl -i \
   -H "X-GitHub-Event: ping" \
   -H "X-Hub-Signature-256: sha256=bad" \
   --data "${body}" \
-  http://127.0.0.1:9419/github-mirror-webhook
+  https://ci.trafficserver.apache.org/github-mirror-webhook
 ```
 
 Anonymous push attempts must fail:
@@ -561,11 +468,9 @@ between the PR head and the target branch. If the depth is too low, checkout
 should fail during the local merge with shallow-history or missing-ancestor
 errors. Raise the depth before disabling shallow clone globally.
 
-During the temporary cron rollout, set the top-level PR job quiet period to at
-least 90 seconds. Once the webhook is live and verified, the repo-managed
-top-level PR jobs wait until the mirrored PR head matches `GITHUB_PR_HEAD_SHA`
-and the PR merge ref exists before starting child jobs. After that gate is in
-place, the Jenkins quiet period can be set to 0.
+The repo-managed top-level PR jobs wait up to two minutes for the mirrored PR
+head to match `GITHUB_PR_HEAD_SHA` and for the PR merge ref to exist before
+starting child jobs. Set the Jenkins PR top-level job quiet period to `0`.
 
 For branch jobs, configure the top-level branch jobs' `GITHUB_URL` parameter to
 the same ATS mirror URL. Child jobs will receive that value from the fanout job.
@@ -574,72 +479,33 @@ tip builds should have enough history. A manually requested old SHA outside the
 shallow window should fail fast instead of falling back to a large full-history
 fetch.
 
-## Migrating An Existing Controller
-
-The historical controller may have older cron jobs such as:
-
-```text
-root crontab:       */5 * * * * /admin/bin/update-mirrors.sh
-/etc/cron.d/mirror: * * * * * mirror /home/mirror/bin/gh-mirror.sh ...
-```
-
-During rollout, leave them in place until the webhook has processed real
-deliveries and Jenkins has completed at least one PR build from the mirror.
-
-After validation, disable the old jobs and keep only:
-
-```text
-github-mirror-fallback.timer
-```
-
-Suggested cleanup:
-
-```bash
-sudo crontab -e
-sudo rm -f /etc/cron.d/mirror
-sudo systemctl restart cron
-```
-
-Do not delete the old scripts until the new path has run for a few days.
-
 ## Rollback
 
-The Jenkins URLs do not need to change for a smart HTTP rollback because the
-public `/mirror/` URLs stay the same.
+The simplest rollback is to bypass the mirror in Jenkins and clone directly
+from GitHub again.
 
-1. Change the ATS `/mirror/` remap back to the previous static backend:
+1. Point the Jenkins PR and branch top-level job parameters back at GitHub:
 
    ```text
-   https://ci.trafficserver.apache.org/mirror/ -> http://localhost:8080/mirror/
+   https://github.com/apache/trafficserver.git
+   https://github.com/apache/trafficserver-ci.git
    ```
 
-2. Reload ATS.
+2. Re-run or restart the affected Jenkins jobs.
 
-   ```bash
-   sudo /opt/ats/bin/traffic_ctl config reload
-   ```
-
-3. Stop the smart HTTP service.
-
-   ```bash
-   sudo systemctl disable --now github-mirror-smart-http.service
-   ```
-
-4. If the mirror update path is also being rolled back, stop webhook updates
-   and re-enable the previous cron updater.
+3. If the mirror should not keep updating while GitHub URLs are in use, stop
+   the webhook service and fallback timer.
 
    ```bash
    sudo systemctl stop github-mirror-webhook.service
    sudo systemctl stop github-mirror-fallback.timer
    ```
 
-Full rollback to GitHub is still possible by pointing Jenkins job parameters
-back at:
+4. If the smart HTTP endpoint should also be taken offline, stop its service.
 
-```text
-https://github.com/apache/trafficserver.git
-https://github.com/apache/trafficserver-ci.git
-```
+   ```bash
+   sudo systemctl disable --now github-mirror-smart-http.service
+   ```
 
 Rollback does not require deleting `/home/mirror`.
 
@@ -717,3 +583,88 @@ sudo systemctl status github-mirror-webhook.service
 
 The service intentionally refuses to start when `GITHUB_WEBHOOK_SECRET` is
 unset or still set to `CHANGE_ME`.
+
+## Controller File Inventory
+
+The installer copies this repo-managed package to:
+
+```text
+/opt/trafficserver-ci/github-mirror/
+```
+
+The key repo-managed files under that directory are:
+
+```text
+/opt/trafficserver-ci/github-mirror/ats/remap-snippet.config
+/opt/trafficserver-ci/github-mirror/ats/mirror-smart-http-remap-snippet.config
+/opt/trafficserver-ci/github-mirror/bin/backup-controller-config.sh
+/opt/trafficserver-ci/github-mirror/bin/generate-webhook-secret.sh
+/opt/trafficserver-ci/github-mirror/bin/github-mirror-webhook.py
+/opt/trafficserver-ci/github-mirror/bin/init-mirrors.sh
+/opt/trafficserver-ci/github-mirror/bin/update-mirror.sh
+/opt/trafficserver-ci/github-mirror/env/github-mirror-webhook.env.example
+/opt/trafficserver-ci/github-mirror/git-daemon/git-daemon.default
+/opt/trafficserver-ci/github-mirror/httpd/docker-compose.yml
+/opt/trafficserver-ci/github-mirror/httpd/mirror.conf
+/opt/trafficserver-ci/github-mirror/systemd/github-mirror-webhook.service
+/opt/trafficserver-ci/github-mirror/systemd/github-mirror-fallback.service
+/opt/trafficserver-ci/github-mirror/systemd/github-mirror-fallback.timer
+/opt/trafficserver-ci/github-mirror/systemd/github-mirror-smart-http.service
+```
+
+The installer creates or updates these controller files:
+
+```text
+/etc/default/git-daemon
+/etc/systemd/system/github-mirror-webhook.service
+/etc/systemd/system/github-mirror-fallback.service
+/etc/systemd/system/github-mirror-fallback.timer
+/etc/systemd/system/github-mirror-smart-http.service
+```
+
+The webhook secret lives outside the repo-managed package:
+
+```text
+/etc/trafficserver-github-mirror/github-mirror-webhook.env
+```
+
+The local bare mirrors live under:
+
+```text
+/home/mirror/trafficserver.git
+/home/mirror/trafficserver-ci.git
+```
+
+The smart HTTP container writes host-mounted logs here:
+
+```text
+/var/log/github-mirror-smart-http/
+```
+
+ATS needs the webhook and mirror remap entries in:
+
+```text
+/opt/ats/etc/trafficserver/remap.config
+```
+
+Use these repo snippets as the source of truth for those remaps:
+
+```text
+/opt/trafficserver-ci/github-mirror/ats/remap-snippet.config
+/opt/trafficserver-ci/github-mirror/ats/mirror-smart-http-remap-snippet.config
+```
+
+The mirror remap also references the existing ATS header rewrite file:
+
+```text
+/opt/ats/etc/trafficserver/hdr_rw_git.config
+```
+
+Jenkins stores the `GITHUB_URL` and `quietPeriod` settings in job XML under:
+
+```text
+/opt/jenkins/home/jobs/
+```
+
+Check the GitHub PR top-level job and branch top-level job configs there after
+a rebuild. Steady-state mirror updates do not require a cron file.
