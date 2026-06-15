@@ -6,9 +6,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=@MIRROR_USER@
-Group=@MIRROR_GROUP@
-Environment=MIRROR_ROOT=@MIRROR_ROOT@
-ExecStart=@INSTALL_ROOT@/bin/update-mirror.sh --all
+WorkingDirectory=@INSTALL_ROOT@
+ExecStart=/usr/bin/docker-compose run --rm github-mirror-fallback
 TimeoutStartSec=30min
 Nice=5

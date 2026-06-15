@@ -1,0 +1,46 @@
+services:
+  github-mirror:
+    build:
+      context: .
+      dockerfile: webhook/Dockerfile
+    image: trafficserver/github-mirror-webhook:latest
+    container_name: github-mirror
+    restart: unless-stopped
+    user: "${MIRROR_UID}:${MIRROR_GID}"
+    ports:
+      - "127.0.0.1:9419:9419"
+    volumes:
+      - "${MIRROR_ROOT:-/home/mirror}:/home/mirror:rw"
+      - ".:/opt/github-mirror:ro"
+    env_file:
+      - ./config/github-mirror-webhook.env
+    environment:
+      WEBHOOK_HOST: "0.0.0.0"
+      WEBHOOK_PORT: "9419"
+      WEBHOOK_PATH: "/github-mirror-webhook"
+      MIRROR_ROOT: "/home/mirror"
+      UPDATE_MIRROR: "/opt/github-mirror/bin/update-mirror.sh"
+      HOME: "/tmp"
+
+  github-mirror-smart-http:
+    build:
+      context: ./httpd
+    image: trafficserver/github-mirror-smart-http:latest
+    container_name: github-mirror-smart-http
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9417:80"
+    volumes:
+      - "${MIRROR_ROOT:-/home/mirror}:/usr/local/apache2/mirror:ro"
+      - /var/log/github-mirror-smart-http:/usr/local/apache2/logs
+
+  github-mirror-fallback:
+    image: trafficserver/github-mirror-webhook:latest
+    user: "${MIRROR_UID}:${MIRROR_GID}"
+    volumes:
+      - "${MIRROR_ROOT:-/home/mirror}:/home/mirror:rw"
+      - ".:/opt/github-mirror:ro"
+    environment:
+      MIRROR_ROOT: "/home/mirror"
+      HOME: "/tmp"
+    command: ["/opt/github-mirror/bin/update-mirror.sh", "--all"]

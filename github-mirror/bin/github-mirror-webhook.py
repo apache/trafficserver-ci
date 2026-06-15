@@ -37,7 +37,7 @@ WEBHOOK_PATH = os.environ.get("WEBHOOK_PATH", "/github-mirror-webhook")
 WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET")
 UPDATE_MIRROR = os.environ.get(
     "UPDATE_MIRROR",
-    "/opt/trafficserver-ci/github-mirror/bin/update-mirror.sh",
+    "/opt/github-mirror/bin/update-mirror.sh",
 )
 MIRROR_ROOT = os.environ.get("MIRROR_ROOT", "/home/mirror")
 MAX_BODY_BYTES = getenv_int("MAX_BODY_BYTES", 1024 * 1024)

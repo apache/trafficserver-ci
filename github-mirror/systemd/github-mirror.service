@@ -1,0 +1,21 @@
+[Unit]
+Description=ATS CI GitHub mirror compose stack
+Documentation=file:@INSTALL_ROOT@/README.md
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=@INSTALL_ROOT@
+ExecStartPre=/usr/bin/install -d -o root -g root -m 0755 /var/log/github-mirror-smart-http
+ExecStartPre=/usr/bin/docker-compose build github-mirror github-mirror-smart-http
+ExecStart=/usr/bin/docker-compose up --remove-orphans github-mirror github-mirror-smart-http
+ExecStop=/usr/bin/docker-compose stop github-mirror github-mirror-smart-http
+ExecStopPost=/usr/bin/docker-compose rm -f github-mirror github-mirror-smart-http
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=10min
+
+[Install]
+WantedBy=multi-user.target

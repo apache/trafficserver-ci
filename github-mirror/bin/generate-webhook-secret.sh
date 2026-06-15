@@ -28,7 +28,7 @@ cat <<EOF
 GITHUB_WEBHOOK_SECRET=${secret}
 
 Add this to:
-  /etc/trafficserver-github-mirror/github-mirror-webhook.env
+  /opt/github-mirror/config/github-mirror-webhook.env
 
 Share only the secret value with ASF Infra:
   ${secret}

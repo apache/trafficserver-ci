@@ -6,6 +6,8 @@ set -euo pipefail
 
 INCLUDE_JENKINS=${INCLUDE_JENKINS:-1}
 INCLUDE_PACKAGE=${INCLUDE_PACKAGE:-1}
+INCLUDE_ATS_LIVE=${INCLUDE_ATS_LIVE:-0}
+INSTALL_ROOT=${INSTALL_ROOT:-/opt/github-mirror}
 DRY_RUN=0
 BACKUP_NAME=${BACKUP_NAME:-}
 DESTINATION=
@@ -21,14 +23,17 @@ path-preserving rootfs/ tree and MANIFEST.txt.
 Options:
   --name NAME       Use NAME instead of the generated backup directory name.
   --no-jenkins     Do not include Jenkins job config.xml files.
-  --no-package     Do not include /opt/trafficserver-ci/github-mirror files.
+  --no-package     Do not include /opt/github-mirror files.
+  --include-ats    Include live ATS remap.config and hdr_rw_git.config.
   --dry-run        Show what rsync would copy without writing files.
   -h, --help       Show this help.
 
 Environment:
+  INSTALL_ROOT     github-mirror install root. Default: /opt/github-mirror
   BACKUP_NAME      Default backup directory name.
   INCLUDE_JENKINS  Include Jenkins job config.xml files. Default: 1
   INCLUDE_PACKAGE  Include the installed github-mirror package. Default: 1
+  INCLUDE_ATS_LIVE Include live ATS config files. Default: 0
 
 DESTINATION may be a local path or an rsync remote such as host:/path. The
 destination contains the webhook secret, so use a private, access-controlled
@@ -57,6 +62,9 @@ while [ $# -gt 0 ]; do
       ;;
     --no-package)
       INCLUDE_PACKAGE=0
+      ;;
+    --include-ats)
+      INCLUDE_ATS_LIVE=1
       ;;
     --dry-run)
       DRY_RUN=1
@@ -134,17 +142,18 @@ add_jenkins_job_configs() {
 }
 
 if [ "${INCLUDE_PACKAGE}" = "1" ]; then
-  add_tree /opt/trafficserver-ci/github-mirror
+  add_tree "${INSTALL_ROOT}"
 fi
 
-add_existing_path /etc/default/git-daemon
-add_existing_path /etc/systemd/system/github-mirror-webhook.service
+add_existing_path /etc/systemd/system/github-mirror.service
 add_existing_path /etc/systemd/system/github-mirror-fallback.service
 add_existing_path /etc/systemd/system/github-mirror-fallback.timer
-add_existing_path /etc/systemd/system/github-mirror-smart-http.service
-add_existing_path /etc/trafficserver-github-mirror/github-mirror-webhook.env
-add_existing_path /opt/ats/etc/trafficserver/remap.config
-add_existing_path /opt/ats/etc/trafficserver/hdr_rw_git.config
+add_existing_path /etc/default/git-daemon
+
+if [ "${INCLUDE_ATS_LIVE}" = "1" ]; then
+  add_existing_path /opt/ats/etc/trafficserver/remap.config
+  add_existing_path /opt/ats/etc/trafficserver/hdr_rw_git.config
+fi
 
 if [ "${INCLUDE_JENKINS}" = "1" ]; then
   add_existing_path /opt/jenkins/home/config.xml
@@ -172,8 +181,7 @@ fi
   printf '  sudo rsync -a rootfs/ /\n'
   printf '  sudo systemctl daemon-reload\n'
   printf '  sudo /opt/ats/bin/traffic_ctl config reload\n'
-  printf '  sudo systemctl restart github-mirror-webhook.service\n'
-  printf '  sudo systemctl restart github-mirror-smart-http.service\n'
+  printf '  sudo systemctl restart github-mirror.service\n'
   printf '\n'
   printf 'Files:\n'
   tr '\0' '\n' < "${file_list}" | sed 's#^#/#'
