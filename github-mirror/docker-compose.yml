@@ -1,3 +1,5 @@
+version: '3'
+
 services:
   github-mirror:
     build:
@@ -10,7 +12,7 @@ services:
     ports:
       - "127.0.0.1:9419:9419"
     volumes:
-      - "${MIRROR_ROOT:-/home/mirror}:/home/mirror:rw"
+      - "${MIRROR_ROOT}:/home/mirror:rw"
       - ".:/opt/github-mirror:ro"
     env_file:
       - ./config/github-mirror-webhook.env
@@ -31,14 +33,14 @@ services:
     ports:
       - "127.0.0.1:9417:80"
     volumes:
-      - "${MIRROR_ROOT:-/home/mirror}:/usr/local/apache2/mirror:ro"
+      - "${MIRROR_ROOT}:/usr/local/apache2/mirror:ro"
       - /var/log/github-mirror-smart-http:/usr/local/apache2/logs
 
   github-mirror-fallback:
     image: trafficserver/github-mirror-webhook:latest
     user: "${MIRROR_UID}:${MIRROR_GID}"
     volumes:
-      - "${MIRROR_ROOT:-/home/mirror}:/home/mirror:rw"
+      - "${MIRROR_ROOT}:/home/mirror:rw"
       - ".:/opt/github-mirror:ro"
     environment:
       MIRROR_ROOT: "/home/mirror"
