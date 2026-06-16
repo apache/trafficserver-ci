@@ -15,7 +15,7 @@ RUN <<EOF /bin/bash
     libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
     libmaxminddb-dev libjemalloc-dev libluajit-5.1-dev liblzma-dev \
     libhiredis-dev libncurses-dev libgeoip-dev libmagick++-dev \
-    libcjose-dev libcjose0 libjansson-dev
+    libcjose-dev libcjose0 libjansson-dev libzstd-dev liblz4-dev
 
   apt-get -y autoremove
   apt-get -y clean

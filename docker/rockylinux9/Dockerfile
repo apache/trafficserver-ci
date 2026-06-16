@@ -26,7 +26,7 @@ RUN <<EOF
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel \
     libmaxminddb-devel perl-ExtUtils-MakeMaker perl-Digest-SHA \
     perl-URI perl-IPC-Cmd perl-Pod-Html perl-FindBin \
-    curl tcl-devel java
+    curl tcl-devel java libzstd-devel lz4-devel
 
   # autest stuff
   dnf -y install \
