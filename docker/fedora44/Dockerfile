@@ -21,7 +21,7 @@ RUN <<EOF
 
   # Various other tools
   dnf -y install \
-    sudo git rpm-build distcc-server file wget openssl hwloc \
+    sudo git rpm-build distcc-server file wget which openssl hwloc \
     nghttp2 libnghttp2-devel fmt fmt-devel pcre2-devel
 
   # Devel packages that ATS needs
@@ -226,7 +226,7 @@ RUN <<EOF
 
   # Various other tools
   dnf -y install \
-    sudo git rpm-build distcc-server file wget openssl hwloc \
+    sudo git rpm-build distcc-server file wget which openssl hwloc \
     fmt fmt-devel pcre2-devel
 
   # Devel packages that ATS needs
