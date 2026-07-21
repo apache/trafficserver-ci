@@ -158,12 +158,12 @@ RUN <<EOF
 
   mkdir opentelemetry-cpp
   cd opentelemetry-cpp
-  wget https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v1.3.0.tar.gz
-  tar zxf v1.3.0.tar.gz
-  cd opentelemetry-cpp-1.3.0
-  cmake -B build -G Ninja -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF -DWITH_JAEGER=OFF -DWITH_OTLP=ON -DWITH_OTLP_GRPC=OFF -DWITH_OTLP_HTTP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -Dnlohmann_json_ROOT=/opt/ -DCMAKE_INSTALL_PREFIX=/opt
-  cmake --build build --target all
-  cmake --install build --config Debug
+  wget https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v1.19.0.tar.gz
+  tar zxf v1.19.0.tar.gz
+  cd opentelemetry-cpp-1.19.0
+  cmake -B build -G Ninja -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_OTLP_GRPC=OFF -DWITH_OTLP_HTTP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DWITH_ABSEIL=OFF
+  cmake --build build --config Release --verbose
+  cmake --install build --prefix /opt
   cd /root
   rm -rf opentelemetry-cpp
 EOF
@@ -179,11 +179,11 @@ RUN <<EOF
   # Get the WAMR source.
   mkdir ${build_dir}
   cd ${build_dir}
-  wget https://github.com/bytecodealliance/wasm-micro-runtime/archive/refs/tags/WAMR-1.2.1.tar.gz
-  tar zxvf WAMR-1.2.1.tar.gz
+  wget https://github.com/bytecodealliance/wasm-micro-runtime/archive/refs/tags/WAMR-2.1.1.tar.gz
+  tar zxvf WAMR-2.1.1.tar.gz
 
   # Build WAMR.
-  cd wasm-micro-runtime-WAMR-1.2.1
+  cd wasm-micro-runtime-WAMR-2.1.1
   cp core/iwasm/include/* ${BASE}/include/
   cd product-mini/platforms/linux
   cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=${BASE} -DWAMR_BUILD_INTERP=1 -DWAMR_BUILD_FAST_INTERP=1 -DWAMR_BUILD_JIT=0 -DWAMR_BUILD_AOT=0 -DWAMR_BUILD_SIMD=0 -DWAMR_BUILD_MULTI_MODULE=1 -DWAMR_BUILD_LIBC_WASI=0 -DWAMR_BUILD_TAIL_CALL=1 -DWAMR_DISABLE_HW_BOUND_CHECK=1 -DWAMR_BUILD_BULK_MEMORY=1 -DWAMR_BUILD_WASM_CACHE=0
