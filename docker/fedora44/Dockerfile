@@ -32,7 +32,7 @@ RUN <<EOF
     perl-ExtUtils-MakeMaker perl-Digest-SHA perl-URI perl-IPC-Cmd perl-Pod-Html perl-Time-Piece \
     curl tcl-devel java cjose-devel protobuf-devel
 
-  # Needed to install openssl-quic
+  # Needed to build the BoringSSL HTTP/3 clients.
   dnf -y install libev-devel jemalloc-devel libxml2-devel \
     c-ares-devel libevent-devel cjose-devel jansson-devel zlib-devel \
     systemd-devel perl-FindBin cargo
@@ -63,7 +63,7 @@ EOF
 ARG PATH=/opt/bin:$PATH
 
 #-------------------------------------------------------------------------------
-# Install the HTTP/3 build tools, including openssl-quic.
+# Install the BoringSSL HTTP/3 build tools.
 #-------------------------------------------------------------------------------
 
 # go will be installed by build_h3_tools.
@@ -79,19 +79,6 @@ RUN <<EOF
   cd /root
   rm -rf ${h3_tools_dir} /root/.rustup
 EOF
-# openssl: These are stored in /opt so that CI can easily access the curl,
-# h2load, etc., from there.
-RUN mkdir -p ${h3_tools_dir}
-COPY build_openssl_h3_tools.sh ${h3_tools_dir}
-RUN <<EOF
-  set -e
-  cd ${h3_tools_dir}
-  export BASE=/opt
-  bash ${h3_tools_dir}/build_openssl_h3_tools.sh
-  cd /root
-  rm -rf ${h3_tools_dir} /root/.rustup
-EOF
-
 #-------------------------------------------------------------------------------
 # Various CI Job and Test Requirements.
 #-------------------------------------------------------------------------------
@@ -119,21 +106,15 @@ RUN <<EOF
   cd NuRaft
   ./prepare.sh
 
-  OPENSSL_PREFIX=/opt/openssl-quic
-  if [ -d "${OPENSSL_PREFIX}/lib" ]; then
-    OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
-  elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
-    OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
-  else
-    echo "Could not find the OpenSSL install library directory."
-    exit 1
-  fi
   cmake \
     -B build \
     -G Ninja \
     -DCMAKE_INSTALL_PREFIX=/opt/ \
-    -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
-    -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
+    -DOPENSSL_SSL_LIBRARY=/usr/lib64/libssl.so \
+    -DOPENSSL_CRYPTO_LIBRARY=/usr/lib64/libcrypto.so \
+    -DOPENSSL_INCLUDE_DIR=/usr/include \
+    -DBUILD_TESTING=OFF \
+    -DBUILD_EXAMPLES=OFF
   cmake --build build
   cmake --install build
   cd ../
@@ -164,6 +145,29 @@ RUN <<EOF
   cmake -B build -G Ninja -DBUILD_TESTING=OFF -DWITH_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DWITH_OTLP_GRPC=OFF -DWITH_OTLP_HTTP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DWITH_ABSEIL=OFF
   cmake --build build --config Release --verbose
   cmake --install build --prefix /opt
+
+  OTEL_LIBDIR=$(find /opt/lib /opt/lib64 -type f -name libopentelemetry_exporter_otlp_http_log.a -printf '%h\n' -quit)
+  test -n "${OTEL_LIBDIR}"
+  for library in \
+    opentelemetry_exporter_ostream_span \
+    opentelemetry_exporter_otlp_http \
+    opentelemetry_exporter_otlp_http_client \
+    opentelemetry_exporter_otlp_http_log \
+    opentelemetry_exporter_otlp_http_metric \
+    opentelemetry_http_client_curl \
+    opentelemetry_metrics \
+    opentelemetry_otlp_recordable \
+    opentelemetry_proto \
+    opentelemetry_resources \
+    opentelemetry_trace \
+    opentelemetry_version \
+    opentelemetry_common \
+    opentelemetry_logs
+  do
+    test -f "${OTEL_LIBDIR}/lib${library}.a"
+  done
+  test -f /opt/include/opentelemetry/version.h
+
   cd /root
   rm -rf opentelemetry-cpp
 EOF
@@ -189,6 +193,9 @@ RUN <<EOF
   cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=${BASE} -DWAMR_BUILD_INTERP=1 -DWAMR_BUILD_FAST_INTERP=1 -DWAMR_BUILD_JIT=0 -DWAMR_BUILD_AOT=0 -DWAMR_BUILD_SIMD=0 -DWAMR_BUILD_MULTI_MODULE=1 -DWAMR_BUILD_LIBC_WASI=0 -DWAMR_BUILD_TAIL_CALL=1 -DWAMR_DISABLE_HW_BOUND_CHECK=1 -DWAMR_BUILD_BULK_MEMORY=1 -DWAMR_BUILD_WASM_CACHE=0
   cmake --build build
   sudo cmake --install build
+  test -f ${BASE}/include/wasm_c_api.h
+  test -f ${BASE}/lib/libiwasm.so
+  grep -q WASM_EXTERNREF ${BASE}/include/wasm_export.h
 
   # WAMR Cleanup.
   cd /var/tmp
@@ -270,5 +277,20 @@ RUN <<EOF
 EOF
 
 COPY --from=build /opt /opt
+
+RUN <<EOF
+  set -e
+  for tool in /opt/h3-tools-boringssl/bin/*
+  do
+    case "$(basename "${tool}")" in
+      curl|curl-config)
+        continue
+        ;;
+    esac
+    if [ -x "${tool}" ]; then
+      ln -sf "${tool}" /opt/bin/
+    fi
+  done
+EOF
 
 ENV PATH="$PATH:/opt/bin"
