@@ -62,7 +62,7 @@ pipeline {
                         if [ -d cmake ]
                         then
                             cmake -B build --preset ci-freebsd
-                            cmake --build build -v
+                            cmake --build build -j3 -v
                         else
                             # Pre 10.x branches only support autotools.
                             autoreconf -fiv
