@@ -40,7 +40,11 @@ cd "${WORKSPACE}/src"
 presetpath="../ci/jenkins/branch/CMakePresets.json"
 [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-cmake -B build --preset branch-quiche-on-${SSL_FLAVOR}
+cmake_args=()
+if [ -x tests/urtest.sh ]; then
+  cmake_args+=("-DURTEST_SANDBOX=/tmp/sandbox")
+fi
+cmake -B build --preset branch-quiche-on-${SSL_FLAVOR} "${cmake_args[@]}"
 cmake --build build -j${NPROC} -v
 cmake --install build
 

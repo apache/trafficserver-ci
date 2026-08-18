@@ -95,23 +95,37 @@ pipeline {
 		}
 		stage('AuTest') {
 			steps {
-				echo 'Starting AuTest'
+				echo 'Starting end-to-end tests'
 				dir('src/build/tests') {
 					sh '''#!/bin/bash
 						#set +e
 						set -x
 						# We want to pick up the OpenSSL-QUIC version of curl in /opt/bin.
-						# The HTTP/3 AuTests depend upon this, so update the PATH accordingly.
+						# The HTTP/3 tests depend upon this, so update the PATH accordingly.
 						export PATH=/opt/bin:${PATH}
 						export PATH=/opt/go/bin:${PATH}
 
 						export_dir="${WORKSPACE}/output/${GITHUB_BRANCH}"
 						mkdir -p ${export_dir}
 
-						pipenv install
-						./autest.sh --sandbox /tmp/sandbox || true
+						test_failed=0
+						test_suite="Uranium"
+						if [ -x ./urtest.sh ]; then
+							./urtest.sh --no-run-in-docker || test_failed=1
+						else
+							test_suite="AuTest"
+							pipenv install
+							./autest.sh --sandbox /tmp/sandbox || test_failed=1
+						fi
 
-						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
+						if [ ! -d /tmp/sandbox/ ]; then
+							echo "${test_suite} execution fundamentally failed. No tests were run."
+							touch ${export_dir}/Autest_failures
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 1
+						elif [ ${test_failed} -ne 0 ] ||
+							{ [ "${test_suite}" = "AuTest" ] && [ -n "$(ls -A /tmp/sandbox/)" ]; }; then
+							echo "${test_suite} tests failed."
 							touch ${export_dir}/Autest_failures
 							cp -rf /tmp/sandbox/ "${export_dir}"
 							# Remove socket files so they don't break archiveArtifacts.

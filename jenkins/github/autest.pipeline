@@ -101,7 +101,15 @@ pipeline {
             if [ -d cmake ]
             then
               echo "Building with CMake."
-              cmake -B build --preset ${CMAKE_PRESET}
+              cmake_args=()
+              if [ -x tests/urtest.sh ]; then
+                if [ "${CMAKE_PRESET}" = "ci-fedora-autest" ]; then
+                  CMAKE_PRESET="ci-fedora-urtest"
+                fi
+                cmake_args+=("-DURTEST_SANDBOX=/tmp/sandbox")
+              fi
+              echo "Using CMake preset ${CMAKE_PRESET}."
+              cmake -B build --preset "${CMAKE_PRESET}" "${cmake_args[@]}"
               cmake --build build -j4 -v
               cmake --install build
             else
@@ -129,7 +137,7 @@ pipeline {
     }
     stage('AuTest') {
       steps {
-        echo 'Starting AuTest'
+        echo 'Starting test suite'
         dir('src/tests') {
           sh '''#!/bin/bash -x
             set +e
@@ -140,49 +148,56 @@ pipeline {
             export_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}"
             mkdir -p ${export_dir}
 
-            autest_args=""
-            testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
-
-            if [ -d ../cmake ]
-            then
+            test_failed=0
+            test_suite="Uranium"
+            if [ -x ../build/tests/urtest.sh ]; then
               cd ../build/tests
-              pipenv install
-              autest_args="--sandbox /tmp/sandbox"
+              ./urtest.sh --no-run-in-docker -n 2 || test_failed=1
             else
-              autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
-            fi
+              test_suite="AuTest"
+              autest_args=""
+              testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
 
-            # Check for parallel support in autest.sh - originally added in 10.2.0.
-            if grep -q parallel_mode autest.sh; then
-              autest_args="-j 2 -v ${autest_args}"
-            fi
+              if [ -d ../cmake ]
+              then
+                cd ../build/tests
+                pipenv install
+                autest_args="--sandbox /tmp/sandbox"
+              else
+                autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+              fi
 
-            autest_failed=0
-            if [ ${SHARDCNT} -le 0 ]; then
-              ./autest.sh ${autest_args} || autest_failed=1
-            else
-              testsall=( $(
-                for el in  "${testsall[@]}" ; do
-                  echo $el
-                done | sort) )
-              ntests=${#testsall[@]}
+              # Check for parallel support in autest.sh - originally added in 10.2.0.
+              if grep -q parallel_mode autest.sh; then
+                autest_args="-j 2 -v ${autest_args}"
+              fi
 
-              shardsize=$((${ntests} / ${SHARDCNT}))
-              [ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
-              shardbeg=$((${shardsize} * ${SHARD}))
-              sliced=${testsall[@]:${shardbeg}:${shardsize}}
-              ./autest.sh ${autest_args} -f ${sliced[@]} || autest_failed=1
+              if [ ${SHARDCNT} -le 0 ]; then
+                ./autest.sh ${autest_args} || test_failed=1
+              else
+                testsall=( $(
+                  for el in  "${testsall[@]}" ; do
+                    echo $el
+                  done | sort) )
+                ntests=${#testsall[@]}
+
+                shardsize=$((${ntests} / ${SHARDCNT}))
+                [ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
+                shardbeg=$((${shardsize} * ${SHARD}))
+                sliced=${testsall[@]:${shardbeg}:${shardsize}}
+                ./autest.sh ${autest_args} -f ${sliced[@]} || test_failed=1
+              fi
             fi
 
             if [ ! -d /tmp/sandbox/ ]; then
               # No sandbox. Probably a catastrophic failure, like an exception,
               # that prevented execution and the creation of a sandbox.
-              echo "AuTest execution fundamentally failed. No tests were run."
+              echo "${test_suite} execution fundamentally failed. No tests were run."
               touch ${export_dir}/Autest_failures
               sudo chmod -R 777 ${WORKSPACE}
               exit 1
-            elif [ ${autest_failed} -ne 0 ]; then
-              echo "AuTest tests failed."
+            elif [ ${test_failed} -ne 0 ]; then
+              echo "${test_suite} tests failed."
               touch ${export_dir}/Autest_failures
               cp -rf /tmp/sandbox/ "${export_dir}"
               # Remove socket files so they don't break archiveArtifacts.
