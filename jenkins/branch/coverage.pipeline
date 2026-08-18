@@ -95,7 +95,11 @@ pipeline {
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
 							[ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
-							cmake -B build --preset branch-coverage
+							cmake_args=()
+							if [ -x tests/urtest.sh ]; then
+								cmake_args+=("-DURTEST_SANDBOX=/tmp/sandbox")
+							fi
+							cmake -B build --preset branch-coverage "${cmake_args[@]}"
 							cmake --build build -j${NPROC} -v
 							cmake --install build -v
 
@@ -176,7 +180,7 @@ pipeline {
 						/tmp/ats/bin/traffic_server -K -R 3
 					 '''
 				}
-				echo 'Starting AuTest'
+				echo 'Starting end-to-end tests'
 				dir('src/tests') {
 					sh '''#!/bin/bash
 						set -x
@@ -188,16 +192,21 @@ pipeline {
 						export PATH=/opt/bin:${PATH}
 						export PATH=/opt/go/bin:${PATH}
 
-						autest_args=""
-						if [ -d ../cmake ]
-						then
+						if [ -x ../build/tests/urtest.sh ]; then
 							cd ../build/tests
-							pipenv install
+							./urtest.sh --no-run-in-docker
 						else
-							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
-						fi
+							autest_args=""
+							if [ -d ../cmake ]
+							then
+								cd ../build/tests
+								pipenv install
+							else
+								autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+							fi
 
-						./autest.sh ${autest_args}
+							./autest.sh ${autest_args}
+						fi
 						'''
 				}
 			}

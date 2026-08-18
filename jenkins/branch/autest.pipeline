@@ -99,7 +99,16 @@ pipeline {
 							presetpath="../ci/jenkins/branch/CMakePresets.json"
 							[ -f "${presetpath}" ] && cp -f "${presetpath}" .
 
-							cmake -B build --preset ${CMAKE_PRESET}
+							cmake_args=()
+							if [ -x tests/urtest.sh ]; then
+								case "${CMAKE_PRESET}" in
+									branch-autest) CMAKE_PRESET="branch-urtest" ;;
+									branch-autest-uds) CMAKE_PRESET="branch-urtest-uds" ;;
+								esac
+								cmake_args+=("-DURTEST_SANDBOX=/tmp/sandbox")
+							fi
+							echo "Using CMake preset ${CMAKE_PRESET}."
+							cmake -B build --preset "${CMAKE_PRESET}" "${cmake_args[@]}"
 							cmake --build build -j${NPROC} -v
 							cmake --install build -v
 
@@ -129,7 +138,7 @@ pipeline {
 
 		stage('AuTest') {
 			steps {
-				echo 'Starting AuTest'
+				echo 'Starting test suite'
 				dir('src/tests') {
 					sh '''#!/bin/bash -x
 						set +e
@@ -140,48 +149,57 @@ pipeline {
 						export_dir="${WORKSPACE}/output/${GITHUB_BRANCH}"
 						mkdir -p ${export_dir}
 
-						autest_args=""
-						testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
-
-						if [ -d ../cmake ]
-						then
+						test_failed=0
+						test_suite="Uranium"
+						if [ -x ../build/tests/urtest.sh ]; then
 							cd ../build/tests
-							pipenv install
-							autest_args="--sandbox /tmp/sandbox"
+							./urtest.sh --no-run-in-docker -n 2 || test_failed=1
 						else
-							autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+							test_suite="AuTest"
+							autest_args=""
+							testsall=( $( find . -iname "*.test.py" | awk -F'/' '{print $NF}' | awk -F'.' '{print $1}' ) )
+
+							if [ -d ../cmake ]
+							then
+								cd ../build/tests
+								pipenv install
+								autest_args="--sandbox /tmp/sandbox"
+							else
+								autest_args="--ats-bin /tmp/ats/bin/ --sandbox /tmp/sandbox"
+							fi
+
+							if [ ${SHARDCNT} -le 0 ]; then
+								./autest.sh ${autest_args} || test_failed=1
+							else
+								testsall=( $(
+									for el in  "${testsall[@]}" ; do
+										echo $el
+									done | sort) )
+								ntests=${#testsall[@]}
+
+								shardsize=$((${ntests} / ${SHARDCNT}))
+								[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
+								shardbeg=$((${shardsize} * ${SHARD}))
+								sliced=${testsall[@]:${shardbeg}:${shardsize}}
+								./autest.sh ${autest_args} -f ${sliced[@]} || test_failed=1
+							fi
 						fi
 
-						autest_failed=0
-						if [ ${SHARDCNT} -le 0 ]; then
-							./autest.sh ${autest_args} || autest_failed=1
-						else
-							testsall=( $(
-								for el in  "${testsall[@]}" ; do
-									echo $el
-								done | sort) )
-							ntests=${#testsall[@]}
-
-							shardsize=$((${ntests} / ${SHARDCNT}))
-							[ 0 -ne $((${ntests} % ${shardsize})) ] && shardsize=$((${shardsize} + 1))
-							shardbeg=$((${shardsize} * ${SHARD}))
-							sliced=${testsall[@]:${shardbeg}:${shardsize}}
-							./autest.sh ${autest_args} -f ${sliced[@]} || autest_failed=1
-						fi
-
-						if [ -n "$(ls -A /tmp/sandbox/)" ]; then
+						if [ ! -d /tmp/sandbox/ ]; then
+							# No sandbox. Probably a catastrophic failure, like an exception,
+							# that prevented execution and the creation of a sandbox.
+							echo "${test_suite} execution fundamentally failed. No tests were run."
+							touch ${export_dir}/Autest_failures
+							sudo chmod -R 777 ${WORKSPACE}
+							exit 1
+						elif [ ${test_failed} -ne 0 ] ||
+							{ [ "${test_suite}" = "AuTest" ] && [ -n "$(ls -A /tmp/sandbox/)" ]; }; then
+							echo "${test_suite} tests failed."
 							touch ${export_dir}/Autest_failures
 							cp -rf /tmp/sandbox/ "${export_dir}"
 							# Remove socket files so they don't break archiveArtifacts.
 							find "${export_dir}" -type s -delete
 							ls "${export_dir}"
-							sudo chmod -R 777 ${WORKSPACE}
-							exit 1
-						elif [ ${autest_failed} -ne 0 ]; then
-							# No sandbox. Probably a catestrophic failure, like an exception,
-							# that prevented execution and the creation of a sandbox.
-							echo "AuTest failed."
-							touch ${export_dir}/Autest_failures
 							sudo chmod -R 777 ${WORKSPACE}
 							exit 1
 						else
