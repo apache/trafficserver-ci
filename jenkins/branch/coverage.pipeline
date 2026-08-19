@@ -194,7 +194,7 @@ pipeline {
 
 						if [ -x ../build/tests/urtest.sh ]; then
 							cd ../build/tests
-							./urtest.sh --no-run-in-docker
+							./urtest.sh --no-run-in-docker -v
 						else
 							autest_args=""
 							if [ -d ../cmake ]

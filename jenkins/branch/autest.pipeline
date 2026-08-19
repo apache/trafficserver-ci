@@ -153,7 +153,7 @@ pipeline {
 						test_suite="Uranium"
 						if [ -x ../build/tests/urtest.sh ]; then
 							cd ../build/tests
-							./urtest.sh --no-run-in-docker -n 2 || test_failed=1
+							./urtest.sh --no-run-in-docker -v -n 2 || test_failed=1
 						else
 							test_suite="AuTest"
 							autest_args=""
