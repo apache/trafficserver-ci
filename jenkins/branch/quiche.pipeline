@@ -111,7 +111,7 @@ pipeline {
 						test_failed=0
 						test_suite="Uranium"
 						if [ -x ./urtest.sh ]; then
-							./urtest.sh --no-run-in-docker || test_failed=1
+							./urtest.sh --no-run-in-docker -v || test_failed=1
 						else
 							test_suite="AuTest"
 							pipenv install
