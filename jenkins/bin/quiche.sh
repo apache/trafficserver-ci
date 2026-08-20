@@ -36,6 +36,10 @@ fi
 
 cd "${WORKSPACE}/src"
 
+# Config installation preserves source modes. Ensure a restrictive checkout
+# umask cannot make installed defaults unreadable.
+sudo chmod -R o+r .
+
 # copy in CMakePresets.json
 presetpath="../ci/jenkins/branch/CMakePresets.json"
 [ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
