@@ -98,8 +98,38 @@ pipeline {
                             make -j4
                         fi
 
-                        # The above will have a non-zero exit if it finds problems. Thus,
-                        # because of `set -e`, if we get here the report was clean.
+                    '''
+                }
+            }
+        }
+        stage('Clang-Tidy') {
+            steps {
+                dir('src') {
+                    sh '''#!/bin/bash
+                        set -x
+                        set -e
+
+                        if [ -d cmake ]
+                        then
+                            if [ -f .clang-tidy-ci ]
+                            then
+                                # Jenkins checks out the ATS source tree in ${WORKSPACE}/src.
+                                run-clang-tidy \
+                                    -j4 \
+                                    -quiet \
+                                    -p build \
+                                    -config-file=.clang-tidy-ci \
+                                    -header-filter="^${WORKSPACE}/src/(include|src|plugins)/" \
+                                    "${WORKSPACE}/src/(src|plugins)/.*"
+                            else
+                                echo "Clang-Tidy CI configuration is not available on this branch."
+                            fi
+                        else
+                            echo "Clang-Tidy is not supported for this branch's autotools build."
+                        fi
+
+                        # The analyzer and Clang-Tidy return non-zero when they find problems.
+                        # With `set -e`, reaching this point means that both runs were clean.
                         touch "${WORKSPACE}/output/No Errors Reported"
                     '''
                 }
