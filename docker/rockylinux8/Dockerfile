@@ -39,7 +39,7 @@ RUN <<EOF
     libmaxminddb-devel perl-ExtUtils-MakeMaker perl-Digest-SHA \
     perl-URI perl-IPC-Cmd perl-Pod-Html \
     curl tcl-devel java cjose-devel jansson-devel \
-    python3.12 python3.12-pip
+    python3.12 python3.12-pip libzstd-devel lz4-devel
 
   # autest stuff
   dnf -y install \
