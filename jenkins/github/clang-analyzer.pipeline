@@ -109,23 +109,78 @@ pipeline {
                         set -x
                         set -e
 
-                        if [ -d cmake ]
+                        if [ ! -d cmake ]
                         then
-                            if [ -f .clang-tidy-ci ]
-                            then
-                                # Jenkins checks out the ATS source tree in ${WORKSPACE}/src.
-                                run-clang-tidy \
-                                    -j4 \
-                                    -quiet \
-                                    -p build \
-                                    -config-file=.clang-tidy-ci \
-                                    -header-filter="^${WORKSPACE}/src/(include|src|plugins)/" \
-                                    "${WORKSPACE}/src/(src|plugins)/.*"
-                            else
-                                echo "Clang-Tidy CI configuration is not available on this branch."
-                            fi
-                        else
                             echo "Clang-Tidy is not supported for this branch's autotools build."
+                        elif [ ! -f .clang-tidy-ci ]
+                        then
+                            echo "Clang-Tidy CI configuration is not available on this branch."
+                        else
+                            # The report directory is under output/ so that it is picked up by the
+                            # archiveArtifacts step, next to the clang-analyzer HTML report.
+                            report_dir="${WORKSPACE}/output/${GITHUB_PR_NUMBER}/clang-tidy"
+                            mkdir -p "${report_dir}"
+
+                            # Jenkins checks out the ATS source tree in ${WORKSPACE}/src.
+                            #
+                            # The full output is kept as an artifact. The console copy drops the
+                            # per-translation-unit "N warning(s) generated." lines, which otherwise
+                            # outnumber the diagnostics themselves by two orders of magnitude.
+                            # errexit is disabled around the pipeline so that the run-clang-tidy
+                            # status can be read out of PIPESTATUS rather than the status of the
+                            # filter at the end of the pipe.
+                            set +e
+                            run-clang-tidy \
+                                -j4 \
+                                -quiet \
+                                -p build \
+                                -config-file=.clang-tidy-ci \
+                                -header-filter="^${WORKSPACE}/src/(include|src|plugins)/" \
+                                -export-fixes "${report_dir}/clang-tidy-fixes.yaml" \
+                                "${WORKSPACE}/src/(src|plugins)/.*" 2>&1 \
+                                | tee "${report_dir}/clang-tidy.log" \
+                                | grep -v -E "^[0-9]+ warnings? generated"
+                            tidy_status=${PIPESTATUS[0]}
+                            set -e
+
+                            # Collect the diagnostics themselves so that they are readable at the
+                            # end of the console log instead of buried in the middle of a run over
+                            # several hundred translation units.
+                            grep -h -E ":[0-9]+:[0-9]+: (fatal error|error|warning):" "${report_dir}/clang-tidy.log" \
+                                | sed -e "s|${WORKSPACE}/src/||g" \
+                                | sort -u > "${report_dir}/clang-tidy-diagnostics.txt" || true
+
+                            set +x
+                            echo
+                            echo "=================== Clang-Tidy diagnostics ==================="
+                            if [ -s "${report_dir}/clang-tidy-diagnostics.txt" ]
+                            then
+                                cat "${report_dir}/clang-tidy-diagnostics.txt"
+                            elif [ "${tidy_status}" -ne 0 ]
+                            then
+                                # The run failed without emitting a diagnostic this grep recognizes,
+                                # which happens when clang-tidy itself could not run. Show the end of
+                                # the log rather than reporting the run as clean.
+                                echo "run-clang-tidy exited ${tidy_status} without a recognized diagnostic."
+                                echo "Last 50 lines of ${report_dir}/clang-tidy.log:"
+                                tail -n 50 "${report_dir}/clang-tidy.log"
+                            else
+                                echo "No diagnostics reported."
+                            fi
+                            echo "=============================================================="
+                            echo "The complete log and the machine readable diagnostics are archived"
+                            echo "as build artifacts under output/${GITHUB_PR_NUMBER}/clang-tidy/:"
+                            echo "  clang-tidy.log              - full run-clang-tidy output"
+                            echo "  clang-tidy-diagnostics.txt  - the diagnostics listed above"
+                            echo "  clang-tidy-fixes.yaml       - diagnostics and suggested fixes in"
+                            echo "                                clang-apply-replacements form"
+                            echo
+                            set -x
+
+                            if [ "${tidy_status}" -ne 0 ]
+                            then
+                                exit "${tidy_status}"
+                            fi
                         fi
 
                         # The analyzer and Clang-Tidy return non-zero when they find problems.
