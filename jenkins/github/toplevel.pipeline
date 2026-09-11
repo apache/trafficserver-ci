@@ -248,7 +248,7 @@ pipeline {
 						}
 					}
 				}
-
+/*******************************************
 				stage('FreeBSD Build') {
 					when {
 						anyOf {
@@ -265,7 +265,7 @@ pipeline {
 						}
 					}
 				}
-
+*******************************/
 				stage('Clang-Analyzer') {
 					when {
 						anyOf {
