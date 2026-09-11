@@ -263,7 +263,7 @@ pipeline {
 //							}
 //						}
 //					}
-//				}
+				}
 				stage('Clang-Analyzer') {
 					when {
 						anyOf {
