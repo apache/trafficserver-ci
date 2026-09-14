@@ -61,6 +61,34 @@ pipeline {
                 echo 'Finished Cloning'
             }
         }
+        stage('HRW4U') {
+            steps {
+                dir('src') {
+                    sh '''#!/bin/bash
+                        set -x
+                        set -e
+
+                        if [ ! -f tools/hrw4u/Makefile ]
+                        then
+                            echo "hrw4u is not available on this branch."
+                        else
+                            # uv is installed under /opt/bin in this image.
+                            export PATH=/opt/bin:$PATH
+
+                            # uv cannot hardlink from its cache into the venv because
+                            # Jenkins bind mounts the workspace into the container.
+                            export UV_LINK_MODE=copy
+
+                            cd tools/hrw4u
+
+                            # Fedora's antlr4 package installs the generator as
+                            # `antlr4`; the Makefile defaults to the Homebrew name.
+                            make ANTLR=antlr4 test
+                        fi
+                    '''
+                }
+            }
+        }
         stage('Build') {
             steps {
                 echo 'Starting build'
