@@ -57,7 +57,9 @@ RUN <<EOF
         libmagick++-dev \
         libmaxminddb-dev \
         libcjose-dev \
-        libjansson-dev
+        libjansson-dev \
+        libzstd-dev \
+        liblz4-dev
 
     apt-get clean
     rm -rf /var/lib/apt/lists/*
