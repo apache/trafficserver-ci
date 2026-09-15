@@ -64,23 +64,6 @@ RUN <<EOF
     libpsl-devel libgsasl-devel libidn-devel openldap-devel
 EOF
 
-# go and rust will be installed by build_h3_tools.
-RUN dnf remove -y golang rust
-RUN dnf install -y cargo
-ARG h3_tools_dir=/root/build_h3_tools
-RUN mkdir -p ${h3_tools_dir}
-COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
-# This will install OpenSSL QUIC and related tools in /opt.
-RUN <<EOF
-  set -e
-  cd ${h3_tools_dir}
-  bash ${h3_tools_dir}/build_h3_tools.sh
-
-  # Removing the build dir is crucial to keeping the Docker image size
-  # reasonable.
-  rm -rf ${h3_tools_dir} /root/.rustup
-EOF
-
 #-------------------------------------------------------------------------------
 # Various CI Job and Test Requirements.
 #-------------------------------------------------------------------------------
@@ -105,19 +88,12 @@ RUN update-crypto-policies --set LEGACY
 RUN <<EOF
   set -e
 
+  OPENSSL_LIBDIR=$(pkg-config --variable=libdir openssl)
+
   git clone https://github.com/eBay/NuRaft.git
   cd NuRaft
   ./prepare.sh
 
-  OPENSSL_PREFIX=/opt/openssl-quic
-  if [ -d "${OPENSSL_PREFIX}/lib" ]; then
-    OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
-  elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
-    OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
-  else
-    echo "Could not find the OpenSSL install library directory."
-    exit 1
-  fi
   cmake \
     -B build \
     -G Ninja \
@@ -214,8 +190,6 @@ EOF
 
 RUN <<EOF
   set -e
-  # reinstall openssl-devel
-  dnf install -y openssl-devel
   # Keep this at the end to clean up the yum cache to reduce the image file size.
   dnf clean all
 EOF
