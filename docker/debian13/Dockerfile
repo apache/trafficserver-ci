@@ -21,6 +21,24 @@ RUN <<EOF /bin/bash
   apt-get -y clean
 EOF
 
+# Older ATS branches require PCRE1, which Ubuntu 26.04 no longer packages.
+RUN <<EOF
+  set -eux
+
+  cd /tmp
+  wget -O pcre-8.45.tar.gz https://downloads.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.gz
+  echo "4e6ce03e0336e8b4a3d6c2b70b1c5e18590a5673a98186da90d4f33c23defc09  pcre-8.45.tar.gz" | sha256sum -c -
+  tar -xzf pcre-8.45.tar.gz
+  cd pcre-8.45
+  ./configure --prefix=/usr/local --enable-jit --enable-utf --enable-unicode-properties
+  make -j$(nproc)
+  make check
+  make install
+  ldconfig
+  cd /tmp
+  rm -rf pcre-8.45 pcre-8.45.tar.gz
+EOF
+
 # Install nuraft for the stek_share plugin. Distros, unfortunately, do not
 # package these, so this has to be built by hand.
 RUN <<EOF
