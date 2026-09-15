@@ -34,7 +34,7 @@ EOF
 
 RUN <<EOF
   set -e
-  pip install pipenv httpbin
+  pip install --user pipenv httpbin
   export XDG_BIN_HOME=/opt/bin
   curl -LsSf https://astral.sh/uv/install.sh | sh
 EOF
@@ -184,8 +184,8 @@ RUN <<EOF
   git clone https://github.com/apache/trafficserver-libswoc.git
   cd trafficserver-libswoc
   git checkout ${swoc_version}
-  pipenv install
-  pipenv run scons -j`nproc` all
+  ~/.local/bin/pipenv install
+  ~/.local/bin/pipenv run scons -j`nproc` all
   arch=$(uname -m)
   old_path=/root/libswoc/trafficserver-libswoc/_install/debug_posix-${arch}_default
   cp -rf ${old_path} /opt/libswoc
