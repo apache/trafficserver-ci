@@ -49,7 +49,7 @@ MAKE="make"
 CFLAGS=${CFLAGS:-"-O3 -g"}
 CXXFLAGS=${CXXFLAGS:-"-O3 -g"}
 
-if [ -e /etc/redhat-release ]; then
+if [ -e /etc/amazon-linux-release ]; then
     MAKE="gmake"
     TMP_QUICHE_BSSL_PATH="${BASE}/boringssl/lib64"
     echo "+-------------------------------------------------------------------------+"
