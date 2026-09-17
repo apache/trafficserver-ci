@@ -30,20 +30,22 @@ RUN <<EOF
   dnf -y install \
     python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-requests python3-devel python3-psutil telnet golang
+
+  # wdiff from epel9
+  rpm -ivh --nodeps https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+  dnf config-manager --set-disabled 'epel*'
+  dnf install -y wdiff --disablerepo=* --enablerepo=epel
 EOF
 
+# We put our locally installed python packages in /opt/pipenv.
 RUN <<EOF
   set -e
-  pip install --user pipenv httpbin
-  export XDG_BIN_HOME=/opt/bin
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+  mkdir -p /opt/pipenv
+  chmod 755 /opt/pipenv
+  echo 'PATH=/opt/pipenv/bin:$PATH' | tee -a /etc/profile.d/pipenv.sh
+  echo 'PYTHONPATH=/opt/pipenv:$PYTHONPATH' | tee -a /etc/profile.d/pipenv.sh
 EOF
-
-#-------------------------------------------------------------------------------
-# Install some custom build tools.
-#-------------------------------------------------------------------------------
-
-WORKDIR /root
+ARG PATH=/opt/pipenv/bin:$PATH
 
 # We put our custom packages in /opt.
 RUN <<EOF
@@ -53,6 +55,19 @@ RUN <<EOF
   echo 'PATH=/opt/bin:$PATH' | tee -a /etc/profile.d/opt_bin.sh
 EOF
 ARG PATH=/opt/bin:$PATH
+
+#-------------------------------------------------------------------------------
+# Install some custom build tools.
+#-------------------------------------------------------------------------------
+
+WORKDIR /root
+
+RUN <<EOF
+  set -e
+  pip install --target=/opt/pipenv pipenv httpbin
+  export XDG_BIN_HOME=/opt/bin
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+EOF
 
 #-------------------------------------------------------------------------------
 # Install the HTTP/3 build tools, including openssl-quic.
