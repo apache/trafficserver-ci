@@ -12,7 +12,7 @@ RUN <<EOF /bin/bash
     cmake ninja-build
 
   apt-get -y install libssl-dev libexpat1-dev \
-    libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
+    libpcre2-dev libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
     libmaxminddb-dev libjemalloc-dev libluajit-5.1-dev liblzma-dev \
     libhiredis-dev libncurses-dev libgeoip-dev libmagick++-dev \
     libcjose-dev libcjose0 libjansson-dev libzstd-dev liblz4-dev

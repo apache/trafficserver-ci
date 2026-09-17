@@ -12,7 +12,7 @@ RUN <<EOF /bin/bash
     cmake ninja-build
 
   apt-get -y install libssl-dev libexpat1-dev \
-    libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
+    libpcre2-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
     libmaxminddb-dev libjemalloc-dev libluajit-5.1-dev liblzma-dev \
     libhiredis-dev libncurses-dev libgeoip-dev libmagick++-dev \
     libcjose-dev libcjose0 libjansson-dev libzstd-dev liblz4-dev
@@ -21,7 +21,7 @@ RUN <<EOF /bin/bash
   apt-get -y clean
 EOF
 
-# Older ATS branches require PCRE1, which Ubuntu 26.04 no longer packages.
+# Older ATS branches require PCRE1, which Debian 13 no longer packages.
 RUN <<EOF
   set -eux
 

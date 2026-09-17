@@ -11,7 +11,7 @@ RUN <<EOF
     ccache make pkgconfig bison flex gcc-c++ clang cmake ninja-build \
     autoconf automake libtool \
     sudo git rpm-build file wget openssl hwloc nghttp2 libnghttp2-devel \
-    cargo goland llvm
+    cargo golang llvm
 
   # Devel packages that ATS needs.
   #
@@ -29,7 +29,7 @@ RUN <<EOF
   # autest stuff
   dnf -y install \
     python3 httpd-tools procps-ng nmap-ncat python3-pip \
-    python3-requests python3-devel python3-psutil telnet golang python3-pip
+    python3-requests python3-devel python3-psutil telnet golang
 EOF
 
 RUN <<EOF
@@ -88,8 +88,6 @@ RUN update-crypto-policies --set LEGACY
 RUN <<EOF
   set -e
 
-  OPENSSL_LIBDIR=$(pkg-config --variable=libdir openssl)
-
   git clone https://github.com/eBay/NuRaft.git
   cd NuRaft
   ./prepare.sh
@@ -98,9 +96,6 @@ RUN <<EOF
     -B build \
     -G Ninja \
     -DCMAKE_INSTALL_PREFIX=/opt/ \
-    -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
-    -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
-  cmake --build build
   cmake --install build
   cd ../
   rm -rf NuRaft

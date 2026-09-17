@@ -34,7 +34,7 @@ RUN <<EOF
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang
 EOF
 
-# Older ATS branches require PCRE1, which Ubuntu 26.04 no longer packages.
+# Older ATS branches require PCRE1, which Rocky 10 no longer packages.
 RUN <<EOF
   set -eux
 
