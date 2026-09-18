@@ -1,10 +1,10 @@
-FROM rockylinux/rockylinux:9
+FROM rockylinux/rockylinux:10
 
 RUN <<EOF
   set -e
   dnf -y install epel-release dnf-plugins-core
   dnf config-manager --set-enabled crb
-  dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm
+  dnf install -y https://rpms.remirepo.net/enterprise/remi-release-10.rpm
   dnf repolist
   dnf -y update
 
@@ -20,7 +20,7 @@ RUN <<EOF
   # --alowerasing for cur. See:
   # https://bugs.launchpad.net/tripleo/+bug/1953156
   dnf -y install --allowerasing \
-    openssl-devel expat-devel pcre-devel pcre2-devel libcap-devel \
+    openssl-devel expat-devel pcre2-devel libcap-devel \
     hwloc-devel libunwind-devel xz-devel libcurl-devel ncurses-devel \
     jemalloc-devel GeoIP-devel luajit-devel brotli-devel \
     ImageMagick-devel ImageMagick-c++-devel hiredis-devel zlib-devel \
@@ -32,6 +32,24 @@ RUN <<EOF
   dnf -y install \
     python3 httpd-tools procps-ng nmap-ncat python3-pip \
     python3-gunicorn python3-requests python3-devel python3-psutil telnet golang
+EOF
+
+# Older ATS branches require PCRE1, which Rocky 10 no longer packages.
+RUN <<EOF
+  set -eux
+
+  cd /tmp
+  wget -O pcre-8.45.tar.gz https://downloads.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.gz
+  echo "4e6ce03e0336e8b4a3d6c2b70b1c5e18590a5673a98186da90d4f33c23defc09  pcre-8.45.tar.gz" | sha256sum -c -
+  tar -xzf pcre-8.45.tar.gz
+  cd pcre-8.45
+  ./configure --prefix=/usr/local --enable-jit --enable-utf --enable-unicode-properties
+  make -j$(nproc)
+  make check
+  make install
+  ldconfig
+  cd /tmp
+  rm -rf pcre-8.45 pcre-8.45.tar.gz
 EOF
 
 RUN <<EOF
