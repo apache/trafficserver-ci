@@ -1,0 +1,205 @@
+name: Build CI images
+
+# Builds the CI container images from their Dockerfiles so that breakage is
+# caught on the pull request that causes it. Nothing is pushed to the registry;
+# publishing the images remains a manual step for now.
+#
+# Only the images whose inputs changed are built. Each image is self-contained
+# under docker/<image>/, so a change there rebuilds that image alone. A change
+# to anything listed in SHARED below rebuilds every image, as do the weekly
+# schedule and manual runs.
+#
+# To cover another image, add its directory name to IMAGES in the "changes"
+# job. If a Dockerfile ever starts depending on a file outside its own
+# directory, add that path to SHARED.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  # The images build packages from distribution mirrors and upstream git, so
+  # they can start failing without anything in this repository changing. A
+  # weekly run surfaces that drift rather than leaving it for the next PR.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Superseded runs of the same pull request are cancelled. Runs on main are
+# not: each push there covers a different set of images, and cancelling the
+# weekly run because someone merged would defeat its purpose.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: Select images
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      images: ${{ steps.select.outputs.images }}
+
+    steps:
+      - name: Checkout
+        # Scheduled and manual runs build everything and never look at the
+        # tree.
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          # The repository is small, and the diff below needs the base of the
+          # change to be present.
+          fetch-depth: 0
+
+      - name: Select images
+        id: select
+        env:
+          IMAGES: >-
+            fedora44
+            ubuntu2604
+          SHARED: >-
+            .github/workflows/build-ci-images.yml
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -eu
+
+          to_json() {
+            printf '%s\n' "$@" | jq --raw-input --compact-output --null-input '[inputs]'
+          }
+
+          emit() {
+            echo "images=$1" | tee -a "${GITHUB_OUTPUT}"
+          }
+
+          # Capture before use: a failure inside "$(...)" passed straight to
+          # another command would not stop the script under set -e.
+          emit_all() {
+            json=$(to_json ${IMAGES})
+            emit "${json}"
+          }
+
+          # Scheduled and manual runs, and pushes whose starting point we
+          # cannot see, build everything.
+          case "${EVENT}" in
+            schedule|workflow_dispatch)
+              emit_all
+              exit 0
+              ;;
+            pull_request)
+              # HEAD is the merge of the PR into its target, so its first
+              # parent is the target branch.
+              range="HEAD^1 HEAD"
+              ;;
+            push)
+              if [ -z "${BEFORE}" ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+                emit_all
+                exit 0
+              fi
+              range="${BEFORE} HEAD"
+              ;;
+            *)
+              emit_all
+              exit 0
+              ;;
+          esac
+
+          selected=""
+          uncovered=""
+
+          echo "Changed files:"
+          # NUL-delimited so paths with whitespace survive, and without rename
+          # detection so a file moved out of an image directory still shows
+          # the directory it left.
+          while IFS= read -r -d '' path; do
+            echo "  ${path}"
+
+            for shared in ${SHARED}; do
+              if [ "${path}" = "${shared}" ] || [ "${path#"${shared}"/}" != "${path}" ]; then
+                echo "${path} is a shared input; building every image"
+                emit_all
+                exit 0
+              fi
+            done
+
+            case "${path}" in
+              docker/*/*)
+                image=${path#docker/}
+                image=${image%%/*}
+                covered=false
+                for candidate in ${IMAGES}; do
+                  if [ "${image}" = "${candidate}" ]; then
+                    covered=true
+                  fi
+                done
+                if ${covered}; then
+                  selected="${selected} ${image}"
+                else
+                  uncovered="${uncovered} ${image}"
+                fi
+                ;;
+            esac
+          done < <(git diff --name-only --no-renames -z ${range})
+
+          if [ -n "${uncovered}" ]; then
+            names=$(printf '%s\n' ${uncovered} | sort -u | tr '\n' ' ')
+            echo "::warning::Changed image directories this workflow does not build: ${names}"
+          fi
+
+          if [ -z "${selected}" ]; then
+            echo "No covered image inputs changed"
+            emit '[]'
+            exit 0
+          fi
+
+          json=$(to_json $(printf '%s\n' ${selected} | sort -u))
+          emit "${json}"
+
+  build:
+    name: ${{ matrix.image }}
+    needs: changes
+    if: needs.changes.outputs.images != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      # One image failing should not hide the state of the others.
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.changes.outputs.images) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.image }}
+        env:
+          DOCKER_BUILDKIT: '1'
+        run: |
+          set -eux
+          docker build \
+            --pull \
+            --tag "ats/${{ matrix.image }}:${{ github.run_id }}" \
+            "docker/${{ matrix.image }}"
+
+      # A successful build still leaves room for an image that cannot run, so
+      # check the pieces every ATS job depends on, as the user Jenkins runs
+      # them as. The agent mounts workspaces owned by uid 1200 into the
+      # container, and the pipelines use passwordless sudo.
+      - name: Smoke test ${{ matrix.image }}
+        run: |
+          set -eux
+          image="ats/${{ matrix.image }}:${{ github.run_id }}"
+          [ "$(docker run --rm "${image}" id -u jenkins)" = 1200 ]
+          docker run --rm --user jenkins "${image}" sudo -n true
+          docker run --rm --user jenkins "${image}" cmake --version
+          docker run --rm --user jenkins "${image}" git --version
+
+      - name: Report image size
+        if: always()
+        run: |
+          docker images "ats/${{ matrix.image }}"
+          df -h /
