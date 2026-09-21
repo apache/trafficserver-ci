@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM debian:12
+FROM debian:13
 
 RUN <<EOF /bin/bash
   set -ex
@@ -12,13 +12,31 @@ RUN <<EOF /bin/bash
     cmake ninja-build
 
   apt-get -y install libssl-dev libexpat1-dev \
-    libpcre2-dev libpcre3-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
+    libpcre2-dev libcap-dev libhwloc-dev libunwind8 libunwind-dev zlib1g-dev \
     libmaxminddb-dev libjemalloc-dev libluajit-5.1-dev liblzma-dev \
     libhiredis-dev libncurses-dev libgeoip-dev libmagick++-dev \
     libcjose-dev libcjose0 libjansson-dev libzstd-dev liblz4-dev
 
   apt-get -y autoremove
   apt-get -y clean
+EOF
+
+# Older ATS branches require PCRE1, which Debian 13 no longer packages.
+RUN <<EOF
+  set -eux
+
+  cd /tmp
+  wget -O pcre-8.45.tar.gz https://downloads.sourceforge.net/project/pcre/pcre/8.45/pcre-8.45.tar.gz
+  echo "4e6ce03e0336e8b4a3d6c2b70b1c5e18590a5673a98186da90d4f33c23defc09  pcre-8.45.tar.gz" | sha256sum -c -
+  tar -xzf pcre-8.45.tar.gz
+  cd pcre-8.45
+  ./configure --prefix=/usr/local --enable-jit --enable-utf --enable-unicode-properties
+  make -j$(nproc)
+  make check
+  make install
+  ldconfig
+  cd /tmp
+  rm -rf pcre-8.45 pcre-8.45.tar.gz
 EOF
 
 # Install nuraft for the stek_share plugin. Distros, unfortunately, do not

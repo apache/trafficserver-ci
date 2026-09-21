@@ -1,4 +1,4 @@
-FROM rockylinux:8
+FROM rockylinux/rockylinux:8
 
 #-------------------------------------------------------------------------------
 # Install the various system packages we use.

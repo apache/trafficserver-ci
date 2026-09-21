@@ -1,19 +1,26 @@
-FROM rockylinux/rockylinux:9
+FROM amazonlinux:2023
 
 RUN <<EOF
   set -e
-  dnf -y install epel-release dnf-plugins-core
-  dnf config-manager --set-enabled crb
-  dnf install -y https://rpms.remirepo.net/enterprise/remi-release-9.rpm
-  dnf repolist
+  # SPAL (Supplementary Packages for Amazon Linux) is AWS's rebuild of EPEL9 for
+  # AL2023. It is load-bearing here: ccache, GeoIP-devel and libgsasl-devel
+  # below are not in the AL2023 core repository and resolve only from SPAL.
+  #
+  # N.B: SPAL packages are not covered by AWS Support Plans and get no AWS CVE
+  # tracking; they inherit fixes from upstream EPEL9 only.
+  #
+  # SPAL needs system-release >= 2023.9.20251117, so update before installing
+  # spal-release rather than after.
   dnf -y update
+  dnf -y install spal-release dnf-plugins-core
+  dnf repolist
 
   # Compilers
   dnf -y install \
     ccache make pkgconfig bison flex gcc-c++ clang cmake ninja-build \
     autoconf automake libtool \
     sudo git rpm-build file wget openssl hwloc nghttp2 libnghttp2-devel \
-    cargo go-toolset llvm-toolset
+    cargo llvm
 
   # Devel packages that ATS needs.
   #
@@ -28,16 +35,29 @@ RUN <<EOF
     perl-URI perl-IPC-Cmd perl-Pod-Html perl-FindBin \
     curl tcl-devel java libzstd-devel lz4-devel
 
-  # autest stuff
+  # autest stuff.
+  #
+  # N.B: No python3-gunicorn, which AL2023 does not package. That is fine: the
+  # autests pull gunicorn in through pipenv from tests/pyproject.toml, where the
+  # distro packages are only ever a convenience.
   dnf -y install \
     python3 httpd-tools procps-ng nmap-ncat python3-pip \
-    python3-gunicorn python3-requests python3-devel python3-psutil telnet golang
+    python3-requests python3-devel python3-psutil telnet golang
 EOF
 
 RUN <<EOF
   set -e
-  pip3 install --upgrade pip
-  pip3 install pipenv httpbin
+  # AL2023 marks the system Python environment as externally managed (PEP 668),
+  # so a bare `pip install` is refused. Passing --prefix opts out of that check
+  # and puts the console scripts in /usr/local/bin and the modules in
+  # /usr/local/lib/python3.9/site-packages, both of which are already on the
+  # default PATH and sys.path. That is the same place a plain `pip3 install`
+  # lands on the Fedora and Rocky images.
+  #
+  # Do not switch this to --user or --target. Both need PATH and PYTHONPATH
+  # fixups that the Jenkins pipelines do not perform, and a global PYTHONPATH
+  # would additionally leak these packages into the virtualenvs pipenv creates.
+  pip install --prefix=/usr/local pipenv httpbin
   export XDG_BIN_HOME=/opt/bin
   curl -LsSf https://astral.sh/uv/install.sh | sh
 EOF
@@ -67,44 +87,38 @@ RUN <<EOF
     libpsl-devel libgsasl-devel libidn-devel openldap-devel
 EOF
 
-# go and rust will be installed by build_h3_tools.
-RUN dnf remove -y golang rust
-RUN dnf install -y cargo
-ARG h3_tools_dir=/root/build_h3_tools
-RUN mkdir -p ${h3_tools_dir}
-COPY /build_h3_tools.sh ${h3_tools_dir}/build_h3_tools.sh
-# This will install OpenSSL QUIC and related tools in /opt.
-RUN <<EOF
-  set -e
-  cd ${h3_tools_dir}
-  bash ${h3_tools_dir}/build_h3_tools.sh
-
-  # Removing the build dir is crucial to keeping the Docker image size
-  # reasonable.
-  rm -rf ${h3_tools_dir} /root/.rustup
-EOF
-
 #-------------------------------------------------------------------------------
 # Various CI Job and Test Requirements.
 #-------------------------------------------------------------------------------
 
 # Autests require some go applications.
+#
+# N.B: On the other images /opt/go is the Go toolchain that build_h3_tools.sh
+# unpacks there. This image does not run that script, so /opt/go/bin holds just
+# the built binaries and the toolchain is the distro's golang in /usr/bin.
+# Exporting GOBIN puts `go install` output straight into /opt/go/bin, which is
+# the directory the pipelines put on PATH.
 RUN <<EOF
   set -e
+  mkdir -p /opt/go/bin
+  chmod -R 755 /opt/go
   echo 'export PATH=$PATH:/opt/go/bin' | tee -a /etc/profile.d/go.sh
   echo 'export GOBIN=/opt/go/bin' | tee -a /etc/profile.d/go.sh
 
-  /opt/go/bin/go install github.com/summerwind/h2spec/cmd/h2spec@latest
-  cp /root/go/bin/h2spec /opt/go/bin/
-
-  /opt/go/bin/go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.6.0
-  cp /root/go/bin/go-httpbin /opt/go/bin/
+  export GOBIN=/opt/go/bin
+  go install github.com/summerwind/h2spec/cmd/h2spec@latest
+  go install github.com/mccutchen/go-httpbin/v2/cmd/go-httpbin@v2.6.0
 EOF
 
 RUN update-crypto-policies --set LEGACY
 
 # Install nuraft for the stek_share plugin. Distros, unfortunately, do not
 # package these, so this has to be built by hand.
+#
+# N.B: No -DOPENSSL_* flags here, unlike the Rocky and Ubuntu images. There is
+# no /opt/openssl-quic on this image to point them at, so NuRaft links against
+# the system OpenSSL that cmake's FindOpenSSL locates, which is the only OpenSSL
+# present anyway.
 RUN <<EOF
   set -e
 
@@ -112,21 +126,10 @@ RUN <<EOF
   cd NuRaft
   ./prepare.sh
 
-  OPENSSL_PREFIX=/opt/openssl-quic
-  if [ -d "${OPENSSL_PREFIX}/lib" ]; then
-    OPENSSL_LIB="${OPENSSL_PREFIX}/lib"
-  elif [ -d "${OPENSSL_PREFIX}/lib64" ]; then
-    OPENSSL_LIB="${OPENSSL_PREFIX}/lib64"
-  else
-    echo "Could not find the OpenSSL install library directory."
-    exit 1
-  fi
   cmake \
     -B build \
     -G Ninja \
-    -DCMAKE_INSTALL_PREFIX=/opt/ \
-    -DOPENSSL_LIBRARY_PATH=${OPENSSL_LIB} \
-    -DOPENSSL_INCLUDE_PATH=${OPENSSL_PREFIX}/include
+    -DCMAKE_INSTALL_PREFIX=/opt/
   cmake --build build
   cmake --install build
   cd ../
@@ -167,10 +170,11 @@ RUN <<EOF
   rm -rf ${lcov_build_dir}
 EOF
 
-# Install ABI checking tools.
-RUN dnf install -y ctags elfutils-libelf-devel wdiff
-COPY /install_abi_tools.sh /root/install_abi_tools.sh
-RUN bash /root/install_abi_tools.sh
+# N.B: No ABI checking tools on this image, unlike the Fedora and Rocky ones.
+# ABI is tracked there, which is reasonable coverage for Amazon Linux too. If an
+# ABI job is ever pointed here, note that ABI Tracker needs wdiff by way of
+# PkgDiff, and wdiff is in neither AL2023 core nor SPAL, so it would have to be
+# built from source.
 
 # Install some tools to test out of source builds.
 RUN <<EOF
@@ -217,8 +221,6 @@ EOF
 
 RUN <<EOF
   set -e
-  # reinstall openssl-devel
-  dnf install -y openssl-devel
   # Keep this at the end to clean up the yum cache to reduce the image file size.
   dnf clean all
 EOF
