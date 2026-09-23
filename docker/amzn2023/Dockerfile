@@ -115,12 +115,12 @@ RUN update-crypto-policies --set LEGACY
 # Install nuraft for the stek_share plugin. Distros, unfortunately, do not
 # package these, so this has to be built by hand.
 #
-# N.B: No -DOPENSSL_* flags here, unlike the Rocky and Ubuntu images. There is
-# no /opt/openssl-quic on this image to point them at, so NuRaft links against
-# the system OpenSSL that cmake's FindOpenSSL locates, which is the only OpenSSL
-# present anyway.
+# NuRaft requests static OpenSSL, but openssl-devel provides shared libraries.
+# Select those explicitly so NuRaft can find the system OpenSSL.
 RUN <<EOF
   set -e
+
+  OPENSSL_LIBDIR=$(pkg-config --variable=libdir openssl)
 
   git clone https://github.com/eBay/NuRaft.git
   cd NuRaft
@@ -129,7 +129,10 @@ RUN <<EOF
   cmake \
     -B build \
     -G Ninja \
-    -DCMAKE_INSTALL_PREFIX=/opt/
+    -DCMAKE_INSTALL_PREFIX=/opt/ \
+    -DOPENSSL_SSL_LIBRARY=${OPENSSL_LIBDIR}/libssl.so \
+    -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_LIBDIR}/libcrypto.so \
+    -DOPENSSL_INCLUDE_DIR=/usr/include
   cmake --build build
   cmake --install build
   cd ../
