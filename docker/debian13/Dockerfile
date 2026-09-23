@@ -41,8 +41,12 @@ EOF
 
 # Install nuraft for the stek_share plugin. Distros, unfortunately, do not
 # package these, so this has to be built by hand.
+# NuRaft requests static OpenSSL, whose dependencies on Debian 13 include
+# non-PIC libz.a. Use shared OpenSSL to allow linking libnuraft.so on amd64.
 RUN <<EOF
   set -e
+
+  OPENSSL_LIBDIR=$(pkg-config --variable=libdir openssl)
 
   git clone https://github.com/eBay/NuRaft.git
   cd NuRaft
@@ -51,7 +55,10 @@ RUN <<EOF
   cmake \
     -B build \
     -G Ninja \
-    -DCMAKE_INSTALL_PREFIX=/opt/
+    -DCMAKE_INSTALL_PREFIX=/opt/ \
+    -DOPENSSL_SSL_LIBRARY=${OPENSSL_LIBDIR}/libssl.so \
+    -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_LIBDIR}/libcrypto.so \
+    -DOPENSSL_INCLUDE_DIR=/usr/include
   cmake --build build
   cmake --install build
   cd ../
