@@ -320,4 +320,5 @@ RUN <<EOF
   rm -rf pcre-8.45 pcre-8.45.tar.gz
 EOF
 
+ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
 ENV PATH="$PATH:/opt/bin"
