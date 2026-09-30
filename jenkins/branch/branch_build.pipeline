@@ -118,6 +118,12 @@ def shaForBranch(url, branch) {
 pipeline {
 	agent none
 
+	// A run whose child build never reports back, as after a controller restart, would
+	// otherwise hold this job's only slot for weeks and block every later branch build.
+	options {
+		timeout(time: 12, unit: 'HOURS')
+	}
+
 	stages {
 		stage('Initialization') {
 			agent { label 'master' }
