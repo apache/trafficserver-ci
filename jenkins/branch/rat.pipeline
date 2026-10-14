@@ -45,7 +45,13 @@ pipeline {
 							branch = '*/' + env.GITHUB_BRANCH
 						}
 
+						int attempt = 0
 						retry(3) {
+							if (attempt > 0) {
+								// Spread retries out so jobs that failed together do not come back together.
+								sleep(time: 30 * attempt + (int) (Math.random() * 60), unit: 'SECONDS')
+							}
+							attempt++
 							timeout(time: 5, unit: 'MINUTES') {
 								checkout([$class: 'GitSCM',
 									branches: [[name: branch]],
