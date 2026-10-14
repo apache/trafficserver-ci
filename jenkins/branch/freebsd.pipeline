@@ -20,11 +20,11 @@ pipeline {
 
 						checkout([$class: 'GitSCM',
 							branches: [[name: branch]],
-							userRemoteConfigs: [[url: env.GITHUB_URL]],
+							userRemoteConfigs: [[url: env.GITHUB_URL, refspec: "+refs/heads/${env.GITHUB_BRANCH}:refs/remotes/origin/${env.GITHUB_BRANCH}"]],
 							// Branch builds normally checkout the current branch tip. If a manually
 							// requested SHA is older than this shallow depth, checkout should fail fast
 							// instead of falling back to a large full-history fetch.
-							extensions: [[$class: 'CloneOption', shallow: true, depth: 1000, noTags: true, timeout: 10]],
+							extensions: [[$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 10]],
 						])
 					}
 				}
