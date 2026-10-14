@@ -18,14 +18,19 @@ pipeline {
 							branch = '*/' + env.GITHUB_BRANCH
 						}
 
-						checkout([$class: 'GitSCM',
-							branches: [[name: branch]],
-							userRemoteConfigs: [[url: env.GITHUB_URL, refspec: "+refs/heads/${env.GITHUB_BRANCH}:refs/remotes/origin/${env.GITHUB_BRANCH}"]],
-							// Branch builds normally checkout the current branch tip. If a manually
-							// requested SHA is older than this shallow depth, checkout should fail fast
-							// instead of falling back to a large full-history fetch.
-							extensions: [[$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 10]],
-						])
+						retry(3) {
+							timeout(time: 5, unit: 'MINUTES') {
+								checkout([$class: 'GitSCM',
+									branches: [[name: branch]],
+									userRemoteConfigs: [[url: env.GITHUB_URL, refspec: "+refs/heads/${env.GITHUB_BRANCH}:refs/remotes/origin/${env.GITHUB_BRANCH}"]],
+									// Branch builds normally checkout the current branch tip. If a manually
+									// requested SHA is older than this shallow depth, checkout should fail fast
+									// instead of falling back to a large full-history fetch.
+									// Only this branch is fetched, so a requested SHA must also be on it.
+									extensions: [[$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 10]],
+								])
+							}
+						}
 					}
 				}
 				echo 'Finished Clone'
