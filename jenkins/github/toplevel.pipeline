@@ -1,5 +1,194 @@
 TOP_JOB_DESC = "Builds:\\n"
 
+// A PR's CI tier is the most demanding tier any of its changed files needs.
+// Tiers, from least to most work:
+//   none   - no checks run; every required status is posted as passing.
+//   quick  - only the Quick Checks (Format, RAT, Docs) run.
+//   urtest - the Quick Checks plus the end-to-end (AuTest, later UrTest) tests run.
+//   full   - everything runs.
+// A changed file that matches none of these patterns needs the full tier.
+TIER_RANK = [none: 0, quick: 1, urtest: 2, full: 3]
+TIER_PATTERNS = [
+	none: [
+		/\.asf\.yaml/,
+	],
+	quick: [
+		/doc\/.*/,
+		/\.github\/.*/,
+		/[^\/]+\.md/,
+		/\.claude\/.*/,
+		/\.cursor\/.*/,
+		/\.vscode\/.*/,
+		/\.vimrc/,
+		/emacs-style(\/.*)?/,
+		/\.git-blame-ignore-revs/,
+		/\.gitignore/,
+		/STATUS/,
+	],
+	urtest: [
+		// End-to-end test content, excluding the test plugins that CMake compiles.
+		// uranium_tests replaces gold_tests once the AuTest to Uranium conversion lands.
+		/tests\/(gold_tests|uranium_tests)\/(?!.*(\.(c|cc|cpp|h|hpp)|CMakeLists\.txt)$).*/,
+	],
+]
+
+// The minimum tier at which each stage runs. The keys are the GitHub status
+// contexts the stages post, except AuTest, which posts one context per shard.
+STAGE_TIERS = [
+	'Format': 'quick',
+	'RAT': 'quick',
+	'Docs': 'quick',
+	'Ubuntu': 'full',
+	'Fedora': 'full',
+	'Debian': 'full',
+	'Rocky': 'full',
+	'CentOS': 'full',
+	'OSX': 'full',
+	'Clang-Analyzer': 'full',
+	'AuTest': 'urtest',
+]
+
+CI_TIER = 'full'
+
+@NonCPS
+String tierForFile(String path) {
+	for (String tier : ['none', 'quick', 'urtest']) {
+		for (String pattern : TIER_PATTERNS[tier]) {
+			if (path ==~ pattern) {
+				return tier
+			}
+		}
+	}
+	return 'full'
+}
+
+@NonCPS
+String tierForFiles(List<String> files) {
+	if (files.isEmpty()) {
+		// Be safe and run everything if we couldn't tell what changed.
+		return 'full'
+	}
+	String result = 'none'
+	for (String path : files) {
+		String tier = tierForFile(path)
+		if (TIER_RANK[tier] > TIER_RANK[result]) {
+			result = tier
+		}
+	}
+	return result
+}
+
+boolean shouldRun(String stage) {
+	return TIER_RANK[CI_TIER] >= TIER_RANK[STAGE_TIERS[stage]]
+}
+
+// The required status contexts that this PR's tier doesn't run.
+@NonCPS
+List<String> skippedContexts() {
+	List<String> contexts = []
+	for (String stage : STAGE_TIERS.keySet()) {
+		if (TIER_RANK[CI_TIER] >= TIER_RANK[STAGE_TIERS[stage]]) {
+			continue
+		}
+		if (stage == 'AuTest' && env.AUTEST_SHARDS) {
+			int nshards = env.AUTEST_SHARDS as int
+			for (int i = 0; i < nshards; i++) {
+				contexts << "AuTest ${i}of${nshards}".toString()
+			}
+		} else {
+			contexts << stage
+		}
+	}
+	return contexts
+}
+
+@NonCPS
+List<String> nonEmptyLines(String text) {
+	List<String> lines = []
+	for (String line : text.split('\n')) {
+		if (line.trim()) {
+			lines << line.trim()
+		}
+	}
+	return lines
+}
+
+// Returns the files the PR changes relative to its target branch, or null if
+// they can't be determined.
+List<String> changedFiles() {
+	List<String> files = null
+	withEnv(["MIRROR_URL=${githubUrl()}"]) {
+		// GitHub may still be recomputing the merge ref for a just-pushed head, so retry briefly.
+		for (int attempt = 1; attempt <= 3 && files == null; attempt++) {
+			try {
+				def out = sh(
+					label: 'List files changed by the PR',
+					returnStdout: true,
+					script: '''#!/bin/bash
+set -e
+set -o pipefail
+export GIT_TERMINAL_PROMPT=0
+
+tmp=$(mktemp -d)
+trap 'rm -rf "${tmp}"' EXIT
+git -C "${tmp}" init -q
+# Commits and trees are enough to list changed paths, so skip the file contents.
+git -C "${tmp}" fetch -q --no-tags --depth=2 --filter=blob:none "${MIRROR_URL}" "refs/pull/${GITHUB_PR_NUMBER}/merge"
+
+# The merge ref's second parent is the PR head. Make sure it is the head we are testing.
+merge_head=$(git -C "${tmp}" rev-parse FETCH_HEAD^2)
+if [ "${merge_head}" != "${GITHUB_PR_HEAD_SHA}" ]; then
+	echo "Merge ref is for head ${merge_head}, expected ${GITHUB_PR_HEAD_SHA}" >&2
+	exit 1
+fi
+
+# --no-renames lists both sides of a rename, so a file moved out of doc/ counts as a code change.
+git -C "${tmp}" diff --no-renames --name-only FETCH_HEAD^1 FETCH_HEAD
+'''
+				)
+				files = nonEmptyLines(out)
+			} catch (err) {
+				echo "Attempt ${attempt} to list changed files failed: ${err}"
+				if (attempt < 3) {
+					sleep 10
+				}
+			}
+		}
+	}
+	return files
+}
+
+void determineCiTier() {
+	String reason
+	if (GITHUB_PR_COMMENT_BODY_MATCH != '') {
+		// Run whatever the comment asked for.
+		CI_TIER = 'full'
+		reason = 'explicit CI request comment'
+	} else {
+		List<String> files = changedFiles()
+		if (files == null) {
+			CI_TIER = 'full'
+			reason = 'could not determine changed files'
+		} else {
+			echo "Changed files:\n" + files.join('\n')
+			CI_TIER = tierForFiles(files)
+			reason = "${files.size()} changed file(s)"
+		}
+	}
+	echo "CI tier: ${CI_TIER} (${reason})"
+	currentBuild.description = "CI tier: ${CI_TIER} (${reason})<br>Builds:<br>"
+}
+
+// Post a passing status for each required check that this PR's tier doesn't need.
+void postSkippedStatuses() {
+	List<String> contexts = skippedContexts()
+	String message = "Skipped: not needed for a CI tier '${CI_TIER}' change"
+	for (int i = 0; i < contexts.size(); i++) {
+		echo "Skipping ${contexts[i]}"
+		setGitHubPullRequestStatus(context: contexts[i], message: message, state: 'SUCCESS')
+	}
+}
+
 String githubUrl() {
 	return env.GITHUB_URL ?: GITHUB_REPO_GIT_URL.replace("git://", "https://")
 }
@@ -88,6 +277,18 @@ pipeline {
 			steps {
 				script {
 					waitForMirrorUpdate()
+					determineCiTier()
+				}
+			}
+		}
+
+		stage('Skip Unneeded Checks') {
+			when {
+				expression { CI_TIER != 'full' }
+			}
+			steps {
+				script {
+					postSkippedStatuses()
 				}
 			}
 		}
@@ -96,6 +297,7 @@ pipeline {
 			parallel {
 				stage('Format') {
 					when {
+						expression { shouldRun('Format') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*format.*/ }
@@ -113,6 +315,7 @@ pipeline {
 				}
 				stage('RAT') {
 					when {
+						expression { shouldRun('RAT') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*rat.*/ }
@@ -129,6 +332,7 @@ pipeline {
 				}
 				stage('Docs') {
 					when {
+						expression { shouldRun('Docs') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*docs.*/ }
@@ -150,6 +354,7 @@ pipeline {
 			parallel {
 				stage('Ubuntu Build') {
 					when {
+						expression { shouldRun('Ubuntu') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*ubuntu.*/ }
@@ -166,6 +371,7 @@ pipeline {
 				}
 				stage('Fedora Build') {
 					when {
+						expression { shouldRun('Fedora') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*fedora.*/ }
@@ -182,6 +388,7 @@ pipeline {
 				}
 				stage('Debian Build') {
 					when {
+						expression { shouldRun('Debian') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*debian.*/ }
@@ -200,6 +407,7 @@ pipeline {
 
 				stage('Rocky Build') {
 					when {
+						expression { shouldRun('Rocky') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*rocky.*/ }
@@ -217,6 +425,7 @@ pipeline {
 
 				stage('CentOS Build') {
 					when {
+						expression { shouldRun('CentOS') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*centos.*/ }
@@ -234,6 +443,7 @@ pipeline {
 
 				stage('OSX Build') {
 					when {
+						expression { shouldRun('OSX') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*osx.*/ }
@@ -266,6 +476,7 @@ pipeline {
 //				}
 				stage('Clang-Analyzer') {
 					when {
+						expression { shouldRun('Clang-Analyzer') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*clang-analyzer.*/ }
@@ -282,6 +493,7 @@ pipeline {
 				}
 				stage('AuTest') {
 					when {
+						expression { shouldRun('AuTest') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
 							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*autest.*/ }
@@ -300,14 +512,27 @@ pipeline {
 									if (0 <= index && index < nshards) {
 										String shard = index + "of" + env.AUTEST_SHARDS
 										result = buildJob('AuTest ' + shard, jobpath, shard)
+										if (result == 'FAILURE') {
+											error('AuTest ' + shard + ' failed')
+										}
 									}
 								} else {
 									def jobs = [:]
+									def results = [:]
 									for (index = 0 ; index < nshards ; index++) {
 										String shard = index + "of" + env.AUTEST_SHARDS
-										jobs[shard] = { buildJob('AuTest ' + shard, jobpath, shard) }
+										jobs[shard] = { results[shard] = buildJob('AuTest ' + shard, jobpath, shard) }
 									}
 									parallel jobs
+									def failed = []
+									for (String shard : results.keySet() as List) {
+										if (results[shard] == 'FAILURE') {
+											failed << shard
+										}
+									}
+									if (failed) {
+										error('AuTest failed: ' + failed.join(', '))
+									}
 								}
 							} else {
 								result = buildJob('AuTest', jobpath)
