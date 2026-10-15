@@ -60,7 +60,7 @@ pipeline {
 									// requested SHA is older than this shallow depth, checkout should fail fast
 									// instead of falling back to a large full-history fetch.
 									// Only this branch is fetched, so a requested SHA must also be on it.
-									extensions: [[$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 10]]
+									extensions: [[$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 4]]
 								])
 							}
 						}
