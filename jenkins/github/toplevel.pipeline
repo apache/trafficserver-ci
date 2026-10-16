@@ -1,3 +1,5 @@
+import groovy.transform.Field
+
 TOP_JOB_DESC = "Builds:\\n"
 
 // A PR's CI tier is the most demanding tier any of its changed files needs.
@@ -48,7 +50,8 @@ STAGE_TIERS = [
 	'AuTest': 'urtest',
 ]
 
-CI_TIER = 'full'
+// A script field, since determineCiTier() sets it and the stages read it.
+@Field String CI_TIER = 'full'
 
 @NonCPS
 String tierForFile(String path) {
@@ -132,8 +135,7 @@ export GIT_TERMINAL_PROMPT=0
 tmp=$(mktemp -d)
 trap 'rm -rf "${tmp}"' EXIT
 git -C "${tmp}" init -q
-# Commits and trees are enough to list changed paths, so skip the file contents.
-git -C "${tmp}" fetch -q --no-tags --depth=2 --filter=blob:none "${MIRROR_URL}" "refs/pull/${GITHUB_PR_NUMBER}/merge"
+git -C "${tmp}" fetch -q --no-tags --depth=2 "${MIRROR_URL}" "refs/pull/${GITHUB_PR_NUMBER}/merge"
 
 # The merge ref's second parent is the PR head. Make sure it is the head we are testing.
 merge_head=$(git -C "${tmp}" rev-parse FETCH_HEAD^2)
