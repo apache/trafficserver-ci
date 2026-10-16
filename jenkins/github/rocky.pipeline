@@ -16,30 +16,42 @@ pipeline {
             steps {
                 dir('src') {
                     echo "${sha1}"
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: sha1]],
-                        extensions: [
-                            // Keep this depth high enough for PreBuildMerge to find the merge base
-                            // between the PR head and target branch. If it is too low, checkout will
-                            // fail during the local merge with shallow-history / missing-ancestor errors.
-                            [$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 20],
-                            // We have to set an identity for the merge step because Git requires
-                            // the user.name and user.email to be set to do a merge.
-                            [$class: "UserIdentity",
-                                name: "ATS CI User",
-                                email: "noreply@trafficserver.apache.org"
-                            ],
-                            [$class: "PreBuildMerge",
-                                options: [
-                                    mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
-                                    fastForwardMode: "NO_FF",
-                                    mergeRemote: "origin",
-                                    mergeStrategy: "DEFAULT"
-                                ]
-                            ],
-                        ],
-                        userRemoteConfigs: [[url: github_url,
-                            refspec: "+refs/heads/${GITHUB_PR_TARGET_BRANCH}:refs/remotes/origin/${GITHUB_PR_TARGET_BRANCH} +refs/pull/${GITHUB_PR_NUMBER}/head:refs/remotes/origin/pr/${GITHUB_PR_NUMBER}/head +refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin/pr/${GITHUB_PR_NUMBER}/merge"]]])
+                    script {
+                        int attempt = 0
+                        retry(3) {
+                            if (attempt > 0) {
+                                // Spread retries out so jobs that failed together do not come back together.
+                                sleep(time: 30 * attempt + (int) (Math.random() * 60), unit: 'SECONDS')
+                            }
+                            attempt++
+                            timeout(time: 5, unit: 'MINUTES') {
+                                checkout([$class: 'GitSCM',
+                                    branches: [[name: sha1]],
+                                    extensions: [
+                                        // Keep this depth high enough for PreBuildMerge to find the merge base
+                                        // between the PR head and target branch. If it is too low, checkout will
+                                        // fail during the local merge with shallow-history / missing-ancestor errors.
+                                        [$class: 'CloneOption', honorRefspec: true, shallow: true, depth: 1000, noTags: true, timeout: 4],
+                                        // We have to set an identity for the merge step because Git requires
+                                        // the user.name and user.email to be set to do a merge.
+                                        [$class: "UserIdentity",
+                                            name: "ATS CI User",
+                                            email: "noreply@trafficserver.apache.org"
+                                        ],
+                                        [$class: "PreBuildMerge",
+                                            options: [
+                                                mergeTarget: "${GITHUB_PR_TARGET_BRANCH}",
+                                                fastForwardMode: "NO_FF",
+                                                mergeRemote: "origin",
+                                                mergeStrategy: "DEFAULT"
+                                            ]
+                                        ],
+                                    ],
+                                    userRemoteConfigs: [[url: github_url,
+                                        refspec: "+refs/heads/${GITHUB_PR_TARGET_BRANCH}:refs/remotes/origin/${GITHUB_PR_TARGET_BRANCH} +refs/pull/${GITHUB_PR_NUMBER}/head:refs/remotes/origin/pr/${GITHUB_PR_NUMBER}/head +refs/pull/${GITHUB_PR_NUMBER}/merge:refs/remotes/origin/pr/${GITHUB_PR_NUMBER}/merge"]]])
+                            }
+                        }
+                    }
                     sh '''#!/bin/bash
                             set -x
 
