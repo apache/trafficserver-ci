@@ -95,6 +95,16 @@ pipeline {
 
 						NPROC=$(nproc)
 
+						if [ -f tests/urtest.sh ]; then
+							autest_files=$(find tests -type f -name '*.test.py' -print)
+							if [ -n "${autest_files}" ]; then
+								echo "ERROR: Found unconverted AuTest files that will not run because this branch uses pytest." >&2
+								echo "Convert these *.test.py files to Uranium tests:" >&2
+								printf '%s\n' "${autest_files}" >&2
+								exit 1
+							fi
+						fi
+
 						if [ -d cmake ]
 						then
 							echo "Building with CMake"	
@@ -103,14 +113,7 @@ pipeline {
 							[ -f "${presetpath}" ] && /bin/cp -f "${presetpath}" .
 
 							cmake_args=()
-							if [ -x tests/urtest.sh ]; then
-								autest_files=$(find tests -type f -name '*.test.py' -print)
-								if [ -n "${autest_files}" ]; then
-									echo "ERROR: Found unconverted AuTest files that will not run because this branch uses pytest." >&2
-									echo "Convert these *.test.py files to Uranium tests:" >&2
-									printf '%s\n' "${autest_files}" >&2
-									exit 1
-								fi
+							if [ -f tests/urtest.sh ]; then
 								cmake_args+=("-DURTEST_SANDBOX=/tmp/sandbox")
 							fi
 							cmake -B build --preset branch-coverage "${cmake_args[@]}"
@@ -206,9 +209,15 @@ pipeline {
 						export PATH=/opt/bin:${PATH}
 						export PATH=/opt/go/bin:${PATH}
 
-						if [ -x ../build/tests/urtest.sh ]; then
-							cd ../build/tests
-							./urtest.sh --no-run-in-docker -v
+						urtest_directory=""
+						if [ -f ../build/tests/urtest.sh ]; then
+							urtest_directory="../build/tests"
+						elif [ ! -d ../cmake ] && [ -f ./urtest.sh ]; then
+							urtest_directory="."
+						fi
+						if [ -n "${urtest_directory}" ]; then
+							cd "${urtest_directory}"
+							ATS_URTEST_SANDBOX=/tmp/sandbox bash ./urtest.sh --no-run-in-docker -v
 						else
 							autest_args=""
 							if [ -d ../cmake ]

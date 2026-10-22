@@ -91,6 +91,16 @@ echo "CURL: $CURL"
 set -x
 
 # Configure
+if [ -f tests/urtest.sh ]; then
+    autest_files=$(find tests -type f -name '*.test.py' -print)
+    if [ -n "${autest_files}" ]; then
+        echo "ERROR: Found unconverted AuTest files that will not run because this branch uses pytest." >&2
+        echo "Convert these *.test.py files to Uranium tests:" >&2
+        printf '%s\n' "${autest_files}" >&2
+        exit 1
+    fi
+fi
+
 autoreconf -if
 ./configure \
     --prefix="${INSTALL}" \
@@ -129,13 +139,21 @@ if [ "x${pv_version}" != "x" ]; then
   PROXY_VERIFIER_ARGUMENT="--proxy-verifier-bin ${PROXY_VERIFIER_BIN}"
 fi
 
-${AUTEST} \
-    -D ./tests/gold_tests \
-    --sandbox "$SANDBOX" \
-    --ats-bin "${INSTALL}/bin" \
-    $PROXY_VERIFIER_ARGUMENT \
-    $AUTEST_DEBUG \
-    $AUTEST_VERBOSE
+if [ -f tests/urtest.sh ]; then
+    export PATH=/opt/bin:/opt/go/bin:${PATH}
+    if [ -n "${pv_version}" ] && [ -d "${PROXY_VERIFIER_BIN}" ]; then
+        export PROXY_VERIFIER_PATH="${PROXY_VERIFIER_BIN}"
+    fi
+    ATS_URTEST_SANDBOX="${SANDBOX}" bash tests/urtest.sh --no-run-in-docker -v -n 2
+else
+    ${AUTEST} \
+        -D ./tests/gold_tests \
+        --sandbox "$SANDBOX" \
+        --ats-bin "${INSTALL}/bin" \
+        $PROXY_VERIFIER_ARGUMENT \
+        $AUTEST_DEBUG \
+        $AUTEST_VERBOSE
+fi
 status=$?
 
 set +x
