@@ -73,7 +73,8 @@ class RunnerSelectionTest(unittest.TestCase):
         """
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "urtest.sh").write_text(
-            'printf "runner=%s sandbox=%s args=%s\\n" "$PWD" "$ATS_URTEST_SANDBOX" "$*"\n'
+            'printf "runner=%s sandbox=%s args=%s\\n" "$PWD" "${ATS_URTEST_SANDBOX-unset}" "$*"\n'
+            'bash -c \'printf "child_sandbox=%s\\n" "${ATS_URTEST_SANDBOX-unset}"\'\n'
             f"exit {status}\n")
 
     def run_shell(self, script: str,
@@ -90,7 +91,8 @@ class RunnerSelectionTest(unittest.TestCase):
             text=True,
             env={
                 **os.environ, "SANDBOX": "/tmp/test-sandbox",
-                "pv_version": ""
+                "pv_version": "",
+                "ATS_URTEST_SANDBOX": "/tmp/inherited-sandbox"
             },
         )
 
@@ -131,10 +133,12 @@ class RunnerSelectionTest(unittest.TestCase):
                         "set -e\ntest_failed=0\n" + fragment, self.tests)
                     self.assertEqual(result.returncode, 0, result.stderr)
                     if configured:
-                        self.assertIn(
-                            f"runner={directory} sandbox=/tmp/sandbox",
-                            result.stdout)
-                        self.assertIn("--no-run-in-docker -v", result.stdout)
+                        self.assertIn(f"runner={directory} sandbox=unset",
+                                      result.stdout)
+                        self.assertIn("--sandbox=/tmp/sandbox", result.stdout)
+                        self.assertIn("--no-run-in-docker", result.stdout)
+                        self.assertIn(" -v", result.stdout)
+                        self.assertIn("child_sandbox=unset", result.stdout)
                         self.runner(directory, 7)
                         failed = self.run_shell(
                             "set -e\ntest_failed=0\n" + fragment +
@@ -180,7 +184,9 @@ class RunnerSelectionTest(unittest.TestCase):
         self.runner(self.tests)
         result = self.run_shell(prefix + invocation, self.source)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("sandbox=/tmp/test-sandbox", result.stdout)
+        self.assertIn("--sandbox=/tmp/test-sandbox", result.stdout)
+        self.assertIn("sandbox=unset", result.stdout)
+        self.assertIn("child_sandbox=unset", result.stdout)
         self.runner(self.tests, 7)
         self.assertEqual(
             self.run_shell(prefix + invocation, self.source).returncode, 7)

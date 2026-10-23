@@ -217,7 +217,7 @@ pipeline {
 						fi
 						if [ -n "${urtest_directory}" ]; then
 							cd "${urtest_directory}"
-							ATS_URTEST_SANDBOX=/tmp/sandbox bash ./urtest.sh --no-run-in-docker -v
+							env -u ATS_URTEST_SANDBOX bash ./urtest.sh --no-run-in-docker --sandbox=/tmp/sandbox -v
 						else
 							autest_args=""
 							if [ -d ../cmake ]
