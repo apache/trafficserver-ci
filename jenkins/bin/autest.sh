@@ -144,7 +144,7 @@ if [ -f tests/urtest.sh ]; then
     if [ -n "${pv_version}" ] && [ -d "${PROXY_VERIFIER_BIN}" ]; then
         export PROXY_VERIFIER_PATH="${PROXY_VERIFIER_BIN}"
     fi
-    ATS_URTEST_SANDBOX="${SANDBOX}" bash tests/urtest.sh --no-run-in-docker -v -n 2
+    env -u ATS_URTEST_SANDBOX bash tests/urtest.sh --no-run-in-docker --sandbox="${SANDBOX}" -v -n 2
 else
     ${AUTEST} \
         -D ./tests/gold_tests \
