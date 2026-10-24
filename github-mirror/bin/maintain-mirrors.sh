@@ -18,6 +18,11 @@ for repo in trafficserver trafficserver-ci; do
     exec 9>"${LOCK_ROOT}/${repo}.lock"
     flock -w "${LOCK_WAIT}" 9 || { echo "timed out waiting for ${repo} lock" >&2; exit 1; }
     echo "repacking ${repo_dir}" >&2
+    # This one off-peak full repack can afford more threads and delta window
+    # than the smart-http image allows each of its up to 16 concurrent
+    # upload-packs (pack.threads 1, pack.windowMemory 64m). The fallback
+    # container has no memory limit, and better deltas here shrink the single
+    # pack that every clone then reuses.
     "${GIT}" --git-dir="${repo_dir}" -c pack.threads=2 -c pack.windowMemory=128m \
       repack -a -d -b
     "${GIT}" --git-dir="${repo_dir}" commit-graph write --reachable --split=replace

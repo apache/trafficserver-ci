@@ -77,9 +77,9 @@ The normal controller process model is:
   safety-net timer (every 5 minutes, 2 minutes after boot) that runs
   docker-compose run --rm github-mirror-fallback
 
-/etc/cron.d/github-mirror-maintenance
-  nightly (09:30 controller time, UTC) repack via
-  bin/maintain-mirrors.sh in the github-mirror-fallback image
+/etc/systemd/system/github-mirror-maintenance.timer
+  nightly (09:30 UTC) repack that runs bin/maintain-mirrors.sh via
+  docker-compose run --rm github-mirror-fallback
 ```
 
 The webhook and fallback containers run as the host owner of the mirror
@@ -181,7 +181,9 @@ Thanks.
    - creates `/home/mirror/trafficserver-ci.git`;
    - configures both bare repos with `http.uploadpack=true` and
      `http.receivepack=false`;
-   - installs systemd boot/timer hooks;
+   - installs systemd boot/timer hooks, including the fallback refresh timer
+     and the nightly maintenance (repack) timer;
+   - removes the legacy `/etc/cron.d/github-mirror-maintenance` cron job;
    - links `/etc/default/git-daemon` to
      `/opt/github-mirror/config/git-daemon.default`;
    - builds the Compose images.
@@ -211,6 +213,7 @@ Thanks.
    ```bash
    sudo systemctl enable --now github-mirror.service
    sudo systemctl enable --now github-mirror-fallback.timer
+   sudo systemctl enable --now github-mirror-maintenance.timer
 
    cd /opt/github-mirror
    sudo docker-compose ps
@@ -251,18 +254,6 @@ Thanks.
    the 180 second no-activity timeout. Keep `hdr_rw_git.config` unless
    testing proves it interferes with smart Git POSTs. Do not change the docs
    httpd/container remaps.
-
-   Install the nightly maintenance cron job (the installer does not do this
-   yet):
-
-   ```bash
-   sudo tee /etc/cron.d/github-mirror-maintenance >/dev/null <<'CRON'
-   # Nightly git mirror repack (one pack + bitmap) for faster, lighter clones.
-   SHELL=/bin/bash
-   PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-   30 9 * * * root cd /opt/github-mirror && docker-compose run --rm github-mirror-fallback /opt/github-mirror/bin/maintain-mirrors.sh >>/var/log/github-mirror-maintenance.log 2>&1
-   CRON
-   ```
 
    Reload ATS:
 
@@ -346,12 +337,11 @@ cd /opt/github-mirror
 sudo docker-compose run --rm github-mirror-fallback
 ```
 
-Repack both mirrors now (the same job the nightly cron runs):
+Repack both mirrors now (the same job the nightly maintenance timer runs):
 
 ```bash
-cd /opt/github-mirror
-sudo docker-compose run --rm github-mirror-fallback \
-  /opt/github-mirror/bin/maintain-mirrors.sh
+sudo systemctl start github-mirror-maintenance.service
+sudo journalctl -u github-mirror-maintenance.service --since today
 ```
 
 Refresh one ATS PR:
@@ -377,7 +367,7 @@ Inspect services:
 
 ```bash
 sudo systemctl status github-mirror.service
-systemctl list-timers github-mirror-fallback.timer
+systemctl list-timers 'github-mirror-*'
 
 cd /opt/github-mirror
 sudo docker-compose ps
@@ -576,11 +566,12 @@ from GitHub again.
 2. Re-run or restart the affected Jenkins jobs.
 
 3. If the mirror should not keep updating while GitHub URLs are in use, stop
-   the Compose stack and fallback timer.
+   the Compose stack and the fallback and maintenance timers.
 
    ```bash
    sudo systemctl stop github-mirror.service
    sudo systemctl stop github-mirror-fallback.timer
+   sudo systemctl stop github-mirror-maintenance.timer
    ```
 
 Rollback does not require deleting `/opt/github-mirror` or `/home/mirror`.
@@ -695,6 +686,8 @@ The key files under that directory are:
 /opt/github-mirror/systemd/github-mirror.service
 /opt/github-mirror/systemd/github-mirror-fallback.service
 /opt/github-mirror/systemd/github-mirror-fallback.timer
+/opt/github-mirror/systemd/github-mirror-maintenance.service
+/opt/github-mirror/systemd/github-mirror-maintenance.timer
 /opt/github-mirror/webhook/Dockerfile
 ```
 
@@ -705,13 +698,8 @@ The installer creates these small OS integration files:
 /etc/systemd/system/github-mirror.service
 /etc/systemd/system/github-mirror-fallback.service
 /etc/systemd/system/github-mirror-fallback.timer
-```
-
-The nightly maintenance job is installed separately (see Controller Setup):
-
-```text
-/etc/cron.d/github-mirror-maintenance
-/var/log/github-mirror-maintenance.log
+/etc/systemd/system/github-mirror-maintenance.service
+/etc/systemd/system/github-mirror-maintenance.timer
 ```
 
 The local bare mirrors, and the `flock` files shared by `update-mirror.sh` and
@@ -755,5 +743,5 @@ Jenkins stores the `GITHUB_URL` and `quietPeriod` settings in job XML under:
 ```
 
 Check the GitHub PR top-level job and branch top-level job configs there after
-a rebuild. Steady-state mirror updates do not require a cron file; the only
-cron file is the nightly repack in `/etc/cron.d/github-mirror-maintenance`.
+a rebuild. The mirror does not use any cron files; scheduled work runs from
+the systemd timers above.

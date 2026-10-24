@@ -1,0 +1,12 @@
+[Unit]
+Description=ATS CI GitHub mirror nightly repack
+Documentation=file:@INSTALL_ROOT@/README.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@INSTALL_ROOT@
+ExecStart=/usr/bin/docker-compose run --rm github-mirror-fallback /opt/github-mirror/bin/maintain-mirrors.sh
+TimeoutStartSec=2h
+Nice=10
