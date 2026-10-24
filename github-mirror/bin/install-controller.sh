@@ -17,6 +17,7 @@ COMPOSE_ENV_FILE=${COMPOSE_ENV_FILE:-${INSTALL_ROOT}/.env}
 APT_INSTALL=${APT_INSTALL:-1}
 START_COMPOSE=${START_COMPOSE:-auto}
 START_FALLBACK_TIMER=${START_FALLBACK_TIMER:-1}
+START_MAINTENANCE_TIMER=${START_MAINTENANCE_TIMER:-1}
 INIT_MIRRORS=${INIT_MIRRORS:-1}
 BUILD_IMAGES=${BUILD_IMAGES:-1}
 
@@ -38,6 +39,8 @@ Environment:
   START_COMPOSE  auto, 1, or 0. Default: auto
   START_FALLBACK_TIMER
                  Enable/start the systemd fallback timer when set to 1. Default: 1
+  START_MAINTENANCE_TIMER
+                 Enable/start the nightly repack timer when set to 1. Default: 1
 EOF
 }
 
@@ -162,6 +165,9 @@ systemctl disable --now github-mirror-webhook.service >/dev/null 2>&1 || true
 systemctl disable --now github-mirror-smart-http.service >/dev/null 2>&1 || true
 rm -f /etc/systemd/system/github-mirror-webhook.service
 rm -f /etc/systemd/system/github-mirror-smart-http.service
+# The nightly repack used to be a hand-installed cron job; the systemd timer
+# below replaces it.
+rm -f /etc/cron.d/github-mirror-maintenance
 
 tmp_unit=$(mktemp)
 render_template "${INSTALL_ROOT}/systemd/github-mirror.service" "${tmp_unit}"
@@ -170,6 +176,10 @@ render_template "${INSTALL_ROOT}/systemd/github-mirror-fallback.service" "${tmp_
 install -o root -g root -m 0644 "${tmp_unit}" /etc/systemd/system/github-mirror-fallback.service
 render_template "${INSTALL_ROOT}/systemd/github-mirror-fallback.timer" "${tmp_unit}"
 install -o root -g root -m 0644 "${tmp_unit}" /etc/systemd/system/github-mirror-fallback.timer
+render_template "${INSTALL_ROOT}/systemd/github-mirror-maintenance.service" "${tmp_unit}"
+install -o root -g root -m 0644 "${tmp_unit}" /etc/systemd/system/github-mirror-maintenance.service
+render_template "${INSTALL_ROOT}/systemd/github-mirror-maintenance.timer" "${tmp_unit}"
+install -o root -g root -m 0644 "${tmp_unit}" /etc/systemd/system/github-mirror-maintenance.timer
 rm -f "${tmp_unit}"
 
 systemctl daemon-reload
@@ -190,6 +200,11 @@ if [ "${START_FALLBACK_TIMER}" = "1" ]; then
   systemctl enable --now github-mirror-fallback.timer
 else
   systemctl disable --now github-mirror-fallback.timer >/dev/null 2>&1 || true
+fi
+if [ "${START_MAINTENANCE_TIMER}" = "1" ]; then
+  systemctl enable --now github-mirror-maintenance.timer
+else
+  systemctl disable --now github-mirror-maintenance.timer >/dev/null 2>&1 || true
 fi
 
 if [ "${START_COMPOSE}" = "1" ] ||

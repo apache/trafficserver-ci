@@ -67,17 +67,38 @@ The normal controller process model is:
 /opt/github-mirror/docker-compose.yml
   github-mirror              webhook receiver on 127.0.0.1:9419
   github-mirror-smart-http   smart Git HTTP on 127.0.0.1:9417
-  github-mirror-fallback     manual/timer mirror refresh helper
+  github-mirror-fallback     one-shot helper image (`docker-compose run --rm`)
+                             for the refresh timer and nightly maintenance
 
 /etc/systemd/system/github-mirror.service
   boot hook for the two long-running Compose services
 
 /etc/systemd/system/github-mirror-fallback.timer
-  safety-net timer that runs docker-compose run --rm github-mirror-fallback
+  safety-net timer (every 5 minutes, 2 minutes after boot) that runs
+  docker-compose run --rm github-mirror-fallback
+
+/etc/systemd/system/github-mirror-maintenance.timer
+  nightly (09:30 UTC) repack that runs bin/maintain-mirrors.sh via
+  docker-compose run --rm github-mirror-fallback
 ```
 
-`git-daemon` on port 9418 is kept only as a diagnostic or emergency fallback.
-Do not use `git://` URLs as the normal Jenkins configuration.
+The webhook and fallback containers run as the host owner of the mirror
+repositories. On the current controller that is `gitdaemon` (UID 116, GID
+65534 `nogroup`), recorded in `/opt/github-mirror/.env` as `MIRROR_UID` and
+`MIRROR_GID`. Run manual Git commands against the mirrors as `gitdaemon`
+(`sudo -u gitdaemon git ...`); running them as root or another user fails with
+Git's `detected dubious ownership` check.
+
+All Jenkins Git traffic to the mirror uses smart HTTP. The `Github_Builds/*`
+jobs load their pipeline scripts from
+`https://ci.trafficserver.apache.org/mirror/trafficserver-ci.git` (job
+Configure > Pipeline > Repository URL); declarative pipelines also check that
+repository out on the agent at the start of each build. They used
+`git://ci.trafficserver.apache.org/trafficserver-ci.git` until 2026-10-24.
+
+`git-daemon` still listens on port 9418 on all addresses as a fallback. Do not
+point Jenkins at `git://` URLs. Once `journalctl -t git-daemon` shows no
+`trafficserver-ci.git` requests for a week, it can be bound to `127.0.0.1`.
 
 The webhook service only accepts signed GitHub payloads for:
 
@@ -168,7 +189,9 @@ Thanks.
    - creates `/home/mirror/trafficserver-ci.git`;
    - configures both bare repos with `http.uploadpack=true` and
      `http.receivepack=false`;
-   - installs systemd boot/timer hooks;
+   - installs systemd boot/timer hooks, including the fallback refresh timer
+     and the nightly maintenance (repack) timer;
+   - removes the legacy `/etc/cron.d/github-mirror-maintenance` cron job;
    - links `/etc/default/git-daemon` to
      `/opt/github-mirror/config/git-daemon.default`;
    - builds the Compose images.
@@ -198,6 +221,7 @@ Thanks.
    ```bash
    sudo systemctl enable --now github-mirror.service
    sudo systemctl enable --now github-mirror-fallback.timer
+   sudo systemctl enable --now github-mirror-maintenance.timer
 
    cd /opt/github-mirror
    sudo docker-compose ps
@@ -229,7 +253,13 @@ Thanks.
    https://ci.trafficserver.apache.org/mirror/ -> http://localhost:9417/mirror/
    ```
 
-   Keep `proxy.config.http.cache.http=0`. Keep `hdr_rw_git.config` unless
+   The global `proxy.config.http.cache.http` stays at its normal value; the
+   `/mirror/` remap disables caching for itself with `conf_remap`
+   (`proxy.config.http.cache.http=0`) and also sets
+   `proxy.config.http.server_session_sharing.match=none`. Keep both overrides:
+   without the session-sharing override, ATS reuses an origin connection that
+   httpd has already closed behind docker-proxy and the request stalls until
+   the 180 second no-activity timeout. Keep `hdr_rw_git.config` unless
    testing proves it interferes with smart Git POSTs. Do not change the docs
    httpd/container remaps.
 
@@ -315,6 +345,13 @@ cd /opt/github-mirror
 sudo docker-compose run --rm github-mirror-fallback
 ```
 
+Repack both mirrors now (the same job the nightly maintenance timer runs):
+
+```bash
+sudo systemctl start github-mirror-maintenance.service
+sudo journalctl -u github-mirror-maintenance.service --since today
+```
+
 Refresh one ATS PR:
 
 ```bash
@@ -338,7 +375,7 @@ Inspect services:
 
 ```bash
 sudo systemctl status github-mirror.service
-systemctl list-timers github-mirror-fallback.timer
+systemctl list-timers 'github-mirror-*'
 
 cd /opt/github-mirror
 sudo docker-compose ps
@@ -350,7 +387,13 @@ sudo tail -n 100 /var/log/github-mirror-smart-http/access_log
 Use `git-daemon` only as a diagnostic fallback:
 
 ```bash
-git ls-remote git://ci.trafficserver.apache.org/trafficserver.git refs/heads/master
+git ls-remote git://ci.trafficserver.apache.org/trafficserver-ci.git refs/heads/main
+```
+
+Confirm nothing still fetches over `git://`:
+
+```bash
+sudo journalctl -t git-daemon --since "7 days ago" | grep -c 'Request upload-pack'
 ```
 
 ## Backups
@@ -537,11 +580,12 @@ from GitHub again.
 2. Re-run or restart the affected Jenkins jobs.
 
 3. If the mirror should not keep updating while GitHub URLs are in use, stop
-   the Compose stack and fallback timer.
+   the Compose stack and the fallback and maintenance timers.
 
    ```bash
    sudo systemctl stop github-mirror.service
    sudo systemctl stop github-mirror-fallback.timer
+   sudo systemctl stop github-mirror-maintenance.timer
    ```
 
 Rollback does not require deleting `/opt/github-mirror` or `/home/mirror`.
@@ -553,8 +597,8 @@ Missing PR ref:
 ```bash
 sudo -u gitdaemon \
   /opt/github-mirror/bin/update-mirror.sh trafficserver --pr <number>
-git --git-dir=/home/mirror/trafficserver.git show-ref refs/pull/<number>/head
-git --git-dir=/home/mirror/trafficserver.git show-ref refs/pull/<number>/merge
+sudo -u gitdaemon git --git-dir=/home/mirror/trafficserver.git show-ref refs/pull/<number>/head
+sudo -u gitdaemon git --git-dir=/home/mirror/trafficserver.git show-ref refs/pull/<number>/merge
 ```
 
 Webhook returns 401:
@@ -640,9 +684,13 @@ The key files under that directory are:
 /opt/github-mirror/ats/remap-snippet.config
 /opt/github-mirror/ats/mirror-smart-http-remap-snippet.config
 /opt/github-mirror/bin/backup-controller-config.sh
+/opt/github-mirror/bin/check-docker-access.sh
+/opt/github-mirror/bin/check-mirror.sh
 /opt/github-mirror/bin/generate-webhook-secret.sh
 /opt/github-mirror/bin/github-mirror-webhook.py
 /opt/github-mirror/bin/init-mirrors.sh
+/opt/github-mirror/bin/install-controller.sh
+/opt/github-mirror/bin/maintain-mirrors.sh
 /opt/github-mirror/bin/update-mirror.sh
 /opt/github-mirror/config/github-mirror-webhook.env
 /opt/github-mirror/config/github-mirror-webhook.env.example
@@ -652,6 +700,8 @@ The key files under that directory are:
 /opt/github-mirror/systemd/github-mirror.service
 /opt/github-mirror/systemd/github-mirror-fallback.service
 /opt/github-mirror/systemd/github-mirror-fallback.timer
+/opt/github-mirror/systemd/github-mirror-maintenance.service
+/opt/github-mirror/systemd/github-mirror-maintenance.timer
 /opt/github-mirror/webhook/Dockerfile
 ```
 
@@ -662,13 +712,17 @@ The installer creates these small OS integration files:
 /etc/systemd/system/github-mirror.service
 /etc/systemd/system/github-mirror-fallback.service
 /etc/systemd/system/github-mirror-fallback.timer
+/etc/systemd/system/github-mirror-maintenance.service
+/etc/systemd/system/github-mirror-maintenance.timer
 ```
 
-The local bare mirrors live under:
+The local bare mirrors, and the `flock` files shared by `update-mirror.sh` and
+`maintain-mirrors.sh`, live under:
 
 ```text
 /home/mirror/trafficserver.git
 /home/mirror/trafficserver-ci.git
+/home/mirror/.locks/
 ```
 
 The smart HTTP container writes host-mounted logs here:
@@ -703,4 +757,5 @@ Jenkins stores the `GITHUB_URL` and `quietPeriod` settings in job XML under:
 ```
 
 Check the GitHub PR top-level job and branch top-level job configs there after
-a rebuild. Steady-state mirror updates do not require a cron file.
+a rebuild. The mirror does not use any cron files; scheduled work runs from
+the systemd timers above.

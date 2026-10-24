@@ -1,0 +1,12 @@
+[Unit]
+Description=Run ATS CI GitHub mirror nightly repack
+Documentation=file:@INSTALL_ROOT@/README.md
+
+[Timer]
+OnCalendar=*-*-* 09:30:00 UTC
+Persistent=true
+AccuracySec=1min
+Unit=github-mirror-maintenance.service
+
+[Install]
+WantedBy=timers.target
