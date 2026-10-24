@@ -89,8 +89,10 @@ repositories. On the current controller that is `gitdaemon` (UID 116, GID
 (`sudo -u gitdaemon git ...`); running them as root or another user fails with
 Git's `detected dubious ownership` check.
 
-`git-daemon` on port 9418 is kept only as a diagnostic or emergency fallback.
-Do not use `git://` URLs as the normal Jenkins configuration.
+`git-daemon` on `127.0.0.1:9418` is kept only as a diagnostic fallback on the
+controller. It is not reachable from other hosts, so do not use `git://` URLs
+in Jenkins. The installer adds `--listen=127.0.0.1` to a preserved
+`config/git-daemon.default` that has no `--listen` option.
 
 The webhook service only accepts signed GitHub payloads for:
 
@@ -376,10 +378,10 @@ sudo docker-compose logs --tail=100 github-mirror-smart-http
 sudo tail -n 100 /var/log/github-mirror-smart-http/access_log
 ```
 
-Use `git-daemon` only as a diagnostic fallback:
+Use `git-daemon` only as a diagnostic fallback, from the controller itself:
 
 ```bash
-git ls-remote git://ci.trafficserver.apache.org/trafficserver.git refs/heads/master
+git ls-remote git://127.0.0.1/trafficserver.git refs/heads/master
 ```
 
 ## Backups

@@ -4,4 +4,6 @@ GIT_DAEMON_ENABLE=true
 GIT_DAEMON_USER=gitdaemon
 GIT_DAEMON_BASE_PATH=/home/mirror
 GIT_DAEMON_DIRECTORY=/home/mirror
-GIT_DAEMON_OPTIONS="--export-all --reuseaddr --port=9418"
+# Loopback only: Jenkins clones over HTTPS through ATS, so git:// is just a
+# diagnostic path on the controller itself.
+GIT_DAEMON_OPTIONS="--export-all --reuseaddr --listen=127.0.0.1 --port=9418"

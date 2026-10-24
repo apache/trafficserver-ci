@@ -139,6 +139,13 @@ if ! copy_if_present "${CONFIG_DIR}/git-daemon.default" "${INSTALL_ROOT}.new/con
   fi
 fi
 
+# Older preserved git-daemon configs listen on every address. Bind them to
+# loopback unless an operator already chose an explicit --listen address.
+daemon_default="${INSTALL_ROOT}.new/config/git-daemon.default"
+if [ -f "${daemon_default}" ] && ! grep -q -- '--listen=' "${daemon_default}"; then
+  sed -i 's/^GIT_DAEMON_OPTIONS="/GIT_DAEMON_OPTIONS="--listen=127.0.0.1 /' "${daemon_default}"
+fi
+
 rm -rf "${INSTALL_ROOT}"
 mv "${INSTALL_ROOT}.new" "${INSTALL_ROOT}"
 chown -R root:root "${INSTALL_ROOT}"
