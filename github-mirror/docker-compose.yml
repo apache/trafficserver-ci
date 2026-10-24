@@ -1,4 +1,6 @@
-version: '3'
+# Format 2.4: docker-compose 1.25 ignores mem_limit in the 3.x format (without
+# --compatibility) and 3.x has no oom_score_adj.
+version: '2.4'
 
 services:
   github-mirror:
@@ -30,6 +32,11 @@ services:
     image: trafficserver/github-mirror-smart-http:latest
     container_name: github-mirror-smart-http
     restart: unless-stopped
+    # Contain git-upload-pack fanout in its own cgroup: a burst now OOM-kills a
+    # clone (Jenkins retries it) instead of ATS or Jenkins on the host.
+    mem_limit: 2g
+    memswap_limit: 3g
+    oom_score_adj: 500
     ports:
       - "127.0.0.1:9417:80"
     volumes:
