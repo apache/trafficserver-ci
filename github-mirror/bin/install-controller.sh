@@ -20,6 +20,7 @@ START_FALLBACK_TIMER=${START_FALLBACK_TIMER:-1}
 START_MAINTENANCE_TIMER=${START_MAINTENANCE_TIMER:-1}
 INIT_MIRRORS=${INIT_MIRRORS:-1}
 BUILD_IMAGES=${BUILD_IMAGES:-1}
+ATS_CONFIG_DIR=${ATS_CONFIG_DIR:-/opt/ats/etc/trafficserver}
 
 usage() {
   cat <<'EOF'
@@ -37,6 +38,8 @@ Environment:
   INIT_MIRRORS   Run init-mirrors.sh after install when set to 1. Default: 1
   BUILD_IMAGES   Build docker-compose images when set to 1. Default: 1
   START_COMPOSE  auto, 1, or 0. Default: auto
+  ATS_CONFIG_DIR ATS config directory for hdr_rw_git.config; empty skips it.
+                 Default: /opt/ats/etc/trafficserver
   START_FALLBACK_TIMER
                  Enable/start the systemd fallback timer when set to 1. Default: 1
   START_MAINTENANCE_TIMER
@@ -159,6 +162,20 @@ install -d -o "${MIRROR_USER}" -g "${MIRROR_GROUP}" -m 0755 "${MIRROR_ROOT}/.loc
 install -d -o root -g root -m 0755 /var/log/github-mirror-smart-http
 
 ln -sfn "${INSTALL_ROOT}/config/git-daemon.default" /etc/default/git-daemon
+
+# The /mirror/ remap references hdr_rw_git.config. Install it when missing, but
+# never overwrite a live ATS config file.
+if [ -n "${ATS_CONFIG_DIR}" ] && [ -d "${ATS_CONFIG_DIR}" ]; then
+  hdr_rw_git="${ATS_CONFIG_DIR}/hdr_rw_git.config"
+  if [ ! -e "${hdr_rw_git}" ]; then
+    install -o root -g root -m 0644 "${INSTALL_ROOT}/ats/hdr_rw_git.config" "${hdr_rw_git}"
+    log "installed ${hdr_rw_git}"
+  elif ! cmp -s "${INSTALL_ROOT}/ats/hdr_rw_git.config" "${hdr_rw_git}"; then
+    log "note: ${hdr_rw_git} differs from ${INSTALL_ROOT}/ats/hdr_rw_git.config; left unchanged"
+  fi
+elif [ -n "${ATS_CONFIG_DIR}" ]; then
+  log "note: ${ATS_CONFIG_DIR} not found; install ${INSTALL_ROOT}/ats/hdr_rw_git.config there once ATS is installed"
+fi
 
 # Remove legacy units from the pre-Compose implementation.
 systemctl disable --now github-mirror-webhook.service >/dev/null 2>&1 || true

@@ -192,6 +192,7 @@ Thanks.
    - installs systemd boot/timer hooks, including the fallback refresh timer
      and the nightly maintenance (repack) timer;
    - removes the legacy `/etc/cron.d/github-mirror-maintenance` cron job;
+   - installs the ATS `hdr_rw_git.config` if it is missing;
    - links `/etc/default/git-daemon` to
      `/opt/github-mirror/config/git-daemon.default`;
    - builds the Compose images.
@@ -262,6 +263,11 @@ Thanks.
    the 180 second no-activity timeout. Keep `hdr_rw_git.config` unless
    testing proves it interferes with smart Git POSTs. Do not change the docs
    httpd/container remaps.
+
+   The installer copies `/opt/github-mirror/ats/hdr_rw_git.config` to
+   `/opt/ats/etc/trafficserver/hdr_rw_git.config` when that file is missing.
+   It never overwrites an existing copy. If ATS was not installed yet, or lives
+   elsewhere, copy it by hand or re-run the installer with `ATS_CONFIG_DIR`.
 
    Reload ATS:
 
@@ -681,6 +687,7 @@ The key files under that directory are:
 ```text
 /opt/github-mirror/docker-compose.yml
 /opt/github-mirror/.env
+/opt/github-mirror/ats/hdr_rw_git.config
 /opt/github-mirror/ats/remap-snippet.config
 /opt/github-mirror/ats/mirror-smart-http-remap-snippet.config
 /opt/github-mirror/bin/backup-controller-config.sh
@@ -744,7 +751,8 @@ Use these repo snippets as the source of truth for those remaps:
 /opt/github-mirror/ats/mirror-smart-http-remap-snippet.config
 ```
 
-The mirror remap also references the existing ATS header rewrite file:
+The mirror remap also references this ATS header rewrite file, whose source of
+truth is `/opt/github-mirror/ats/hdr_rw_git.config`:
 
 ```text
 /opt/ats/etc/trafficserver/hdr_rw_git.config

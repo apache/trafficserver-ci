@@ -148,6 +148,8 @@ fi
 add_existing_path /etc/systemd/system/github-mirror.service
 add_existing_path /etc/systemd/system/github-mirror-fallback.service
 add_existing_path /etc/systemd/system/github-mirror-fallback.timer
+add_existing_path /etc/systemd/system/github-mirror-maintenance.service
+add_existing_path /etc/systemd/system/github-mirror-maintenance.timer
 add_existing_path /etc/default/git-daemon
 
 if [ "${INCLUDE_ATS_LIVE}" = "1" ]; then
