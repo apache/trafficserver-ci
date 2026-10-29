@@ -1,0 +1,26 @@
+# Jenkins docker agents allowed to reach the remote ccache on TCP port 9090.
+# bazel-remote runs without authentication, so this list, applied as ufw
+# rules by bin/install.sh, is its only access control. One address per
+# line; anything after the address is a comment.
+72.167.36.42     docker1
+72.167.36.127    docker2
+72.167.42.172    docker3
+72.167.35.81     docker4
+72.167.44.28     docker5
+72.167.40.9      docker6
+72.167.42.98     docker7
+72.167.36.112    docker8
+72.167.32.123    docker9
+72.167.37.106    docker10
+72.167.37.220    docker12
+72.167.34.1      docker13
+72.167.47.106    docker14
+72.167.49.50     docker15
+72.167.51.19     docker16
+72.167.51.184    docker17
+72.167.52.93     docker18
+72.167.48.170    docker19
+72.167.48.140    docker20
+208.109.34.182   docker21
+184.168.20.3     docker23
+72.167.42.180    docker24

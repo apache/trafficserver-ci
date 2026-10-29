@@ -10,6 +10,11 @@ pipeline {
   environment {
     CCACHE_DIR = "/tmp/ccache"
     CCACHE_BASEDIR = "${WORKSPACE}"
+    // Shared cache on docker11. ccache 4.7 and newer read this variable; see
+    // ccache-remote/README.md.
+    CCACHE_REMOTE_STORAGE = "http://72.167.32.163:9090|layout=bazel"
+    // Records this build's cache statistics for the Build stage's post step.
+    CCACHE_STATSLOG = "${WORKSPACE}/ccache-stats.log"
   }
   stages {
     stage('Initialization') {
@@ -155,6 +160,12 @@ pipeline {
               make install
             fi
             '''
+        }
+      }
+      post {
+        always {
+          // Show whether this build hit the local and remote caches.
+          sh 'ccache --show-log-stats -v || true'
         }
       }
     }
