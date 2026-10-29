@@ -9,6 +9,7 @@ pipeline {
     }
     environment {
         CCACHE_DIR = "/tmp/ccache"
+        CCACHE_MAXSIZE = "20G"
         CCACHE_BASEDIR = "${WORKSPACE}"
     }
     stages {
