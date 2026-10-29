@@ -27,7 +27,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 PIPELINES = (
-    "jenkins/github/autest.pipeline",
+    "jenkins/github/urtest.pipeline",
     "jenkins/branch/autest.pipeline",
     "jenkins/branch/coverage.pipeline",
 )

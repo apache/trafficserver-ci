@@ -15,8 +15,8 @@ pipeline {
     stage('Initialization') {
       steps {
         script {
-          if (env.AUTEST_SHARD) {
-            String[] arr = env.AUTEST_SHARD.split('of')
+          if (env.URTEST_SHARD) {
+            String[] arr = env.URTEST_SHARD.split('of')
             if (2 == arr.length) {
               shard = arr[0] as int
               shardcnt = arr[1] as int
@@ -158,7 +158,7 @@ pipeline {
         }
       }
     }
-    stage('AuTest') {
+    stage('URTest') {
       steps {
         echo 'Starting test suite'
         dir('src/tests') {
@@ -181,7 +181,7 @@ pipeline {
             fi
             if [ -n "${urtest_directory}" ]; then
               cd "${urtest_directory}"
-              env -u ATS_URTEST_SANDBOX bash ./urtest.sh --no-run-in-docker --sandbox=/tmp/sandbox -v -n 2 || test_failed=1
+              env -u ATS_URTEST_SANDBOX bash ./urtest.sh --no-run-in-docker --sandbox=/tmp/sandbox -v -n 4 || test_failed=1
             else
               test_suite="AuTest"
               autest_args=""

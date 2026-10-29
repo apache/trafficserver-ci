@@ -6,7 +6,7 @@ TOP_JOB_DESC = "Builds:\\n"
 // Tiers, from least to most work:
 //   none   - no checks run; every required status is posted as passing.
 //   quick  - only the Quick Checks (Format, RAT, Docs) run.
-//   urtest - the Quick Checks plus the end-to-end (AuTest, later UrTest) tests run.
+//   urtest - the Quick Checks plus the end-to-end (URTest) tests run.
 //   full   - everything runs.
 // A changed file that matches none of these patterns needs the full tier.
 TIER_RANK = [none: 0, quick: 1, urtest: 2, full: 3]
@@ -35,7 +35,7 @@ TIER_PATTERNS = [
 ]
 
 // The minimum tier at which each stage runs. The keys are the GitHub status
-// contexts the stages post, except AuTest, which posts one context per shard.
+// contexts the stages post, except URTest, which posts one context per shard.
 STAGE_TIERS = [
 	'Format': 'quick',
 	'RAT': 'quick',
@@ -47,7 +47,8 @@ STAGE_TIERS = [
 	'CentOS': 'full',
 	'OSX': 'full',
 	'Clang-Analyzer': 'full',
-	'AuTest': 'urtest',
+	'Clang-Tidy': 'full',
+	'URTest': 'urtest',
 ]
 
 // A script field, since determineCiTier() sets it and the stages read it.
@@ -93,10 +94,10 @@ List<String> skippedContexts() {
 		if (TIER_RANK[CI_TIER] >= TIER_RANK[STAGE_TIERS[stage]]) {
 			continue
 		}
-		if (stage == 'AuTest' && env.AUTEST_SHARDS) {
-			int nshards = env.AUTEST_SHARDS as int
+		if (stage == 'URTest' && env.URTEST_SHARDS) {
+			int nshards = env.URTEST_SHARDS as int
 			for (int i = 0; i < nshards; i++) {
-				contexts << "AuTest ${i}of${nshards}".toString()
+				contexts << "URTest ${i}of${nshards}".toString()
 			}
 		} else {
 			contexts << stage
@@ -250,7 +251,7 @@ String buildJob(String ghcontext, String jobName, String shard='') {
 
 	def displayname = jobName
 	if (shard != '') {
-		parms << string(name: 'AUTEST_SHARD', value: shard)
+		parms << string(name: 'URTEST_SHARD', value: shard)
 		displayname += ' ' + shard
 	}
 
@@ -493,37 +494,55 @@ pipeline {
 						}
 					}
 				}
-				stage('AuTest') {
+				stage('Clang-Tidy') {
 					when {
-						expression { shouldRun('AuTest') }
+						expression { shouldRun('Clang-Tidy') }
 						anyOf {
 							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
-							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*autest.*/ }
+							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*clang-tidy.*/ }
 						}
 					}
 					steps {
 						script {
-							String jobpath = 'Github_Builds/autest'
-							if (env.AUTEST_SHARDS) {
-								def nshards = env.AUTEST_SHARDS as int
+							result = buildJob('Clang-Tidy', 'Github_Builds/clang-tidy')
+							if (result == 'FAILURE') {
+								error('Clang-Tidy failed')
+							}
+						}
+					}
+				}
+				stage('URTest') {
+					when {
+						expression { shouldRun('URTest') }
+						anyOf {
+							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+							// autest is still accepted for those used to the old name.
+							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*(ur|au)test.*/ }
+						}
+					}
+					steps {
+						script {
+							String jobpath = 'Github_Builds/urtest'
+							if (env.URTEST_SHARDS) {
+								def nshards = env.URTEST_SHARDS as int
 
 								// extract optional shard
-								mg = (GITHUB_PR_COMMENT_BODY_MATCH =~ /autest\W*(\d+)/)
+								mg = (GITHUB_PR_COMMENT_BODY_MATCH =~ /(?:ur|au)test\W*(\d+)/)
 								if (mg) {
 									def index = mg.group(1) as int
 									if (0 <= index && index < nshards) {
-										String shard = index + "of" + env.AUTEST_SHARDS
-										result = buildJob('AuTest ' + shard, jobpath, shard)
+										String shard = index + "of" + env.URTEST_SHARDS
+										result = buildJob('URTest ' + shard, jobpath, shard)
 										if (result == 'FAILURE') {
-											error('AuTest ' + shard + ' failed')
+											error('URTest ' + shard + ' failed')
 										}
 									}
 								} else {
 									def jobs = [:]
 									def results = [:]
 									for (index = 0 ; index < nshards ; index++) {
-										String shard = index + "of" + env.AUTEST_SHARDS
-										jobs[shard] = { results[shard] = buildJob('AuTest ' + shard, jobpath, shard) }
+										String shard = index + "of" + env.URTEST_SHARDS
+										jobs[shard] = { results[shard] = buildJob('URTest ' + shard, jobpath, shard) }
 									}
 									parallel jobs
 									def failed = []
@@ -533,13 +552,13 @@ pipeline {
 										}
 									}
 									if (failed) {
-										error('AuTest failed: ' + failed.join(', '))
+										error('URTest failed: ' + failed.join(', '))
 									}
 								}
 							} else {
-								result = buildJob('AuTest', jobpath)
+								result = buildJob('URTest', jobpath)
 								if (result == 'FAILURE') {
-									error('AuTest failed')
+									error('URTest failed')
 								}
 							}
 						}
