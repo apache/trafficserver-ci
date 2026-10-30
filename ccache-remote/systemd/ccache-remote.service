@@ -1,0 +1,22 @@
+[Unit]
+Description=ATS CI remote ccache (bazel-remote)
+Documentation=file:@INSTALL_ROOT@/README.md
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=@INSTALL_ROOT@
+# The image tag is pinned; "-" lets the service start from the local image
+# when Docker Hub is unreachable.
+ExecStartPre=-/usr/bin/docker-compose pull ccache-remote
+ExecStart=/usr/bin/docker-compose up --remove-orphans ccache-remote
+ExecStop=/usr/bin/docker-compose stop ccache-remote
+ExecStopPost=/usr/bin/docker-compose rm -f ccache-remote
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=10min
+
+[Install]
+WantedBy=multi-user.target

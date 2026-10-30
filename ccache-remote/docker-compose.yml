@@ -1,0 +1,25 @@
+# Format 2.4 to match docker-compose 1.25 on docker11 (Ubuntu 20.04).
+version: '2.4'
+
+services:
+  ccache-remote:
+    image: buchgr/bazel-remote-cache:v2.6.2
+    container_name: ccache-remote
+    restart: unless-stopped
+    user: "${CACHE_UID}:${CACHE_GID}"
+    # Host networking keeps port 9090 behind ufw. A published port would be
+    # opened by Docker's own iptables rules, which bypass ufw.
+    network_mode: host
+    volumes:
+      - "${CACHE_ROOT}:/data:rw"
+    command:
+      - --dir=/data
+      # bazel-remote evicts least recently used entries to stay under this.
+      - --max_size=${CACHE_MAX_SIZE_GIB}
+      - --http_address=0.0.0.0:9090
+      - --grpc_address=none
+      # The image entrypoint enables pprof on :6060; an empty address turns it off.
+      - --profile_address=
+      # ccache stores its results under /ac/ without Bazel ActionResult
+      # protobufs, which bazel-remote would otherwise reject.
+      - --disable_http_ac_validation
