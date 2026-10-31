@@ -81,15 +81,50 @@ pipeline {
 
                         if [ -d cmake ]
                         then
-                            cmake -B build --preset ci-clang-analyzer
-                            cmake --build build -v
+                            cmake -B build --preset ci-clang-analyzer -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
+
+                            # The full build is not needed: the compilation database is written at
+                            # configure time, and the only sources generated at build time are the
+                            # ParseRules tables that src/tscore/ParseRules.cc includes. Module
+                            # scanning is disabled above because otherwise the compilation database
+                            # refers to .modmap files that only a full build creates. Newer
+                            # ci-clang-analyzer presets also set it; it is passed explicitly for the
+                            # release branches whose presets do not. Branches without these
+                            # generated tables get the full build.
+                            parse_rules="src/tscore/ParseRulesCType src/tscore/ParseRulesCTypeToLower src/tscore/ParseRulesCTypeToUpper"
+                            missing=0
+                            for target in ${parse_rules}
+                            do
+                                if ! ninja -C build -t targets all | grep -q "^${target}:"
+                                then
+                                    missing=1
+                                fi
+                            done
+                            if [ "${missing}" -eq 0 ]
+                            then
+                                cmake --build build -v --target ${parse_rules}
+                            else
+                                cmake --build build -v
+                            fi
+
+                            # Everything under lib/ is vendored third party code except libswoc,
+                            # which the project maintains, so only analyze libswoc there.
+                            lib_excludes=()
+                            for lib_dir in lib/*/
+                            do
+                                lib_dir="${lib_dir%/}"
+                                if [ "${lib_dir}" != "lib/swoc" ]
+                                then
+                                    lib_excludes+=(--exclude "${WORKSPACE}/src/${lib_dir}")
+                                fi
+                            done
 
                             analyze-build \
                                 --cdb build/compile_commands.json \
                                 -v \
                                 --status-bugs \
                                 --keep-empty \
-                                --exclude "${WORKSPACE}/src/lib/highway" \
+                                "${lib_excludes[@]}" \
                                 -enable-checker alpha.unix.cstring.BufferOverlap \
                                 -enable-checker alpha.core.BoolAssignment \
                                 -enable-checker alpha.core.CastSize \

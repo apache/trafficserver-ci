@@ -86,9 +86,32 @@ pipeline {
                             echo "Clang-Tidy CI configuration is not available on this branch."
                         else
                             # Clang-Tidy needs the compilation database and the generated
-                            # sources and headers, so build with the analyzer's preset.
-                            cmake -B build --preset ci-clang-analyzer
-                            cmake --build build -v
+                            # headers, so configure with the analyzer's preset.
+                            cmake -B build --preset ci-clang-analyzer -DCMAKE_CXX_SCAN_FOR_MODULES=OFF
+
+                            # The full build is not needed: the compilation database is written at
+                            # configure time, and the only sources generated at build time are the
+                            # ParseRules tables that src/tscore/ParseRules.cc includes. Module
+                            # scanning is disabled above because otherwise the compilation database
+                            # refers to .modmap files that only a full build creates. Newer
+                            # ci-clang-analyzer presets also set it; it is passed explicitly for the
+                            # release branches whose presets do not. Branches without these
+                            # generated tables get the full build.
+                            parse_rules="src/tscore/ParseRulesCType src/tscore/ParseRulesCTypeToLower src/tscore/ParseRulesCTypeToUpper"
+                            missing=0
+                            for target in ${parse_rules}
+                            do
+                                if ! ninja -C build -t targets all | grep -q "^${target}:"
+                                then
+                                    missing=1
+                                fi
+                            done
+                            if [ "${missing}" -eq 0 ]
+                            then
+                                cmake --build build -v --target ${parse_rules}
+                            else
+                                cmake --build build -v
+                            fi
                         fi
                     '''
                 }
