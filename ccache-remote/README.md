@@ -38,7 +38,7 @@ CCACHE_REMOTE_STORAGE = "http://72.167.32.163:9090|layout=bazel"
 ```
 
 Currently that is `jenkins/github/urtest.pipeline`, `fedora.pipeline`, and
-`debian.pipeline`. Those images ship ccache 4.12 (`fedora:44`) and 4.7
+`debian.pipeline`. Those images ship ccache 4.13 (`fedora:45`) and 4.7
 (`debian:12`).
 
 `CCACHE_REMOTE_STORAGE` needs ccache 4.7 or newer. ccache 4.4 through 4.6 call
