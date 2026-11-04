@@ -96,7 +96,7 @@ List<String> skippedContexts() {
 		}
 		if (stage == 'URTest' && env.URTEST_SHARDS) {
 			int nshards = env.URTEST_SHARDS as int
-			for (int i = 0; i < nshards; i++) {
+			for (int i = 1; i <= nshards; i++) {
 				contexts << "URTest ${i}of${nshards}".toString()
 			}
 		} else {
@@ -526,11 +526,11 @@ pipeline {
 							if (env.URTEST_SHARDS) {
 								def nshards = env.URTEST_SHARDS as int
 
-								// extract optional shard
+								// extract optional 1-based shard
 								mg = (GITHUB_PR_COMMENT_BODY_MATCH =~ /(?:ur|au)test\W*(\d+)/)
 								if (mg) {
 									def index = mg.group(1) as int
-									if (0 <= index && index < nshards) {
+									if (1 <= index && index <= nshards) {
 										String shard = index + "of" + env.URTEST_SHARDS
 										result = buildJob('URTest ' + shard, jobpath, shard)
 										if (result == 'FAILURE') {
@@ -540,7 +540,7 @@ pipeline {
 								} else {
 									def jobs = [:]
 									def results = [:]
-									for (index = 0 ; index < nshards ; index++) {
+									for (index = 1 ; index <= nshards ; index++) {
 										String shard = index + "of" + env.URTEST_SHARDS
 										jobs[shard] = { results[shard] = buildJob('URTest ' + shard, jobpath, shard) }
 									}

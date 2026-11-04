@@ -21,13 +21,15 @@ pipeline {
     stage('Initialization') {
       steps {
         script {
+          // URTEST_SHARD is a 1-based label, such as 1of3. SHARD is the
+          // 0-based index that the test runners expect.
           if (env.URTEST_SHARD) {
             String[] arr = env.URTEST_SHARD.split('of')
             if (2 == arr.length) {
               shard = arr[0] as int
               shardcnt = arr[1] as int
-              if (shard < shardcnt) {
-                env.SHARD = shard
+              if (1 <= shard && shard <= shardcnt) {
+                env.SHARD = shard - 1
                 env.SHARDCNT = shardcnt
               }
             }
