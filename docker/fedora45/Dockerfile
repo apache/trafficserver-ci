@@ -234,7 +234,7 @@ RUN <<EOF
   dnf -y install \
     ccache make pkgconfig bison flex gcc-c++ clang \
     autoconf automake libtool \
-    cmake ninja-build doxygen
+    cmake ninja-build doxygen plantuml
 
   # Various other tools
   dnf -y install \
