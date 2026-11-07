@@ -5,7 +5,7 @@ TOP_JOB_DESC = "Builds:\\n"
 // A PR's CI tier is the most demanding tier any of its changed files needs.
 // Tiers, from least to most work:
 //   none   - no checks run; every required status is posted as passing.
-//   quick  - only the Quick Checks (Format, RAT, Docs) run.
+//   quick  - only the Quick Checks (Format, RAT, Docs, Doxygen) run.
 //   urtest - the Quick Checks plus the end-to-end (URTest) tests run.
 //   full   - everything runs.
 // A changed file that matches none of these patterns needs the full tier.
@@ -40,6 +40,7 @@ STAGE_TIERS = [
 	'Format': 'quick',
 	'RAT': 'quick',
 	'Docs': 'quick',
+	'Doxygen': 'quick',
 	'Ubuntu': 'full',
 	'Fedora': 'full',
 	'Debian': 'full',
@@ -346,6 +347,23 @@ pipeline {
 							result = buildJob('Docs', 'Github_Builds/docs')
 							if (result == 'FAILURE') {
 								error('Docs failed')
+							}
+						}
+					}
+				}
+				stage('Doxygen') {
+					when {
+						expression { shouldRun('Doxygen') }
+						anyOf {
+							environment name: 'GITHUB_PR_COMMENT_BODY_MATCH', value: ''
+							expression { GITHUB_PR_COMMENT_BODY_MATCH ==~ /.*doxygen.*/ }
+						}
+					}
+					steps {
+						script {
+							result = buildJob('Doxygen', 'Github_Builds/doxygen')
+							if (result == 'FAILURE') {
+								error('Doxygen failed')
 							}
 						}
 					}
