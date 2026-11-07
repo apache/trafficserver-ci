@@ -85,7 +85,9 @@ pipeline {
 
                         # Configure like the Fedora build so the same optional
                         # features, such as the QUIC backend, are documented.
-                        cmake -B build --preset ci-fedora -DENABLE_DOXYGEN=ON
+                        # The check-only mode skips the HTML, which takes most of
+                        # the build time but reports no comment warnings.
+                        cmake -B build --preset ci-fedora -DENABLE_DOXYGEN=ON -DDOXYGEN_CHECK_ONLY=ON
                         cmake --build build --target doxygen -v
                     '''
                 }
