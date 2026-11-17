@@ -19,8 +19,6 @@
 set -x
 set -e
 
-grep -q 80010 configure.ac && echo "8.1.x branch detected, stop here!" && exit 0
-
 NPROC=${NPROC:-$(getconf _NPROCESSORS_ONLN)}
 
 WORKSPACE="${WORKSPACE:-..}"
