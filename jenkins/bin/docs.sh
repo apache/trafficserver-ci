@@ -88,9 +88,6 @@ echo "Building EN Docs"
 rm -rf docbuild/html
 
 sphinxopts="-W -D language='en'"
-if [ "${GITHUB_BRANCH}" = "8.1.x" ]; then
-  sphinxopts="-D language='en'"
-fi
 make -j${NPROC} -e SPHINXOPTS="${sphinxopts}" html
 
 mkdir -p "${enoutdir}"

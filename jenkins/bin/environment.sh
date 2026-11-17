@@ -67,14 +67,8 @@ ATS_BRANCH=${GITHUB_BRANCH:=master}
 #test "${JOB_NAME#*-6.2.x}" != "${JOB_NAME}" && ATS_BRANCH=6.2.x
 
 # These should be maintained and cleaned up as needed.
-test "${JOB_NAME#*-8.0.x}" != "${JOB_NAME}" && ATS_BRANCH=8.0.x
-test "${JOB_NAME#*-8.1.x}" != "${JOB_NAME}" && ATS_BRANCH=8.1.x
-test "${JOB_NAME#*-9.0.x}" != "${JOB_NAME}" && ATS_BRANCH=9.0.x
-test "${JOB_NAME#*-9.1.x}" != "${JOB_NAME}" && ATS_BRANCH=9.1.x
 test "${JOB_NAME#*-9.2.x}" != "${JOB_NAME}" && ATS_BRANCH=9.2.x
 test "${JOB_NAME#*-9.3.x}" != "${JOB_NAME}" && ATS_BRANCH=9.3.x
-test "${JOB_NAME#*-10.0.x}" != "${JOB_NAME}" && ATS_BRANCH=10.0.x
-test "${JOB_NAME#*-10.1.x}" != "${JOB_NAME}" && ATS_BRANCH=10.1.x
 test "${JOB_NAME#*-10.2.x}" != "${JOB_NAME}" && ATS_BRANCH=10.2.x
 test "${JOB_NAME#*-10.3.x}" != "${JOB_NAME}" && ATS_BRANCH=10.3.x
 

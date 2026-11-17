@@ -118,9 +118,6 @@ cd doc
 echo "Building English Docs"
 rm -rf docbuild/html
 sphinxopts="-W -D language='en'"
-if [ "${GITHUB_PR_TARGET_BRANCH}" = "8.1.x" ]; then
-  sphinxopts="-D language='en'"
-fi
 make -j4 -e SPHINXOPTS="${sphinxopts}" html
 _END_OF_DOC_
 
